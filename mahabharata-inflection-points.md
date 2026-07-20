@@ -272,6 +272,87 @@ of his brothers in hell.
 
 ---
 
+## Appendix: Krishna's Interventions — The Complete Catalog
+
+Almost every bent rule in the war traces back to Krishna. He never breaks the rules
+himself — he arranges for the rules to break. The famous "made it night" story is
+actually a fake *sunset*: he hid the sun in the middle of the day. The full list,
+in order:
+
+### Before the war
+
+1. **The choice at Dwaraka.** "Me, alone and unarmed" versus "my entire army" —
+   offered knowing exactly which each cousin will pick. Duryodhana leaves delighted
+   with the Narayani sena; Krishna has just decided the war's outcome.
+2. **The peace embassy as blame-fixing.** Five villages — an offer so minimal that
+   Duryodhana's refusal fixes the war's guilt on him alone. When the Kauravas try to
+   arrest the envoy, he reveals the Vishvarupa.
+3. **Telling Karna the birth secret.** Ostensibly a peace offer; in effect it extracts
+   Karna's silence and, through Kunti, his vow to spare all the Pandavas except
+   Arjuna. Karna is neutralized against four of the five before the first arrow.
+4. **Barbarika's head** *(folk tradition, not in the critical edition)*. Bhima's
+   grandson could end the war alone but is sworn to fight for whichever side is
+   losing — making the war unwinnable for anyone. Krishna, disguised as a Brahmin,
+   asks for his head in charity before the fighting begins. Origin of the Khatu
+   Shyamji deity of Rajasthan.
+
+### During the war
+
+5. **Feigning to break his no-weapons vow (days 3 and 9).** With Arjuna fighting
+   Bhishma half-heartedly, Krishna leaps down and charges the old man with a chariot
+   wheel. Bhishma ecstatically welcomes death at God's hands; a horrified Arjuna
+   drags Krishna back and promises to fight in earnest. Deliberate theater, and it
+   works.
+6. **The Shikhandi stratagem (day 10).** Krishna's advice: ask Bhishma himself how he
+   can be killed. Bhishma names Shikhandi — born Amba — at whom he will not shoot.
+   Arjuna fights from behind Shikhandi and cuts him down.
+7. **Absorbing the Vaishnavastra (day 12).** Bhagadatta fires the infallible Vaishnava
+   weapon at Arjuna; Krishna stands and takes it on his chest, where it becomes a
+   garland — his own weapon, returned to its owner.
+8. **The fake sunset (day 14).** Arjuna has vowed to kill Jayadratha by sundown or
+   immolate himself, and the Kaurava army spends the day walling Jayadratha off to
+   run out the clock. Krishna occludes the sun with the Sudarshana chakra; the
+   Kauravas celebrate; Jayadratha emerges to watch Arjuna die — the sun reappears.
+   Then the tweak inside the tweak: Jayadratha's father holds a boon that whoever
+   drops his son's head to the ground will have his own head burst. Krishna has
+   Arjuna shoot so the severed head lands in the meditating father's lap; the old
+   man starts up, drops it, and dies. (In the critical edition Arjuna simply beats
+   the real sunset; the hidden sun is the popular retelling.)
+9. **The Ghatotkacha gambit (night of day 14).** Fighting has run into the night —
+   itself a broken convention — when rakshasas are strongest. Krishna sends Bhima's
+   son to wreak such havoc that Karna must spend Indra's one-use Vasavi Shakti,
+   reserved for Arjuna, on him. When the boy falls, Krishna dances with relief.
+10. **The Ashwatthama half-lie (day 15).** Bhima kills an elephant named Ashwatthama;
+    Yudhishthira — believed precisely because he never lies — reports "Ashwatthama
+    is dead," murmuring "the elephant" as (in popular telling) Krishna's conch
+    drowns out the qualifier. Drona disarms in grief and is beheaded.
+11. **Pressing the chariot into the earth (day 17).** Karna's serpent-arrow Nagastra
+    flies at Arjuna's throat; Krishna stamps the chariot down a few inches, and it
+    takes the crown instead of the head.
+12. **Ordering the kill on the unarmed Karna (day 17).** Wheel sunk, mantras gone,
+    Karna invokes the warrior's code; Krishna answers with the ledger — Draupadi's
+    hair, Abhimanyu's butchering — and orders the shot.
+13. **The thigh signal (day 18).** Duryodhana is the better mace-fighter and Bhima's
+    vow requires an illegal blow. Krishna slaps his own thigh in Bhima's sight-line.
+    (Folk tellings add that Gandhari's gaze would have made Duryodhana's whole body
+    diamond-hard, but Krishna teased him into wearing a loincloth before her —
+    leaving the thighs mortal.)
+14. **The exploding chariot (day 18).** Krishna insists Arjuna dismount first,
+    against protocol; when Krishna steps off and Hanuman leaves the banner, the
+    chariot bursts into flame — destroyed days earlier by celestial weapons and held
+    together only by his presence.
+15. **Reviving Parikshit.** Ashwatthama redirects the Brahmastra into Uttara's womb
+    to end the line; Krishna revives the stillborn heir — through whom the dynasty,
+    and the epic's own frame narration, survives.
+
+The pattern: Bhishma, Drona, Karna, Jayadratha, and Duryodhana were each unbeatable
+in fair combat, and the epic says so plainly — Krishna's post-war answer to the
+furious Balarama is essentially that none of them could have died any other way.
+Nor is he exempt from the bill: Gandhari's curse falls on him for precisely these
+interventions, and he bows to it as just.
+
+---
+
 ## The Shape of the Whole
 
 Lay the hinges in a line and the epic's architecture shows itself:
