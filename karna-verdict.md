@@ -82,6 +82,54 @@ he answered with an ordered assault, outside anyone's.
 **Ruling: indefensible, aggravated rather than mitigated by his history, and the
 single act that caps how high any final verdict on Karna can go.**
 
+#### The objection: "but didn't Draupadi humiliate Karna too?"
+
+The strongest challenge to this ruling, so it gets answered here.
+
+First, the textual record: the famous rejection — Draupadi stopping Karna at the
+bow with "I will not wed a suta's son" — is most likely a later addition; in the
+critically reconstructed oldest text Karna simply attempts the shot and misses.
+(Likewise "the blind man's son is blind" is aimed at Duryodhana, not Karna, and
+is also absent from the critical edition.) The tradition *invented* provocations
+by Draupadi — later audiences wanted the sabha to be explicable, so they wrote
+her a debt she may never have incurred. That is itself evidence of how badly the
+scene needs an excuse.
+
+But grant the popular version fully. What did each of them do?
+
+Draupadi refused to marry a man. A swayamvara is the institution of the bride's
+choice — *svayam-vara*, self-choosing; refusing a suitor is not an abuse of the
+ceremony but its entire point. She exercised the one right the ritual gave her,
+over her own body and life. The *ground* she gave — his caste — was genuinely
+cruel, publicly delivered, on his exact wound, and it deserves criticism: she
+could have refused without the slur, and in that telling she participates in the
+same birth-order cruelty the epic indicts everywhere else. A wrong of words,
+from inside her rights, by a teenager applying the categories her whole world
+taught her.
+
+Karna, years later, when she stood powerless — dragged by the hair, in one
+garment, before an assembly of silent elders — ruled her a whore and ordered
+her stripped. Not words about her; commands upon her body.
+
+These are not the same currency. Refusing consent and violating consent are not
+points on one scale: one is a right exercised over oneself, the other is power
+exercised over someone else. Even the harshest ancient revenge principle — an
+eye for an eye — caps retaliation at equivalence; this was a bruised ego repaid
+at a thousandfold magnitude, years late, against her at her most defenseless,
+piggybacking on a crime (the rigged game) she had nothing to do with.
+
+And if humiliations are being audited, complete the audit: Draupadi is the
+epic's single largest recipient of humiliations she never earned — married to
+five men by another woman's careless sentence, staked like a coin by her own
+husband, assaulted in open court, and at the end robbed of all five sons in
+their sleep. She is no saint, and the epic never claims she is; her ledger
+still runs overwhelmingly the other way.
+
+So the swayamvara counts — it is rejection #4 above, and it is load-bearing
+for *understanding* the sabha. It explains him. It does not acquit him,
+because explanation and justification are different things — and Karna, of
+all people, is the character whose life teaches that distinction.
+
 ### 4. The armor
 
 Indra comes disguised as a beggar; Karna, forewarned by his own father that it is
