@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCD × ADHD × Schizophrenia — 3D Trait Locator</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel:#161b22; --panel2:#1c2230; --line:#2a3140;
+    --ink:#e6edf3; --muted:#9aa7b4; --accent:#58a6ff;
+    --o:#f2665e; --a:#3fb950; --s:#a371f7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--ink)}
+  header{padding:22px 20px 10px;max-width:1100px;margin:0 auto}
+  h1{font-size:22px;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:13px;max-width:760px}
+  .disc{margin:12px auto 0;max-width:1100px;padding:0 20px}
+  .disc div{background:#2a1d1d;border:1px solid #6b2b2b;color:#ffd7d2;padding:10px 14px;
+    border-radius:8px;font-size:13px}
+  .wrap{max-width:1100px;margin:16px auto;padding:0 20px;display:grid;
+    grid-template-columns:1fr 380px;gap:20px}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .dot{width:10px;height:10px;border-radius:50%}
+  .q{display:grid;grid-template-columns:1fr 150px;gap:8px;align-items:center;
+    padding:7px 0;border-bottom:1px solid var(--line)}
+  .q:last-child{border-bottom:none}
+  .q label{font-size:13px;color:var(--ink)}
+  .q .tag{color:var(--muted);font-size:11px}
+  input[type=range]{width:100%}
+  .val{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px;text-align:right;
+    min-width:14px}
+  .rangewrap{display:grid;grid-template-columns:1fr 22px;gap:6px;align-items:center}
+  canvas{width:100%;background:radial-gradient(circle at 50% 40%,#141a24,#0e1117);
+    border-radius:10px;border:1px solid var(--line);touch-action:none;cursor:grab}
+  .scores{display:grid;gap:10px;margin-top:14px}
+  .bar{background:var(--panel2);border-radius:8px;padding:8px 10px}
+  .bar .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+  .track{height:8px;background:#0c0f14;border-radius:5px;overflow:hidden}
+  .fill{height:100%;width:0;transition:width .25s}
+  .band{font-size:12px;color:var(--muted);margin-top:3px}
+  .coord{font-variant-numeric:tabular-nums;font-weight:600}
+  .interp{margin-top:12px;font-size:13px;color:var(--muted)}
+  .interp b{color:var(--ink)}
+  .sticky{position:sticky;top:14px}
+  button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:7px;padding:7px 12px;font-size:13px;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  .btns{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .flag{margin-top:10px;padding:8px 10px;border-radius:7px;font-size:12.5px;
+    background:#20261a;border:1px solid #3d4a2a;color:#d7e6b8;display:none}
+  a{color:var(--accent)}
+  footer{max-width:1100px;margin:8px auto 40px;padding:0 20px;color:var(--muted);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Where do you stand in 3D space? · OCD × ADHD × Schizophrenia</h1>
+  <div class="sub">A dimensional self-reflection tool grounded in RDoC / HiTOP transdiagnostic
+  models and validated scales (OCI-R, ASRS-5/DSM-5, O-LIFE / CAPE-42). Rate each statement for the
+  <b>last 6 months</b>: 0 = not at all → 4 = extreme &amp; interfering. Drag the cube to rotate.</div>
+</header>
+<div class="disc"><div><b>Not a diagnosis.</b> This is educational self-reflection only. No
+questionnaire can diagnose OCD, ADHD, or a schizophrenia-spectrum condition — only a qualified
+clinician can. A high score just means "worth talking to a professional about." If you're
+distressed, please reach out to a clinician or a crisis line.</div></div>
+
+<div class="wrap">
+  <div>
+    <div class="card" id="axO"></div>
+    <div class="card" style="margin-top:16px" id="axA"></div>
+    <div class="card" style="margin-top:16px" id="axS"></div>
+  </div>
+
+  <div>
+    <div class="sticky">
+      <div class="card">
+        <h2>Your position</h2>
+        <canvas id="cv" width="360" height="320"></canvas>
+        <div class="scores" id="scores"></div>
+        <div class="flag" id="flag"></div>
+        <div class="interp" id="interp"></div>
+        <div class="btns">
+          <button onclick="randomize()">Example</button>
+          <button onclick="resetAll()">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Full item list, scoring, and the overlap map: see <a href="questionnaire.md">questionnaire.md</a>
+  and <a href="README.md">README.md</a>. Sources cited there. Built July 2026.
+</footer>
+
+<script>
+const AX = {
+  O:{name:"Obsessive–Compulsive", color:"#f2665e", tag:"OCI-R", items:[
+    ["Wash / clean / avoid contamination far more than needed","washing"],
+    ["Repeatedly check locks, appliances, that I caused no harm","checking"],
+    ["Very upset if things aren't ordered / symmetric","ordering"],
+    ["Unwanted distressing thoughts / images I can't dismiss","obsessing"],
+    ["Keep things I don't need; can't throw things away","hoarding"],
+    ["Count / repeat / 'cancel' a bad thought to prevent harm","neutralizing"],
+    ["Need reassurance; can't trust my own memory","doubt"],
+    ["Repeat actions until they feel 'just right'","just-right"],
+    ["Feel responsible for disaster if I skip a ritual","responsibility"],
+    ["Rituals / intrusions eat up an hour+ a day","time-cost"],
+    ["Intense anxiety if stopped from finishing a ritual","distress"],
+    ["I know it's excessive yet feel driven to do it","ego-dystonic"]]},
+  A:{name:"Attention / Hyperactivity", color:"#3fb950", tag:"ASRS-5 / DSM-5", items:[
+    ["Careless mistakes; miss details","inattn"],
+    ["Can't sustain attention; mind wanders","inattn"],
+    ["Seem not to listen when spoken to","inattn"],
+    ["Start things but don't finish","inattn"],
+    ["Struggle to organize tasks / time","inattn"],
+    ["Avoid tasks needing sustained mental effort","inattn"],
+    ["Frequently lose / misplace things","inattn"],
+    ["Easily distracted by noise, notifications, thoughts","inattn"],
+    ["Forget daily obligations","inattn"],
+    ["Physically restless; fidget; can't sit still","hyper"],
+    ["Internally revved up; always 'on the go'","hyper"],
+    ["Blurt out; interrupt; act before thinking","impuls"]]},
+  S:{name:"Schizophrenia-spectrum / Schizotypy", color:"#a371f7", tag:"O-LIFE / CAPE", items:[
+    ["See / hear / sense things others don't","positive"],
+    ["Ordinary events carry hidden messages for me","positive"],
+    ["Feel watched, followed, or plotted against","positive"],
+    ["Experiences like telepathy / premonitions","positive"],
+    ["Thoughts feel muddled, racing, hard to hold","cog-disorg"],
+    ["Feel detached / dreamlike / world not real","cog-disorg"],
+    ["Little pleasure from activities & relationships","negative"],
+    ["Emotionally numb, blunted, distant","negative"],
+    ["Strongly prefer being alone; few close ties","negative"],
+    ["People say my speech goes off on tangents","disorg"],
+    ["Others call my manner odd or eccentric","disorg"],
+    ["Hard to start / sustain motivation for goals","avolition"]]}
+};
+
+const state={O:Array(12).fill(0),A:Array(12).fill(0),S:Array(12).fill(0)};
+
+function buildAxis(key){
+  const a=AX[key];
+  let h=`<h2><span class="dot" style="background:${a.color}"></span>Axis ${key} · ${a.name}
+    <span class="tag" style="margin-left:auto;font-weight:400">${a.tag}</span></h2>`;
+  a.items.forEach((it,i)=>{
+    h+=`<div class="q">
+      <div><label>${i+1}. ${it[0]}</label> <span class="tag">${it[1]}</span></div>
+      <div class="rangewrap">
+        <input type="range" min="0" max="4" value="0" step="1"
+          oninput="setV('${key}',${i},this.value)" id="r_${key}_${i}">
+        <span class="val" id="v_${key}_${i}">0</span>
+      </div></div>`;
+  });
+  document.getElementById("ax"+key).innerHTML=h;
+}
+["O","A","S"].forEach(buildAxis);
+
+function setV(k,i,v){state[k][i]=+v;document.getElementById(`v_${k}_${i}`).textContent=v;render();}
+function score(k){return Math.round(state[k].reduce((a,b)=>a+b,0)/48*100);}
+function band(s){return s<25?["low","#5a6472"]:s<50?["sub-threshold","#c9a227"]
+  :s<75?["elevated","#e0872e"]:["high","#e5484d"];}
+
+function render(){
+  const sc={O:score("O"),A:score("A"),S:score("S")};
+  let sh="";
+  ["O","A","S"].forEach(k=>{
+    const s=sc[k],b=band(s);
+    sh+=`<div class="bar"><div class="top">
+      <span><span class="dot" style="background:${AX[k].color};display:inline-block;margin-right:6px"></span>
+      ${AX[k].name}</span><span class="coord">${s}<span style="color:var(--muted);font-weight:400">/100</span></span></div>
+      <div class="track"><div class="fill" style="width:${s}%;background:${AX[k].color}"></div></div>
+      <div class="band" style="color:${b[1]}">${b[0]}</div></div>`;
+  });
+  document.getElementById("scores").innerHTML=sh;
+
+  // co-elevation flag
+  const hi=["O","A","S"].filter(k=>sc[k]>=50);
+  const f=document.getElementById("flag");
+  if(hi.length>=2){
+    f.style.display="block";
+    f.innerHTML="<b>Co-elevation:</b> "+hi.map(k=>AX[k].name).join(" + ")+
+      " are both elevated. That's expected — these axes share real biology (2025 cross-disorder "+
+      "genetics). See the overlap map in questionnaire.md to tell them apart.";
+  } else f.style.display="none";
+
+  const dom=["O","A","S"].sort((a,b)=>sc[b]-sc[a])[0];
+  document.getElementById("interp").innerHTML=
+    (sc.O+sc.A+sc.S<30
+      ? "Your point sits near the origin — few elevated traits across all three axes."
+      : `Your strongest axis is <b>${AX[dom].name}</b> (${sc[dom]}/100). `)+
+    "Position = a single point in trait-space, not a label.";
+  draw(sc);
+}
+
+// ---- 3D cube + point ----
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+let rotY=0.6,rotX=-0.5,drag=false,px,py;
+function project(x,y,z){
+  // center around 0, scale to unit cube [-1,1]
+  const cy=Math.cos(rotY),sy=Math.sin(rotY),cx=Math.cos(rotX),sx=Math.sin(rotX);
+  let X=x*cy - z*sy, Z=x*sy + z*cy, Y=y;
+  let Y2=Y*cx - Z*sx, Z2=Y*sx + Z*cx;
+  const d=3.2, f=180/(d - Z2);
+  return [180 + X*f, 165 - Y2*f, Z2];
+}
+function draw(sc){
+  ctx.clearRect(0,0,360,320);
+  const c=[[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+  const P=c.map(p=>project(p[0],p[1],p[2]));
+  const edges=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  ctx.strokeStyle="#2a3140";ctx.lineWidth=1;
+  edges.forEach(e=>{ctx.beginPath();ctx.moveTo(P[e[0]][0],P[e[0]][1]);
+    ctx.lineTo(P[e[1]][0],P[e[1]][1]);ctx.stroke();});
+  // axes from origin corner (0 = -1)
+  const O=project(-1,-1,-1);
+  const axpts={O:[1,-1,-1],A:[-1,1,-1],S:[-1,-1,1]};
+  const cols={O:AX.O.color,A:AX.A.color,S:AX.S.color};
+  const labels={O:"OCD",A:"ADHD",S:"SCZ"};
+  ["O","A","S"].forEach(k=>{
+    const e=project(...axpts[k]);
+    ctx.strokeStyle=cols[k];ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(O[0],O[1]);ctx.lineTo(e[0],e[1]);ctx.stroke();
+    ctx.fillStyle=cols[k];ctx.font="bold 12px sans-serif";
+    ctx.fillText(labels[k],e[0]-8,e[1]-6);
+  });
+  // the point: map 0..100 -> -1..1
+  const m=v=>(-1 + v/50);
+  const pt=project(m(sc.O),m(sc.A),m(sc.S));
+  // stem to floor
+  ctx.strokeStyle="rgba(255,255,255,.25)";ctx.setLineDash([3,3]);
+  const floor=project(m(sc.O),-1,m(sc.S));
+  ctx.beginPath();ctx.moveTo(pt[0],pt[1]);ctx.lineTo(floor[0],floor[1]);ctx.stroke();
+  ctx.setLineDash([]);
+  const r=6+ (sc.O+sc.A+sc.S)/40;
+  const g=ctx.createRadialGradient(pt[0],pt[1],1,pt[0],pt[1],r+6);
+  g.addColorStop(0,"#fff");g.addColorStop(1,"#58a6ff");
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(pt[0],pt[1],r,0,7);ctx.fill();
+  ctx.strokeStyle="#fff";ctx.lineWidth=1.5;ctx.stroke();
+}
+cv.addEventListener("pointerdown",e=>{drag=true;px=e.offsetX;py=e.offsetY;cv.setPointerCapture(e.pointerId);});
+cv.addEventListener("pointermove",e=>{if(!drag)return;
+  rotY+=(e.offsetX-px)*0.01;rotX+=(e.offsetY-py)*0.01;
+  rotX=Math.max(-1.4,Math.min(1.4,rotX));px=e.offsetX;py=e.offsetY;
+  draw({O:score("O"),A:score("A"),S:score("S")});});
+cv.addEventListener("pointerup",()=>drag=false);
+
+function randomize(){["O","A","S"].forEach(k=>state[k]=state[k].map(()=>Math.floor(Math.random()*5)));
+  syncUI();render();}
+function resetAll(){["O","A","S"].forEach(k=>state[k]=Array(12).fill(0));syncUI();render();}
+function syncUI(){["O","A","S"].forEach(k=>state[k].forEach((v,i)=>{
+  document.getElementById(`r_${k}_${i}`).value=v;
+  document.getElementById(`v_${k}_${i}`).textContent=v;}));}
+
+render();
+</script>
+</body>
+</html>
