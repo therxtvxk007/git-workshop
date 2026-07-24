@@ -34,6 +34,29 @@
     .replace(/\s+/g, " ")
     .trim();
 
+  // Many apps (OpenOrbit included) render the field label as a separate element
+  // sitting just before the input, with no `for`/`id` link and no aria wiring.
+  // Walk up a few wrappers and grab the nearest preceding label-like text.
+  function nearbyLabelText(el) {
+    let node = el;
+    for (let depth = 0; depth < 4 && node && node !== document.body; depth++) {
+      let sib = node.previousElementSibling;
+      let hops = 0;
+      while (sib && hops < 3) {
+        const lbl = sib.matches?.("label") ? sib : sib.querySelector?.("label");
+        if (lbl && lbl.textContent.trim()) return lbl.textContent.trim();
+        const text = sib.textContent.trim();
+        if (text && text.length <= 60 && !sib.querySelector?.("input, textarea, select")) {
+          return text;
+        }
+        sib = sib.previousElementSibling;
+        hops++;
+      }
+      node = node.parentElement;
+    }
+    return "";
+  }
+
   function elementText(el) {
     const labels = el.labels ? [...el.labels].map((x) => x.textContent).join(" ") : "";
     const parentText = el.closest("label")?.textContent || "";
@@ -44,8 +67,8 @@
       ? labelledById.split(/\s+/).map((id) => document.getElementById(id)?.textContent || "").join(" ")
       : "";
     return normalize([
-      labels, parentText, labelledBy, el.getAttribute("aria-label"), el.placeholder,
-      el.name, el.id, el.getAttribute("data-testid")
+      labels, parentText, labelledBy, nearbyLabelText(el), el.getAttribute("aria-label"),
+      el.placeholder, el.name, el.id, el.getAttribute("data-testid")
     ].filter(Boolean).join(" "));
   }
 
@@ -69,10 +92,13 @@
     return best;
   }
 
-  function candidatesFor(key) {
-    const controls = [...document.querySelectorAll(
+  function visibleControls() {
+    return [...document.querySelectorAll(
       "input:not([type=hidden]):not([type=file]), textarea, select, [contenteditable=true]"
     )].filter((el) => !el.disabled && el.offsetParent !== null);
+  }
+
+  function candidatesFor(key, controls) {
     return controls
       .map((el) => ({ el, score: score(el, FIELD_RULES[key], key) }))
       .filter((x) => x.score >= 60)
@@ -114,11 +140,12 @@
     const filled = [];
     const missing = [];
     const used = new Set();
+    const controls = visibleControls();
 
     for (const key of Object.keys(FIELD_RULES)) {
       const value = data[key];
       if (value === "" || value == null || (typeof value === "boolean" && value === false)) continue;
-      const ranked = candidatesFor(key);
+      const ranked = candidatesFor(key, controls);
       const choice = ranked.find(({ el }) => !used.has(el));
       if (!choice || !setNativeValue(choice.el, value)) {
         missing.push(key);
@@ -129,7 +156,17 @@
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
-    return { ok: true, filled, missing };
+
+    // If we matched nothing, report what the page actually exposes so the field
+    // rules can be tuned to this form's real labels.
+    const result = { ok: true, filled, missing };
+    if (!filled.length) {
+      result.pageFields = controls.slice(0, 20).map((el) => {
+        const tag = el.tagName.toLowerCase() + (el.type ? `[${el.type}]` : "");
+        return `${tag}: "${elementText(el).slice(0, 50) || "(no label)"}"`;
+      });
+    }
+    return result;
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

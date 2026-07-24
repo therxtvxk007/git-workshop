@@ -295,9 +295,12 @@ async function handleFill() {
     }
     const lines = [`Filled ${res.filled.length} field${res.filled.length === 1 ? "" : "s"}: ${res.filled.join(", ") || "—"}`];
     if (res.missing.length) {
-      lines.push(`Not found (fill manually): ${res.missing.join(", ")}`);
+      lines.push(`Not found on this step (fill manually or advance the wizard): ${res.missing.join(", ")}`);
     }
-    setResult(lines.join("\n"), res.missing.length ? "" : "ok");
+    if (res.pageFields && res.pageFields.length) {
+      lines.push("", "Fields the extension can see on this page:", ...res.pageFields);
+    }
+    setResult(lines.join("\n"), res.filled.length && !res.missing.length ? "ok" : "");
   } catch (err) {
     setResult(
       "Couldn't reach the OpenOrbit page. Refresh the create-event tab and try again.\n" +

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "OpenOrbit Event Automator",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Reliably fills and validates the OpenOrbit create-event form from reusable event templates.",
   "permissions": ["storage", "activeTab", "scripting"],
   "host_permissions": ["https://openorbit.app/*"],
