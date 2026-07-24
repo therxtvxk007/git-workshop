@@ -1,0 +1,54 @@
+:root {
+  color-scheme: light;
+  font: 13px/1.4 Inter, ui-sans-serif, system-ui, sans-serif;
+  color: #17202a;
+  background: #f7f8fb;
+}
+
+* { box-sizing: border-box; }
+body { width: 390px; margin: 0; }
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px 12px; background: white; border-bottom: 1px solid #e7e9ef;
+}
+h1 { margin: 0; font-size: 18px; }
+header p { margin: 2px 0 0; color: #68707d; }
+#statusDot { width: 10px; height: 10px; border-radius: 50%; background: #aab0ba; }
+#statusDot.ready { background: #20a66a; box-shadow: 0 0 0 3px #d8f4e7; }
+main { padding: 14px 18px 18px; }
+.parser {
+  margin: -2px -4px 14px;
+  padding: 12px;
+  border: 1px solid #dce5f5;
+  border-radius: 10px;
+  background: #f4f8ff;
+}
+.parser label { margin-bottom: 8px; }
+.parse { width: 100%; color: #174ea6; border-color: #a9c7f7; background: white; }
+.divider { display: flex; align-items: center; gap: 8px; margin: 14px 0 10px; color: #7a8290; font-size: 11px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #dfe3ea; }
+label { display: block; margin-bottom: 10px; font-weight: 600; }
+input, textarea {
+  width: 100%; margin-top: 4px; padding: 8px 9px; border: 1px solid #cfd4dd;
+  border-radius: 7px; background: white; color: inherit; font: inherit;
+}
+textarea { resize: vertical; }
+input:focus, textarea:focus { outline: 2px solid #8bb7ff; border-color: #397ee8; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.options { display: flex; gap: 18px; margin: 2px 0 12px; }
+.check { display: flex; align-items: center; gap: 6px; font-weight: 500; margin: 0; }
+.check input { width: auto; margin: 0; }
+.actions, .template-actions { display: flex; gap: 8px; }
+button {
+  border: 1px solid #c9ced8; border-radius: 7px; background: white; padding: 8px 10px;
+  color: #253044; font: 600 12px/1.2 inherit; cursor: pointer;
+}
+button:hover { background: #f0f3f8; }
+.primary { flex: 1; color: white; background: #2563eb; border-color: #2563eb; }
+.primary:hover { background: #1d4ed8; }
+details { margin-top: 12px; }
+summary { cursor: pointer; color: #596273; }
+.template-actions { margin-top: 8px; }
+output { display: block; min-height: 18px; margin-top: 12px; color: #596273; white-space: pre-wrap; }
+output.ok { color: #13764c; }
+output.error { color: #b42318; }

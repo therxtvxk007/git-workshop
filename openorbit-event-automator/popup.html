@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OpenOrbit Event Automator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Event Automator</h1>
+      <p>Fill, validate, then review in OpenOrbit.</p>
+    </div>
+    <span id="statusDot" title="Page status"></span>
+  </header>
+
+  <main>
+    <section class="parser">
+      <label>Paste the complete event announcement
+        <textarea id="rawText" rows="8" placeholder="Paste the WhatsApp, Instagram, or poster text here…"></textarea>
+      </label>
+      <button id="parse" class="parse">Extract every event detail</button>
+    </section>
+
+    <div class="divider"><span>Review extracted fields</span></div>
+
+    <label>Event title <input id="title" required autocomplete="off"></label>
+    <label>Description <textarea id="description" rows="4"></textarea></label>
+
+    <div class="grid">
+      <label>Start date <input id="startDate" type="date"></label>
+      <label>Start time <input id="startTime" type="time"></label>
+      <label>End date <input id="endDate" type="date"></label>
+      <label>End time <input id="endTime" type="time"></label>
+    </div>
+
+    <label>Venue / location <input id="location" autocomplete="off"></label>
+    <label>Organizer <input id="organizer" autocomplete="off"></label>
+    <label>Category <input id="category" placeholder="e.g. Workshop" autocomplete="off"></label>
+    <label>Registration URL <input id="registrationUrl" type="url" placeholder="https://…" autocomplete="off"></label>
+    <label>Capacity <input id="capacity" type="number" min="0" step="1"></label>
+    <label>Prize pool <input id="prizePool" placeholder="e.g. ₹1,500" autocomplete="off"></label>
+    <label>Entry fee <input id="entryFee" placeholder="e.g. Free for GECians | ₹30 for others" autocomplete="off"></label>
+    <label>Contacts <textarea id="contacts" rows="2" placeholder="Names and phone numbers"></textarea></label>
+    <label>Social/post URL <input id="socialUrl" type="url" placeholder="https://instagram.com/…" autocomplete="off"></label>
+    <label>Tags <input id="tags" placeholder="Comma-separated" autocomplete="off"></label>
+
+    <section class="options">
+      <label class="check"><input id="isOnline" type="checkbox"> Online event</label>
+      <label class="check"><input id="isFree" type="checkbox"> Free event</label>
+    </section>
+
+    <div class="actions">
+      <button id="fill" class="primary">Fill OpenOrbit form</button>
+      <button id="openPage">Open event page</button>
+    </div>
+
+    <details>
+      <summary>Template tools</summary>
+      <div class="template-actions">
+        <button id="copyJson">Copy JSON</button>
+        <button id="pasteJson">Import clipboard JSON</button>
+        <button id="clear">Clear</button>
+      </div>
+    </details>
+
+    <output id="result" aria-live="polite"></output>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
