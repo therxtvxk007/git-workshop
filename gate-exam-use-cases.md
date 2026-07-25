@@ -101,6 +101,59 @@ candidates are commonly eligible:
 
 ---
 
+## Approximate Rank / Score Needed (GATE CSE)
+
+> **Important:** These are **rough, indicative ranges for the General category**
+> based on recent-year trends. Actual cutoffs shift every year with the number of
+> candidates (~1 lakh+ appear for CS), paper difficulty, and seat availability.
+> **Reserved categories (OBC-NCL / EWS / SC / ST / PwD) get significant
+> relaxation** — the same seat may be reachable at a considerably higher (worse)
+> AIR. GATE score is out of **1000**; marks are out of **100**. Always verify
+> against the year's official/institute data.
+
+### A. M.Tech / M.S. Admissions
+
+| Target (CSE) | Approx AIR (General) | Approx GATE Score |
+|---|---|---|
+| IISc Bengaluru (CSA / CDS) | ~1 – 150 | ~800+ |
+| Top IITs (B / D / M / K / Kgp) CSE | ~1 – 600 | ~700 – 1000 |
+| Other / newer IITs CSE | ~600 – 2,500 | ~550 – 700 |
+| Top NITs (Trichy / Warangal / Surathkal) | ~1,000 – 3,500 | ~550 – 650 |
+| Mid-tier NITs CSE | ~3,000 – 9,000 | ~450 – 600 |
+| Lower NITs / IIITs / GFTIs CSE | ~8,000 – 20,000 | ~350 – 500 |
+| Just qualifying (valid scorecard) | up to ~qualifying cutoff | marks ≈ 25 – 30 |
+
+*Admissions to IITs/IISc are through **COAP**; NITs/IIITs/GFTIs through **CCMT**.
+Final selection at IITs/IISc often adds a written test and/or interview, so rank
+alone is not the whole story.*
+
+### B. Direct Ph.D. (CSE)
+
+| Target | Approx AIR (General) | Notes |
+|---|---|---|
+| IISc / top IITs direct Ph.D. | ~1 – 1,500 | Interview/test weighted heavily; profile matters |
+| Other IITs / good universities | ~1,500 – 5,000 | Qualifying + strong SOP/interview often enough |
+
+### C. PSU Recruitment (CS/IT posts)
+
+| Reality for CS/IT | Approx AIR (General) |
+|---|---|
+| CS/IT vacancies in PSUs are **very few** each year | Highly competitive |
+| Typical shortlisting for the posts that exist | ~top 100 – 1,000 |
+| Most sought-after PSUs / limited seats | often ~top 100 – 300 |
+
+*Because CS/IT PSU seats are scarce, a "safe" rank is much lower (better) than for
+core branches. Cutoffs swing widely with the number of vacancies in a given year.*
+
+### D. Stipend / Fellowship
+
+| Use | Requirement |
+|---|---|
+| MHRD/AICTE M.Tech stipend | A **valid GATE score** + admission to an eligible program (no specific rank; qualifying is enough) |
+| JRF / project fellowships | Usually qualifying + selection in the project/interview |
+
+---
+
 ## Core CSE Syllabus Areas (what the score certifies)
 
 A GATE CS score effectively benchmarks competence across:
