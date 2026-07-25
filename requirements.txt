@@ -1,0 +1,5 @@
+anthropic>=0.40
+pydantic>=2
+playwright>=1.40
+opencv-python-headless>=4.8
+python-dotenv>=1.0

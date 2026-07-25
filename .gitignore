@@ -1,0 +1,13 @@
+# secrets & captured session — never commit
+.env
+openorbit_state.json
+
+# local artifact from the login/inspect step
+form_fields.json
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
