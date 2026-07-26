@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv/
+
+# Plot output and captured fonts are personal, not repo content.
+*.gcode
+*.svg
+!docs/*.svg
+my-hand*.json

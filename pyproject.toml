@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "handwriting-machine"
+version = "0.1.0"
+description = "Write text on paper with a real pen, in your own handwriting"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+# Only needed to drive the machine directly; everything else is stdlib.
+serial = ["pyserial>=3.5"]
+
+[project.scripts]
+hwm = "handwriting.cli:main"
+
+[tool.setuptools]
+packages = ["handwriting"]
+
+[tool.setuptools.package-data]
+handwriting = ["py.typed"]

@@ -1,0 +1,39 @@
+# A4 pen plotter: GRBL 1.1 with a hobby servo on the spindle PWM pin.
+#
+# This is the profile for the build described in docs/BUILD.md. Copy it and
+# edit the copy for your own machine rather than editing this one.
+
+[machine]
+name = "a4-grbl-servo"
+
+# Drawable area in millimetres, measured from the machine's home corner.
+bed_width = 210.0
+bed_height = 297.0
+
+# Where the top-left corner of the paper sits in machine coordinates.
+# Set these once you have taped a sheet down and jogged to its corner.
+origin_x = 0.0
+origin_y = 0.0
+
+# GRBL's Y grows away from the operator; page Y grows downward.
+flip_y = true
+
+feed_draw = 1500.0     # mm/min with the pen on the paper
+feed_travel = 4000.0   # mm/min with the pen lifted
+
+# Pen lift via spindle PWM. With $30=1000 and $31=0, S is 0..1000.
+# Tune the S values so the pen just kisses the paper when down.
+pen_up = ["M3 S0"]
+pen_down = ["M3 S180"]
+
+# Servos need time to arrive; without a dwell the machine starts moving
+# mid-lift and drags a tail off every letter.
+pen_up_dwell = 0.15    # seconds
+pen_down_dwell = 0.15
+
+# Units, absolute positioning, feed in mm/min. The pen is lifted by the
+# generator before any motion, so the header does not repeat it.
+header = ["G21", "G90", "G94"]
+footer = ["M3 S0", "G4 P0.2", "G0 X0 Y0", "M5"]
+
+precision = 3

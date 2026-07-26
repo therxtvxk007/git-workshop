@@ -1,0 +1,32 @@
+# A 3D printer running Marlin, converted to hold a pen.
+#
+# The pen is lifted by moving the Z axis rather than a servo, which is slower
+# but needs no extra hardware: clamp a pen where the hotend was, and set
+# pen_down's Z so the nib rests on the bed with the spring just compressed.
+
+[machine]
+name = "marlin-z-pen"
+
+bed_width = 220.0
+bed_height = 220.0
+
+origin_x = 5.0
+origin_y = 5.0
+flip_y = true
+
+feed_draw = 2400.0
+feed_travel = 6000.0
+
+# Z moves are absolute, so these are heights, not offsets.
+pen_up = ["G1 Z2.0 F1200"]
+pen_down = ["G1 Z0.0 F1200"]
+
+# Z moves are commanded moves, so Marlin already finishes them before the
+# next line runs; no dwell is needed.
+pen_up_dwell = 0.0
+pen_down_dwell = 0.0
+
+header = ["G21", "G90", "M83", "G28", "G1 Z5 F1200"]
+footer = ["G1 Z10 F1200", "G1 X0 Y200 F6000", "M84"]
+
+precision = 3

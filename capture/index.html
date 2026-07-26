@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Handwriting capture</title>
+<link rel="icon" href="data:,">
+
+<style>
+  :root {
+    --bg: #10141c;
+    --panel: #171d28;
+    --line: #263041;
+    --ink: #e8edf6;
+    --dim: #8d9bb2;
+    --accent: #6ea8ff;
+    --good: #58c98a;
+    --warn: #e5a13c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header {
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .01em; }
+  header .hint { color: var(--dim); font-size: 13px; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px; }
+
+  .prompt {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .glyph {
+    font-size: 40px; font-weight: 600; line-height: 1;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  .glyph small { font-size: 13px; color: var(--dim); font-family: inherit; font-weight: 400; }
+  .counter { color: var(--dim); font-size: 13px; }
+
+  #pad {
+    width: 100%; height: 340px; display: block; border-radius: 10px;
+    background: #fbfaf7; border: 1px solid var(--line);
+    touch-action: none; cursor: crosshair;
+  }
+
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+  button {
+    font: inherit; color: var(--ink); background: #202839;
+    border: 1px solid var(--line); border-radius: 7px;
+    padding: 7px 13px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .4; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #08111f; font-weight: 600; }
+  button.ghost { background: transparent; }
+  kbd {
+    font: 11px ui-monospace, monospace; background: #0d1119; border: 1px solid var(--line);
+    border-radius: 4px; padding: 1px 5px; color: var(--dim);
+  }
+
+  .bar { height: 5px; background: #0d1119; border-radius: 3px; overflow: hidden; margin: 4px 0 14px; }
+  .bar div { height: 100%; background: var(--good); width: 0; transition: width .2s; }
+
+  .grid { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .grid span {
+    width: 26px; height: 26px; display: grid; place-items: center;
+    border-radius: 5px; background: #0d1119; border: 1px solid var(--line);
+    font-size: 13px; color: var(--dim); cursor: pointer; user-select: none;
+  }
+  .grid span.done { background: #17321f; border-color: #2c5c3b; color: #a5e0bd; }
+  .grid span.partial { background: #33280f; border-color: #5c4a1e; color: #e0c58a; }
+  .grid span.current { outline: 2px solid var(--accent); outline-offset: 1px; color: var(--ink); }
+
+  fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin: 18px 0 0; }
+  legend { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .07em; padding: 0 6px; }
+  label { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; color: var(--dim); }
+  input[type="text"], input[type="number"] {
+    font: inherit; background: #0d1119; color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+  }
+  input[type="number"] { width: 64px; }
+  .status { min-height: 20px; font-size: 13px; color: var(--warn); margin-top: 10px; }
+  .status.ok { color: var(--good); }
+  footer { color: var(--dim); font-size: 12.5px; padding: 8px 20px 40px; max-width: 980px; margin: 0 auto; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Handwriting capture</h1>
+  <span class="hint">Write each character between the guides, at a comfortable natural size.</span>
+</header>
+
+<main>
+  <div class="prompt">
+    <div class="glyph" id="glyph">a <small id="glyphName"></small></div>
+    <div class="counter" id="counter"></div>
+  </div>
+
+  <canvas id="pad"></canvas>
+
+  <div class="row">
+    <button class="primary" id="accept">Accept &amp; next <kbd>Enter</kbd></button>
+    <button id="undo">Undo stroke <kbd>Backspace</kbd></button>
+    <button id="clear">Clear <kbd>Esc</kbd></button>
+    <button class="ghost" id="prev">&larr; Previous</button>
+    <button class="ghost" id="skip">Skip &rarr;</button>
+  </div>
+
+  <div class="bar"><div id="progress"></div></div>
+  <div class="grid" id="grid"></div>
+
+  <fieldset>
+    <legend>Session</legend>
+    <label>Font name <input type="text" id="fontName" value="my-hand" size="14"></label>
+    <label>Samples per character <input type="number" id="perChar" min="1" max="9" value="3"></label>
+    <label><input type="checkbox" id="setLower" checked> a-z</label>
+    <label><input type="checkbox" id="setUpper" checked> A-Z</label>
+    <label><input type="checkbox" id="setDigits" checked> 0-9</label>
+    <label><input type="checkbox" id="setPunct" checked> punctuation</label>
+    <div class="row">
+      <button class="primary" id="save">Save font JSON</button>
+      <button id="load">Load / continue a font</button>
+      <button id="reset">Start over</button>
+      <input type="file" id="file" accept=".json,application/json" hidden>
+    </div>
+    <div class="status" id="status"></div>
+  </fieldset>
+</main>
+
+<footer>
+  Guides, top to bottom: ascender (tall letters like <em>h</em>), x-height (small letters like <em>x</em>),
+  baseline (rest every letter on it), descender (tails of <em>g</em>, <em>y</em>).
+  Consistency with the baseline matters far more than neatness &mdash; the machine adds
+  its own natural variation later. Your work is saved in this browser as you go.
+</footer>
+
+<script>
+"use strict";
+
+// ---------------------------------------------------------------------------
+// character sets
+// ---------------------------------------------------------------------------
+const SETS = {
+  setLower: "abcdefghijklmnopqrstuvwxyz".split(""),
+  setUpper: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""),
+  setDigits: "0123456789".split(""),
+  setPunct: ".,;:!?'\"-()/&@#%$+=_*".split(""),
+};
+
+const NAMES = {
+  ".": "period", ",": "comma", ";": "semicolon", ":": "colon",
+  "!": "exclamation mark", "?": "question mark", "'": "apostrophe",
+  '"': "double quote", "-": "hyphen", "(": "open bracket", ")": "close bracket",
+  "/": "slash", "&": "ampersand", "@": "at", "#": "hash", "%": "percent",
+  "$": "dollar", "+": "plus", "=": "equals", "_": "underscore", "*": "asterisk",
+};
+
+const STORAGE_KEY = "handwriting-capture-v1";
+const EM_UNITS = 10.0;        // glyph units from ascender to descender
+const SIDE_BEARING = 0.35;    // mm of breathing room either side of the ink
+
+// ---------------------------------------------------------------------------
+// state
+// ---------------------------------------------------------------------------
+const state = {
+  chars: [],           // ordered characters to capture
+  index: 0,            // position in chars
+  captured: {},        // char -> array of variants (glyph space)
+  strokes: [],         // strokes of the character in progress (canvas px)
+  current: null,       // stroke being drawn
+};
+
+const pad = document.getElementById("pad");
+const ctx = pad.getContext("2d");
+const el = (id) => document.getElementById(id);
+
+let guides = { baseline: 0, emPx: 1, ascender: 0, xHeight: 0, descender: 0 };
+
+// ---------------------------------------------------------------------------
+// canvas
+// ---------------------------------------------------------------------------
+function sizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = pad.getBoundingClientRect();
+  pad.width = Math.round(rect.width * dpr);
+  pad.height = Math.round(rect.height * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const h = rect.height;
+  guides.baseline = h * 0.72;
+  guides.emPx = h * 0.70;
+  guides.ascender = guides.baseline - guides.emPx * 0.75;
+  guides.xHeight = guides.baseline - guides.emPx * 0.50;
+  guides.descender = guides.baseline + guides.emPx * 0.25;
+  redraw();
+}
+
+function redraw() {
+  const rect = pad.getBoundingClientRect();
+  ctx.clearRect(0, 0, rect.width, rect.height);
+  ctx.fillStyle = "#fbfaf7";
+  ctx.fillRect(0, 0, rect.width, rect.height);
+
+  // guide lines
+  const lines = [
+    [guides.ascender, "#c9d6e8", [6, 5]],
+    [guides.xHeight, "#c9d6e8", [6, 5]],
+    [guides.baseline, "#7f95b5", []],
+    [guides.descender, "#c9d6e8", [6, 5]],
+  ];
+  ctx.lineWidth = 1;
+  for (const [y, color, dash] of lines) {
+    ctx.strokeStyle = color;
+    ctx.setLineDash(dash);
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(rect.width, y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = "#9fb0c8";
+  ctx.font = "11px ui-sans-serif, system-ui, sans-serif";
+  ctx.fillText("ascender", 6, guides.ascender - 4);
+  ctx.fillText("x-height", 6, guides.xHeight - 4);
+  ctx.fillText("baseline", 6, guides.baseline - 4);
+  ctx.fillText("descender", 6, guides.descender - 4);
+
+  // ink
+  ctx.strokeStyle = "#16243c";
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  const all = state.current ? state.strokes.concat([state.current]) : state.strokes;
+  for (const stroke of all) {
+    if (stroke.length === 1) {
+      ctx.beginPath();
+      ctx.arc(stroke[0][0], stroke[0][1], 1.4, 0, Math.PI * 2);
+      ctx.fillStyle = "#16243c";
+      ctx.fill();
+      continue;
+    }
+    ctx.beginPath();
+    ctx.moveTo(stroke[0][0], stroke[0][1]);
+    for (let i = 1; i < stroke.length; i++) ctx.lineTo(stroke[i][0], stroke[i][1]);
+    ctx.stroke();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// drawing input
+// ---------------------------------------------------------------------------
+function pointFrom(ev) {
+  const rect = pad.getBoundingClientRect();
+  return [ev.clientX - rect.left, ev.clientY - rect.top];
+}
+
+pad.addEventListener("pointerdown", (ev) => {
+  ev.preventDefault();
+  pad.setPointerCapture(ev.pointerId);
+  state.current = [pointFrom(ev)];
+  redraw();
+});
+
+pad.addEventListener("pointermove", (ev) => {
+  if (!state.current) return;
+  const p = pointFrom(ev);
+  const last = state.current[state.current.length - 1];
+  // Drop sub-pixel noise; it only bloats the file.
+  if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 0.7) return;
+  state.current.push(p);
+  redraw();
+});
+
+function endStroke(ev) {
+  if (!state.current) return;
+  if (state.current.length >= 1) state.strokes.push(state.current);
+  state.current = null;
+  redraw();
+  updateUI();
+}
+pad.addEventListener("pointerup", endStroke);
+pad.addEventListener("pointercancel", endStroke);
+pad.addEventListener("pointerleave", endStroke);
+
+// ---------------------------------------------------------------------------
+// converting canvas strokes to glyph space
+// ---------------------------------------------------------------------------
+function toGlyphSpace(strokes) {
+  const scale = EM_UNITS / guides.emPx;   // glyph units per pixel
+  const flipped = strokes.map((s) =>
+    s.map(([x, y]) => [x * scale, (guides.baseline - y) * scale])
+  );
+
+  let minX = Infinity, maxX = -Infinity;
+  for (const s of flipped) for (const [x] of s) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+  }
+  if (!isFinite(minX)) return null;
+
+  const shift = SIDE_BEARING - minX;
+  const moved = flipped.map((s) => s.map(([x, y]) => [round(x + shift), round(y)]));
+  const advance = round(maxX + shift + SIDE_BEARING);
+
+  return {
+    strokes: moved,
+    advance: advance,
+    entry: moved[0][0],
+    exit: moved[moved.length - 1][moved[moved.length - 1].length - 1],
+  };
+}
+
+const round = (v) => Math.round(v * 1000) / 1000;
+
+// ---------------------------------------------------------------------------
+// session flow
+// ---------------------------------------------------------------------------
+function buildCharList() {
+  const chars = [];
+  for (const key of Object.keys(SETS)) {
+    if (el(key).checked) chars.push(...SETS[key]);
+  }
+  return chars;
+}
+
+function perChar() {
+  return Math.max(1, Math.min(9, parseInt(el("perChar").value, 10) || 1));
+}
+
+function countFor(ch) {
+  return (state.captured[ch] || []).length;
+}
+
+/** Move to the next character that still needs samples. */
+function advance() {
+  const target = perChar();
+  for (let step = 1; step <= state.chars.length; step++) {
+    const i = (state.index + step) % state.chars.length;
+    if (countFor(state.chars[i]) < target) {
+      state.index = i;
+      return true;
+    }
+  }
+  return false;   // everything is complete
+}
+
+function accept() {
+  if (!state.strokes.length) {
+    setStatus("Nothing drawn yet — write the character first.");
+    return;
+  }
+  const ch = state.chars[state.index];
+  const variant = toGlyphSpace(state.strokes);
+  if (!variant) { setStatus("Could not read that stroke, try again."); return; }
+
+  (state.captured[ch] = state.captured[ch] || []).push(variant);
+  state.strokes = [];
+  save();
+
+  if (!advance()) {
+    setStatus("All characters captured. Click “Save font JSON”.", true);
+  } else {
+    setStatus("");
+  }
+  redraw();
+  updateUI();
+}
+
+function updateUI() {
+  const ch = state.chars[state.index];
+  if (!ch) return;
+  el("glyph").firstChild.nodeValue = ch + " ";
+  el("glyphName").textContent = NAMES[ch] ? "(" + NAMES[ch] + ")" : "";
+
+  const target = perChar();
+  el("counter").textContent =
+    `sample ${Math.min(countFor(ch) + 1, target)} of ${target}` +
+    `  ·  character ${state.index + 1} of ${state.chars.length}`;
+
+  const total = state.chars.length * target;
+  let done = 0;
+  for (const c of state.chars) done += Math.min(countFor(c), target);
+  el("progress").style.width = (100 * done / Math.max(1, total)) + "%";
+
+  el("undo").disabled = state.strokes.length === 0;
+  el("clear").disabled = state.strokes.length === 0;
+
+  const grid = el("grid");
+  grid.innerHTML = "";
+  state.chars.forEach((c, i) => {
+    const span = document.createElement("span");
+    span.textContent = c;
+    const n = countFor(c);
+    if (n >= target) span.className = "done";
+    else if (n > 0) span.className = "partial";
+    if (i === state.index) span.className += " current";
+    span.title = `${c}: ${n} of ${target}`;
+    span.onclick = () => { state.index = i; state.strokes = []; redraw(); updateUI(); };
+    grid.appendChild(span);
+  });
+}
+
+function setStatus(msg, ok) {
+  const s = el("status");
+  s.textContent = msg;
+  s.className = "status" + (ok ? " ok" : "");
+}
+
+// ---------------------------------------------------------------------------
+// persistence
+// ---------------------------------------------------------------------------
+function fontObject() {
+  const glyphs = {};
+  for (const [ch, variants] of Object.entries(state.captured)) {
+    if (variants.length) glyphs[ch] = variants;
+  }
+  return {
+    format: "handwriting-machine/font",
+    version: 1,
+    name: el("fontName").value.trim() || "my-hand",
+    units: "mm",
+    joins: false,
+    metrics: {
+      em: EM_UNITS,
+      x_height: 5.0,
+      cap_height: 7.0,
+      ascender: 7.5,
+      descender: -2.5,
+      space_advance: 2.6,
+    },
+    kerning: {},
+    glyphs: glyphs,
+  };
+}
+
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      captured: state.captured,
+      name: el("fontName").value,
+      perChar: el("perChar").value,
+    }));
+  } catch (err) {
+    setStatus("Could not autosave to this browser: " + err.message);
+  }
+}
+
+function restore() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state.captured = data.captured || {};
+    if (data.name) el("fontName").value = data.name;
+    if (data.perChar) el("perChar").value = data.perChar;
+    const n = Object.values(state.captured).reduce((a, v) => a + v.length, 0);
+    if (n) setStatus(`Restored ${n} saved samples from this browser.`, true);
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
+function download() {
+  const font = fontObject();
+  const count = Object.keys(font.glyphs).length;
+  if (!count) { setStatus("Nothing captured yet."); return; }
+  const blob = new Blob([JSON.stringify(font, null, 1)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = font.name.replace(/[^\w.-]+/g, "-") + ".json";
+  a.click();
+  URL.revokeObjectURL(url);
+  setStatus(`Saved ${count} characters. Next: hwm preview "hello" -f ${a.download}`, true);
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      const glyphs = data.glyphs || {};
+      let added = 0;
+      for (const [ch, variants] of Object.entries(glyphs)) {
+        const list = Array.isArray(variants) ? variants : (variants.variants || []);
+        for (const v of list) {
+          const variant = Array.isArray(v) ? { strokes: v, advance: 0 } : v;
+          (state.captured[ch] = state.captured[ch] || []).push(variant);
+          added++;
+        }
+      }
+      if (data.name) el("fontName").value = data.name;
+      save();
+      setStatus(`Loaded ${added} samples — continue where you left off.`, true);
+      rebuild();
+    } catch (err) {
+      setStatus("Could not read that file: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ---------------------------------------------------------------------------
+// wiring
+// ---------------------------------------------------------------------------
+function rebuild() {
+  // Settings changes must not destroy work in progress. A text input fires
+  // its change event on blur, which can be the very click that submits the
+  // character being drawn -- so ink is only discarded when the prompt
+  // actually moves to a different character.
+  const previous = state.chars[state.index];
+
+  state.chars = buildCharList();
+  if (!state.chars.length) { state.chars = SETS.setLower.slice(); el("setLower").checked = true; }
+
+  const target = perChar();
+  let next = state.chars.indexOf(previous);
+  if (next < 0 || countFor(state.chars[next]) >= target) {
+    const gap = state.chars.findIndex((c) => countFor(c) < target);
+    next = gap >= 0 ? gap : 0;
+  }
+  if (state.chars[next] !== previous) state.strokes = [];
+  state.index = next;
+
+  redraw();
+  updateUI();
+}
+
+el("accept").onclick = accept;
+el("undo").onclick = () => { state.strokes.pop(); redraw(); updateUI(); };
+el("clear").onclick = () => { state.strokes = []; redraw(); updateUI(); };
+el("skip").onclick = () => {
+  state.index = (state.index + 1) % state.chars.length;
+  state.strokes = []; redraw(); updateUI(); setStatus("");
+};
+el("prev").onclick = () => {
+  state.index = (state.index - 1 + state.chars.length) % state.chars.length;
+  state.strokes = []; redraw(); updateUI(); setStatus("");
+};
+el("save").onclick = download;
+el("load").onclick = () => el("file").click();
+el("file").onchange = (ev) => { if (ev.target.files[0]) loadFile(ev.target.files[0]); };
+el("reset").onclick = () => {
+  if (!confirm("Discard every captured sample in this browser?")) return;
+  state.captured = {};
+  localStorage.removeItem(STORAGE_KEY);
+  setStatus("Cleared.");
+  rebuild();
+};
+
+for (const key of Object.keys(SETS)) el(key).onchange = rebuild;
+el("perChar").onchange = () => { save(); rebuild(); };
+el("fontName").onchange = save;
+
+document.addEventListener("keydown", (ev) => {
+  if (ev.target.tagName === "INPUT") return;
+  if (ev.key === "Enter") { ev.preventDefault(); accept(); }
+  else if (ev.key === "Backspace") { ev.preventDefault(); state.strokes.pop(); redraw(); updateUI(); }
+  else if (ev.key === "Escape") { state.strokes = []; redraw(); updateUI(); }
+});
+
+window.addEventListener("resize", sizeCanvas);
+restore();
+sizeCanvas();
+rebuild();
+</script>
+</body>
+</html>
