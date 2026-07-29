@@ -1,0 +1,753 @@
+<title>The derivative, built in five steps</title>
+
+<style>
+  :root {
+    color-scheme: light;
+    --plane:        #f9f9f7;
+    --surface:      #fcfcfb;
+    --ink:          #0b0b0b;
+    --ink-2:        #52514e;
+    --muted:        #898781;
+    --grid:         #e1e0d9;
+    --axis:         #c3c2b7;
+    --hairline:     rgba(11, 11, 11, 0.10);
+    --raised:       rgba(11, 11, 11, 0.04);
+
+    --math-object:       #2a78d6;
+    --math-construction: #eb6834;
+    --math-result:       #1baf7a;
+
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    --math: "Latin Modern Math", "STIX Two Math", "Cambria Math", Georgia, serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --plane:    #0d0d0d;
+      --surface:  #1a1a19;
+      --ink:      #ffffff;
+      --ink-2:    #c3c2b7;
+      --muted:    #898781;
+      --grid:     #2c2c2a;
+      --axis:     #383835;
+      --hairline: rgba(255, 255, 255, 0.10);
+      --raised:   rgba(255, 255, 255, 0.05);
+
+      --math-object:       #3987e5;
+      --math-construction: #d95926;
+      --math-result:       #199e70;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --plane:    #0d0d0d;
+    --surface:  #1a1a19;
+    --ink:      #ffffff;
+    --ink-2:    #c3c2b7;
+    --muted:    #898781;
+    --grid:     #2c2c2a;
+    --axis:     #383835;
+    --hairline: rgba(255, 255, 255, 0.10);
+    --raised:   rgba(255, 255, 255, 0.05);
+
+    --math-object:       #3987e5;
+    --math-construction: #d95926;
+    --math-result:       #199e70;
+  }
+
+  body {
+    background: var(--plane);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.55;
+    margin: 0;
+    padding: clamp(20px, 4vw, 44px) clamp(16px, 4vw, 32px) 64px;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  /* ---- masthead ---- */
+
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+
+  h1 {
+    font-size: clamp(25px, 3.6vw, 35px);
+    line-height: 1.15;
+    letter-spacing: -0.021em;
+    font-weight: 620;
+    text-wrap: balance;
+    margin: 0 0 10px;
+  }
+
+  .claim {
+    font-size: 16px;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  /* ---- figure + readout ---- */
+
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 232px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 860px) {
+    .stage { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  .figure {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 8px;
+    overflow-x: auto;
+  }
+
+  .figure svg { display: block; width: 100%; height: auto; min-width: 460px; }
+
+  .readout {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+
+  .quotient {
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 14px;
+    margin-bottom: 12px;
+  }
+
+  math { font-family: var(--math); font-size: 19px; color: var(--ink); }
+
+  .row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+  }
+
+  .row + .row { border-top: 1px solid var(--hairline); }
+
+  .row.is-hidden { display: none; }
+
+  .row dt {
+    font-size: 12.5px;
+    color: var(--ink-2);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+  }
+
+  .row dd {
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  .chip {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    flex: none;
+    background: var(--c, var(--muted));
+  }
+
+  .gap-row dd { color: var(--muted); }
+
+  /* ---- steps ---- */
+
+  .steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .steps button {
+    font-family: inherit;
+    font-size: 12.5px;
+    color: var(--ink-2);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: background 120ms, color 120ms, border-color 120ms;
+  }
+
+  .steps button:hover { background: var(--raised); }
+
+  .steps button[aria-current="step"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--surface);
+    font-weight: 550;
+  }
+
+  .narrate {
+    font-size: 15px;
+    color: var(--ink-2);
+    max-width: 68ch;
+    margin: 0;
+    min-height: 3em;
+  }
+
+  .narrate b { color: var(--ink); font-weight: 600; }
+
+  /* ---- controls ---- */
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 22px;
+    align-items: end;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 15px 18px;
+  }
+
+  .control { display: flex; flex-direction: column; gap: 5px; flex: 1 1 210px; }
+
+  .control label {
+    font-size: 12px;
+    color: var(--ink-2);
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .control label span { font-variant-numeric: tabular-nums; color: var(--muted); }
+
+  .control input[type="range"] { width: 100%; accent-color: var(--math-construction); margin: 0; }
+
+  .control input:disabled { opacity: 0.4; }
+
+  .shrink {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 550;
+    color: var(--surface);
+    background: var(--ink);
+    border: 1px solid var(--ink);
+    border-radius: 7px;
+    padding: 9px 17px;
+    cursor: pointer;
+    flex: none;
+  }
+
+  .shrink:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  :is(button, input, a):focus-visible {
+    outline: 2px solid var(--math-object);
+    outline-offset: 2px;
+  }
+
+  /* ---- legend / system note ---- */
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+
+  .legend li { display: flex; align-items: center; gap: 8px; }
+
+  .legend .swatch { width: 22px; height: 3px; border-radius: 2px; background: var(--c); flex: none; }
+
+  .note {
+    border-top: 1px solid var(--hairline);
+    padding-top: 20px;
+    font-size: 14px;
+    color: var(--ink-2);
+    max-width: 72ch;
+  }
+
+  .note p { margin: 0 0 10px; }
+
+  .note b { color: var(--ink); font-weight: 600; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Design system demo · one figure, one claim</p>
+    <h1>The derivative, built in five steps</h1>
+    <p class="claim">
+      The slope of the tangent is what the slope of the secant approaches as the
+      two points slide together. Watch the orange line land on the green one.
+    </p>
+  </header>
+
+  <ul class="steps" id="steps"></ul>
+
+  <p class="narrate" id="narrate"></p>
+
+  <div class="stage">
+    <div class="figure">
+      <svg id="plot" viewBox="0 0 720 460" role="img" aria-labelledby="plot-desc">
+        <desc id="plot-desc"></desc>
+      </svg>
+    </div>
+
+    <dl class="readout">
+      <div class="quotient">
+        <math display="block">
+          <mfrac>
+            <mrow>
+              <mi>f</mi><mo>(</mo><mi>a</mi><mo>+</mo><mi>h</mi><mo>)</mo>
+              <mo>&#x2212;</mo><mi>f</mi><mo>(</mo><mi>a</mi><mo>)</mo>
+            </mrow>
+            <mi>h</mi>
+          </mfrac>
+        </math>
+      </div>
+
+      <div class="row" id="row-h">
+        <dt>h</dt>
+        <dd id="out-h">—</dd>
+      </div>
+
+      <div class="row" id="row-secant">
+        <dt><i class="chip" style="--c: var(--math-construction)"></i>secant slope</dt>
+        <dd id="out-secant">—</dd>
+      </div>
+
+      <div class="row" id="row-tangent">
+        <dt><i class="chip" style="--c: var(--math-result)"></i>tangent slope</dt>
+        <dd id="out-tangent">—</dd>
+      </div>
+
+      <div class="row gap-row" id="row-gap">
+        <dt>difference</dt>
+        <dd id="out-gap">—</dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="controls">
+    <div class="control">
+      <label for="in-a">Where the tangent sits <span id="lab-a">a = 1.40</span></label>
+      <input type="range" id="in-a" min="-2.2" max="2.2" step="0.01" value="1.4">
+    </div>
+    <div class="control">
+      <label for="in-h">Distance between the points <span id="lab-h">h = 1.200</span></label>
+      <input type="range" id="in-h" min="0" max="1" step="0.001" value="0.222">
+    </div>
+    <button class="shrink" id="shrink">Send h → 0</button>
+  </div>
+
+  <ul class="legend">
+    <li><i class="swatch" style="--c: var(--math-object)"></i> Object — the curve you were given</li>
+    <li><i class="swatch" style="--c: var(--math-construction)"></i> Construction — what you drew to reason</li>
+    <li><i class="swatch" style="--c: var(--math-result)"></i> Result — what the argument yields</li>
+  </ul>
+
+  <div class="note">
+    <p>
+      <b>Three colors, and they mean roles — not names.</b> The curve is the given, the
+      secant is scaffolding, the tangent is the conclusion. Nothing is colored because
+      of what it <i>is</i>; everything is colored by the job it does in the argument.
+      That is why the secant and the tangent are different colors even though, in the
+      limit, they are the same line.
+    </p>
+    <p>
+      <b>The limit itself has no color.</b> <span style="font-family: var(--math)"><i>h</i></span>
+      is the quantity being pushed to zero, and it is carried entirely by motion, position,
+      and the readout — never by a fourth hue. A limit is a process, and process is shown
+      through change over time.
+    </p>
+    <p>
+      Palette validated with the <code>dataviz</code> script under <code>--pairs all</code> in
+      both modes, since every object in a math figure shares the screen with every other.
+    </p>
+  </div>
+
+</div>
+
+<script>
+  (function () {
+    "use strict";
+
+    // ---- the mathematics -------------------------------------------------
+
+    var f  = function (x) { return 0.5 * x * x * x - 1.5 * x + 1.2; };
+    var df = function (x) { return 1.5 * x * x - 1.5; };
+
+    var X0 = -2.5, X1 = 2.5, Y0 = -3, Y1 = 5;
+    var L = 48, R = 696, T = 20, B = 440;
+
+    function sx(x) { return L + (x - X0) / (X1 - X0) * (R - L); }
+    function sy(y) { return B - (y - Y0) / (Y1 - Y0) * (B - T); }
+
+    // h is driven logarithmically: the slider's last third is where a limit
+    // actually lives, and a linear slider would make it unreachable.
+    var H_MAX = 2, H_MIN = 0.002;
+    function hOf(t) {
+      var e = Math.log10(H_MAX) + t * (Math.log10(H_MIN) - Math.log10(H_MAX));
+      return Math.pow(10, e);
+    }
+    function tOf(h) {
+      return (Math.log10(h) - Math.log10(H_MAX)) / (Math.log10(H_MIN) - Math.log10(H_MAX));
+    }
+
+    // ---- steps -----------------------------------------------------------
+
+    var STEPS = [
+      { name: "The curve",   text: "Here is a curve. Nothing has been done to it yet — it is the <b>given</b>, and it is the only object on screen." },
+      { name: "Two points",  text: "Pick a point <b>P</b> on the curve, then a second point <b>Q</b> a distance <b>h</b> further along. Drag either slider; both points stay stuck to the curve." },
+      { name: "The secant",  text: "The line through P and Q is the <b>secant</b>. Its slope is rise over run — exactly the difference quotient in the panel. This is scaffolding, so it is drawn in the construction color." },
+      { name: "Shrink h",    text: "Now slide Q toward P. The secant pivots, and its slope settles on a number. <b>Watch the readout, not the picture</b> — the number is where the limit becomes obvious." },
+      { name: "The tangent", text: "That number is the <b>derivative</b>. The green line has the slope the secant was heading for. Move <b>a</b> along the curve: at x = ±1 the tangent goes flat, which is exactly where the curve turns." }
+    ];
+
+    var stage = 0;
+    var a = 1.4;
+    var t = 0.222;
+    var animating = false;
+
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    // ---- elements --------------------------------------------------------
+
+    var svg      = document.getElementById("plot");
+    var desc     = document.getElementById("plot-desc");
+    var stepsEl  = document.getElementById("steps");
+    var narrate  = document.getElementById("narrate");
+    var inA      = document.getElementById("in-a");
+    var inH      = document.getElementById("in-h");
+    var labA     = document.getElementById("lab-a");
+    var labH     = document.getElementById("lab-h");
+    var shrink   = document.getElementById("shrink");
+
+    var outH = document.getElementById("out-h");
+    var outS = document.getElementById("out-secant");
+    var outT = document.getElementById("out-tangent");
+    var outG = document.getElementById("out-gap");
+    var rowH = document.getElementById("row-h");
+    var rowS = document.getElementById("row-secant");
+    var rowT = document.getElementById("row-tangent");
+    var rowG = document.getElementById("row-gap");
+
+    var NS = "http://www.w3.org/2000/svg";
+
+    function el(tag, attrs, text) {
+      var n = document.createElementNS(NS, tag);
+      for (var k in attrs) { n.setAttribute(k, attrs[k]); }
+      if (text != null) { n.textContent = text; }
+      return n;
+    }
+
+    // ---- step chips ------------------------------------------------------
+
+    STEPS.forEach(function (s, i) {
+      var li = document.createElement("li");
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = (i + 1) + ". " + s.name;
+      b.addEventListener("click", function () { goTo(i); });
+      li.appendChild(b);
+      stepsEl.appendChild(li);
+    });
+
+    function goTo(i) {
+      stage = i;
+      Array.prototype.forEach.call(stepsEl.querySelectorAll("button"), function (b, j) {
+        if (j === i) { b.setAttribute("aria-current", "step"); }
+        else { b.removeAttribute("aria-current"); }
+      });
+      narrate.innerHTML = STEPS[i].text;
+
+      // Entering "Shrink h" runs the limit once, from a wide h, so the
+      // convergence is something you watch rather than something you're told.
+      if (i === 3 && !animating) {
+        t = 0.15;
+        inH.value = String(t);
+        runLimit();
+      }
+      draw();
+    }
+
+    // ---- the limit run ---------------------------------------------------
+
+    function runLimit() {
+      if (animating) { return; }
+
+      if (reduce.matches) {
+        // Reduced motion gets discrete steps it can advance, never stillness:
+        // each press closes a quarter of the remaining distance to h = 0.
+        t = Math.min(1, t + 0.25);
+        inH.value = String(t);
+        draw();
+        return;
+      }
+
+      animating = true;
+      shrink.disabled = true;
+      var from = t, to = 1, start = null, dur = 2600;
+
+      function frame(ts) {
+        if (start === null) { start = ts; }
+        var p = Math.min(1, (ts - start) / dur);
+        var eased = 1 - Math.pow(1 - p, 3);
+        t = from + (to - from) * eased;
+        inH.value = String(t);
+        draw();
+        if (p < 1) { requestAnimationFrame(frame); }
+        else { animating = false; shrink.disabled = false; }
+      }
+      requestAnimationFrame(frame);
+    }
+
+    shrink.addEventListener("click", function () {
+      if (stage < 3) { goTo(3); } else { runLimit(); }
+    });
+
+    inA.addEventListener("input", function () {
+      a = parseFloat(inA.value);
+      if (stage < 1) { goTo(1); } else { draw(); }
+    });
+
+    inH.addEventListener("input", function () {
+      t = parseFloat(inH.value);
+      if (stage < 1) { goTo(1); } else { draw(); }
+    });
+
+    // ---- drawing ---------------------------------------------------------
+
+    function line(x1, y1, x2, y2, stroke, w, extra) {
+      var o = { x1: x1, y1: y1, x2: x2, y2: y2, stroke: stroke, "stroke-width": w };
+      for (var k in extra) { o[k] = extra[k]; }
+      return el("line", o);
+    }
+
+    function label(x, y, text, fill, anchor, weight) {
+      return el("text", {
+        x: x, y: y, fill: fill,
+        "text-anchor": anchor || "start",
+        "font-size": 13,
+        "font-weight": weight || 400,
+        "font-family": "system-ui, -apple-system, 'Segoe UI', sans-serif",
+        // halo, so a label stays readable where it crosses a gridline or a mark
+        "paint-order": "stroke",
+        stroke: "var(--surface)",
+        "stroke-width": 3.5,
+        "stroke-linejoin": "round"
+      }, text);
+    }
+
+    // A direct label has to sit ON its line, not near it. Walk in from the
+    // preferred edge to the first point that is inside the plot band and clear
+    // of the crowded area around P.
+    function placeOnLine(y0, m, preferRight) {
+      var N = 72, i, frac, x, y;
+      for (i = 0; i <= N; i++) {
+        frac = preferRight ? 1 - i / N : i / N;
+        x = X0 + (X1 - X0) * frac;
+        y = y0 + m * (x - a);
+        if (y < Y0 + 0.45 || y > Y1 - 0.45) { continue; }
+        if (sx(x) < L + 46 || sx(x) > R - 46) { continue; }
+        if (Math.abs(sx(x) - sx(a)) < 96) { continue; }
+        return { x: sx(x), y: sy(y) };
+      }
+      return null;
+    }
+
+    function draw() {
+      var h = hOf(t);
+      var showPoints  = stage >= 1;
+      var showSecant  = stage >= 2;
+      var showTangent = stage >= 4;
+
+      var fa = f(a), fb = f(a + h);
+      var mSec = (fb - fa) / h;
+      var mTan = df(a);
+
+      while (svg.childNodes.length > 1) { svg.removeChild(svg.lastChild); }
+
+      var defs = el("defs");
+      var clip = el("clipPath", { id: "plot-clip" });
+      clip.appendChild(el("rect", { x: L, y: T, width: R - L, height: B - T }));
+      defs.appendChild(clip);
+      svg.appendChild(defs);
+
+      // grid ------------------------------------------------------------
+      var g = el("g");
+      var xi, yi;
+      for (xi = Math.ceil(X0); xi <= X1; xi++) {
+        g.appendChild(line(sx(xi), T, sx(xi), B, "var(--grid)", 1));
+      }
+      for (yi = Math.ceil(Y0); yi <= Y1; yi++) {
+        g.appendChild(line(L, sy(yi), R, sy(yi), "var(--grid)", 1));
+      }
+      svg.appendChild(g);
+
+      // axes ------------------------------------------------------------
+      var ax = el("g");
+      ax.appendChild(line(L, sy(0), R, sy(0), "var(--axis)", 1.5));
+      ax.appendChild(line(sx(0), T, sx(0), B, "var(--axis)", 1.5));
+      for (xi = Math.ceil(X0); xi <= X1; xi++) {
+        if (xi === 0) { continue; }
+        ax.appendChild(label(sx(xi), sy(0) + 16, String(xi), "var(--muted)", "middle"));
+      }
+      for (yi = Math.ceil(Y0); yi <= Y1; yi++) {
+        if (yi === 0) { continue; }
+        ax.appendChild(label(sx(0) - 9, sy(yi) + 4, String(yi), "var(--muted)", "end"));
+      }
+      svg.appendChild(ax);
+
+      var plot = el("g", { "clip-path": "url(#plot-clip)" });
+
+      // the curve — the object ------------------------------------------
+      var d = "", i, x, N = 460;
+      for (i = 0; i <= N; i++) {
+        x = X0 + (X1 - X0) * i / N;
+        d += (i === 0 ? "M" : "L") + sx(x).toFixed(2) + " " + sy(f(x)).toFixed(2);
+      }
+      plot.appendChild(el("path", {
+        d: d, fill: "none", stroke: "var(--math-object)",
+        "stroke-width": 2.25, "stroke-linejoin": "round"
+      }));
+
+      // secant — construction -------------------------------------------
+      if (showSecant) {
+        var yL = fa + mSec * (X0 - a), yR = fa + mSec * (X1 - a);
+        plot.appendChild(line(sx(X0), sy(yL), sx(X1), sy(yR),
+          "var(--math-construction)", 2));
+
+        // rise / run triangle, only while it is big enough to read
+        var runPx = Math.abs(sx(a + h) - sx(a));
+        if (runPx > 34) {
+          plot.appendChild(line(sx(a), sy(fa), sx(a + h), sy(fa),
+            "var(--math-construction)", 1.25, { "stroke-dasharray": "3 3", opacity: 0.85 }));
+          plot.appendChild(line(sx(a + h), sy(fa), sx(a + h), sy(fb),
+            "var(--math-construction)", 1.25, { "stroke-dasharray": "3 3", opacity: 0.85 }));
+          plot.appendChild(label(
+            (sx(a) + sx(a + h)) / 2, sy(fa) + 16, "run = h",
+            "var(--math-construction)", "middle"));
+          plot.appendChild(label(
+            sx(a + h) + 7, (sy(fa) + sy(fb)) / 2 + 4, "rise",
+            "var(--math-construction)", "start"));
+        }
+      }
+
+      // tangent — result -------------------------------------------------
+      if (showTangent) {
+        var tL = fa + mTan * (X0 - a), tR = fa + mTan * (X1 - a);
+        plot.appendChild(line(sx(X0), sy(tL), sx(X1), sy(tR),
+          "var(--math-result)", 2.5));
+      }
+
+      // points ------------------------------------------------------------
+      if (showPoints) {
+        plot.appendChild(el("circle", {
+          cx: sx(a + h), cy: sy(fb), r: 5.5,
+          fill: "var(--math-construction)",
+          stroke: "var(--surface)", "stroke-width": 2
+        }));
+        plot.appendChild(el("circle", {
+          cx: sx(a), cy: sy(fa), r: 5.5,
+          fill: "var(--math-object)",
+          stroke: "var(--surface)", "stroke-width": 2
+        }));
+      }
+
+      svg.appendChild(plot);
+
+      // direct labels — outside the clip so they never get cut ------------
+      var lab = el("g");
+      lab.appendChild(label(sx(2.16), sy(f(2.16)) - 12, "f", "var(--math-object)", "middle", 600));
+
+      if (showPoints) {
+        // P sits above-left: the run/rise labels own the space below it.
+        lab.appendChild(label(sx(a) - 11, sy(fa) - 11, "P", "var(--math-object)", "end", 600));
+        if (Math.abs(sx(a + h) - sx(a)) > 22) {
+          lab.appendChild(label(sx(a + h) + 11, sy(fb) - 10, "Q", "var(--math-construction)", "start", 600));
+        }
+      }
+
+      // The secant is labeled on its left run, the tangent on its right, so the
+      // two never contend for the same space near P.
+      if (showSecant) {
+        var ps = placeOnLine(fa, mSec, false);
+        if (ps) {
+          lab.appendChild(label(ps.x, ps.y - 10, "secant", "var(--math-construction)", "middle", 600));
+        }
+      }
+
+      if (showTangent) {
+        var pt = placeOnLine(fa, mTan, true);
+        if (pt) {
+          lab.appendChild(label(pt.x, pt.y + 20, "tangent", "var(--math-result)", "middle", 600));
+        }
+      }
+
+      svg.appendChild(lab);
+
+      // ---- readouts, which must agree with the picture every frame ------
+      labA.textContent = "a = " + a.toFixed(2);
+      labH.textContent = "h = " + h.toFixed(3);
+      inA.disabled = false;
+      inH.disabled = false;
+
+      rowH.classList.toggle("is-hidden", !showPoints);
+      rowS.classList.toggle("is-hidden", !showSecant);
+      rowT.classList.toggle("is-hidden", !showTangent);
+      rowG.classList.toggle("is-hidden", !showTangent);
+
+      outH.textContent = h.toFixed(4);
+      outS.textContent = mSec.toFixed(4);
+      outT.textContent = mTan.toFixed(4);
+      outG.textContent = Math.abs(mSec - mTan).toFixed(4);
+
+      desc.textContent =
+        "A cubic curve with a point P at x = " + a.toFixed(2) +
+        (showSecant
+          ? ", a secant through P and a second point h = " + h.toFixed(3) +
+            " away, of slope " + mSec.toFixed(3)
+          : "") +
+        (showTangent
+          ? ", and the tangent at P, of slope " + mTan.toFixed(3) + "."
+          : ".");
+    }
+
+    goTo(0);
+  }());
+</script>
