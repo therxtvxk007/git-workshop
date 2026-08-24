@@ -52,6 +52,14 @@ in particular is flattered by templates built from the same verb list. Expect
 the extraction quality gap between the lexicon and LLM backends to be much wider
 on real text than it appears here.
 
+**And template text is simultaneously *harder* for the semantic branch than real
+news**, in a way that biases the results. Because the escalation sentences are
+drawn from a fixed pool, a model that counts the event keywords has extracted
+everything there is; the dense embedding of the surrounding words is noise by
+construction. So this simulator cannot demonstrate the value of a semantic
+branch even in principle. Read the near-chance MIL result as "not measurable
+here", not as "does not work".
+
 The adapters for GDELT, ACLED, CSV and JSONL are written against published
 schemas and unit-tested against fixtures. **They have never been run against a
 live download**, because the network was blocked. Check the column layout of
@@ -74,17 +82,43 @@ conformal set is the meaningful decision signal, because its coverage is
 measured and holds up (see the results table). Do not put the probability in
 front of a decision-maker as though 0.30 means 30%.
 
-## 4. Skill over the simplest baseline is small and not established
+## 4. Forecasting skill over the simplest baseline is not established
 
-The `volume_only` baseline is two features — how many documents and how many
-extracted events — with no content at all. On some seeds the full system beats
-it; on others it does not. See the README results table for the across-seed
-comparison, which is the only version of that claim worth reading.
+This is the headline result and it is negative.
 
-Anyone reporting a result from this repo should run `experiments/run_seeds.py`
-rather than a single backtest. One run of four folds cannot separate models at
-this effect size, and reporting a single favourable seed would reproduce exactly
-the validation weakness (**G6**, **G10**) that motivated the project.
+The `volume_only` baseline is two features — how many documents were published
+and how many events were extracted — with no content at all. Across 8 simulator
+seeds:
+
+| | ROC-AUC |
+|---|---|
+| STACKED | 0.567 ± 0.036 |
+| baseline: volume only | 0.558 ± 0.073 |
+| difference (paired by seed) | **+0.009 ± 0.049** |
+
+The system wins on 5 of 8 seeds; paired *t* across seeds is **+0.48**. At n=8
+you would want |t| above roughly 2.4 to say anything. This is indistinguishable
+from zero.
+
+Note also that the *stacked* model does not beat its own tabular branch
+(0.582 ± 0.062). The ensemble is not adding value on this data.
+
+Two things follow.
+
+First, **run `experiments/run_seeds.py`, never a single backtest.** The
+seed-to-seed spread (±0.036 to ±0.073) is several times the effect being
+measured. Two runs of the identical configuration during development gave
+stacked ROC-AUC 0.623 and 0.572 and disagreed about whether the model beat the
+best baseline. Reporting one favourable seed would reproduce exactly the
+validation weakness (**G6**, **G10**) that motivated this project.
+
+Second, **the simulator may be the wrong instrument for this particular
+question.** Its text is generated from a fixed template set, so once the event
+keywords are counted there is no residual meaning in the words. That caps what
+the dense-embedding semantic branch can contribute almost by construction, and
+is the most likely explanation for it sitting near chance (0.524 ± 0.044). A
+fair test of the semantic branch needs real news, which needs network access
+this build did not have.
 
 ## 5. Gaps from the survey that remain open
 

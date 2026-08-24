@@ -1,0 +1,27 @@
+  seed 0 done (46s)
+  seed 1 done (86s)
+  seed 2 done (131s)
+  seed 3 done (174s)
+  seed 4 done (219s)
+  seed 5 done (264s)
+  seed 6 done (308s)
+  seed 7 done (357s)
+
+8 seeds x 4 folds, 6 regions, 300 days
+
+model                                    roc_auc            pr_auc             brier       brier_skill               ece
+------------------------------------------------------------------------------------------------------------------------
+STACKED                             0.567+-0.036      0.264+-0.050      0.191+-0.027     -0.374+-0.330      0.161+-0.047
+branch:mil                          0.524+-0.044      0.228+-0.030      0.177+-0.024     -0.245+-0.261      0.134+-0.017
+branch:gradient_boosting            0.582+-0.062      0.283+-0.087      0.159+-0.020     -0.104+-0.198      0.083+-0.015
+baseline:base_rate                  0.500+-0.000      0.199+-0.035      0.161+-0.023     -0.112+-0.188      0.066+-0.023
+baseline:region_climatology         0.520+-0.042      0.229+-0.024      0.166+-0.024     -0.155+-0.228      0.097+-0.032
+baseline:volume_only                0.558+-0.073      0.266+-0.065      0.159+-0.022     -0.091+-0.158      0.082+-0.019
+
+------------------------------------------------------------------------------------------------------------------------
+strongest baseline: baseline:volume_only  (mean ROC-AUC 0.558)
+STACKED beats it on 5/8 seeds; mean difference +0.009 +- 0.049
+paired t across seeds: t = +0.48 (|t| > 2.4 is suggestive at n=8)
+conformal coverage 0.889 +- 0.014 (target 0.900), abstention 0.722 +- 0.060
+
+total 357s

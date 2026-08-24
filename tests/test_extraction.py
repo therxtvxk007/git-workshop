@@ -25,6 +25,15 @@ def test_temporal_expressions_are_captured():
     assert events[0].time_ref.lower() == "on friday"
 
 
+def test_date_words_are_not_mistaken_for_participants():
+    """A weekday is a time reference, not the target of a threat."""
+    event = RuleExtractor().extract(
+        "The miners federation threatened a walkout on Monday."
+    )[0]
+    assert event.target != "Monday"
+    assert event.time_ref.lower() == "on monday"
+
+
 def test_text_without_events_yields_nothing():
     assert RuleExtractor().extract("Rainfall was above the seasonal average.") == []
     assert RuleExtractor().extract("") == []

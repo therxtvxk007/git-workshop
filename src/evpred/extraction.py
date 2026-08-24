@@ -67,6 +67,14 @@ _ACTOR_HINTS = (
     "nurses", "miners", "association", "federation", "coalition", "authority",
 )
 
+# Capitalised tokens that name a time, not a participant. Without this the
+# actor/target fallback happily returns "Monday" as the target of a threat.
+_TIME_TOKENS = frozenset(
+    "monday tuesday wednesday thursday friday saturday sunday today tomorrow "
+    "yesterday tonight january february march april may june july august "
+    "september october november december week weekend month year".split()
+)
+
 _TIME_PAT = re.compile(
     r"\b(today|tomorrow|yesterday|tonight|next\s+\w+|last\s+\w+|this\s+\w+|"
     r"on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|"
@@ -137,13 +145,14 @@ class RuleExtractor:
     def _nearest_actor(
         lowered: list[str], tokens: list[str], idx: int, *, before: bool
     ) -> str:
-        span = range(idx - 1, -1, -1) if before else range(idx + 1, len(lowered))
+        span = list(range(idx - 1, -1, -1) if before else range(idx + 1, len(lowered)))
         for j in span:
             if lowered[j] in _ACTOR_HINTS:
                 return lowered[j]
-        # Fall back to a capitalised token, which usually names a real entity.
+        # Fall back to a capitalised token, which usually names a real entity --
+        # but never a date word, which is a time reference, not a participant.
         for j in span:
-            if tokens[j][:1].isupper():
+            if tokens[j][:1].isupper() and lowered[j] not in _TIME_TOKENS:
                 return tokens[j]
         return ""
 

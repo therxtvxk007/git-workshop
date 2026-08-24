@@ -1,0 +1,101 @@
+simulated 6656 documents / 6 regions / 300 days  (1.3s)
+[backtest] 6656 documents; extracting events...
+[backtest] 6 regions, 279 usable origins
+[fold 0] train=498 (<= 2024-04-07) test=282 (2024-04-14..2024-05-30) base_rate=0.113
+[fold 1] train=780 (<= 2024-05-24) test=282 (2024-05-31..2024-07-16) base_rate=0.284
+[fold 2] train=1062 (<= 2024-07-10) test=282 (2024-07-17..2024-09-01) base_rate=0.195
+[fold 3] train=1344 (<= 2024-08-26) test=288 (2024-09-02..2024-10-19) base_rate=0.219
+
+==============================================================================
+BACKTEST  (rolling origin, walk-forward)
+==============================================================================
+                                         -- fold-mean --             
+model                         ROC-AUC   PR-AUC   lift    Brier     BSS    ECE
+-----------------------------------------------------------------------------
+STACKED                         0.572    0.220   1.12   0.1892  -0.187  0.149
+  branch: gradient_boosting     0.569    0.234   1.15   0.1638  -0.057  0.078
+  branch: mil                   0.555    0.209   1.07   0.1827  -0.164  0.164
+  baseline: base_rate           0.500    0.203   1.00   0.1622  -0.028  0.053
+  baseline: region_climatology    0.549    0.244   1.17   0.1630  -0.039  0.064
+  baseline: volume_only         0.649    0.290   1.49   0.1563   0.008  0.077
+-----------------------------------------------------------------------------
+STACKED (pooled)                0.550    0.230   1.13   0.1896  -0.173  0.134
+-----------------------------------------------------------------------------
+stacked ROC-AUC by fold   f0:0.658  f1:0.502  f2:0.489  f3:0.639
+base rate by fold         f0:0.113  f1:0.284  f2:0.195  f3:0.219
+folds 4   forecasts 1134   overall base rate 0.203
+conformal: coverage 0.875  abstention 0.679  avg set size 1.68
+
+latent-state oracle (achievability ceiling): ROC-AUC 0.786  PR-AUC 0.489
+  the model reads text; the oracle reads the hidden state that generated it.
+
+==============================================================================
+PRECURSOR RECOVERY
+==============================================================================
+  precursor_precision_at_k     0.7765
+  corpus_precursor_rate        0.1137
+  lift_over_random             6.8276
+  n_evaluated                  1150.0000
+
+  attribution mass by event predicate:
+    strike           173.277
+    crackdown        130.714
+    unrest           72.406
+    anger            60.199
+    clashes          43.432
+    detained         35.298
+    talks            10.416
+    rally            6.971
+    agreed           5.158
+    deal             4.445
+
+==============================================================================
+SAMPLE FORECASTS WITH EVIDENCE
+==============================================================================
+Forecast  region=region-01  origin=2024-09-05  horizon=7d
+  probability = 0.805   (truth: 0)
+  conformal set = {1}
+  top precursors (attribution weight):
+    2024-08-27  w=0.403  [strike]
+      Union leaders said a general strike in downtown was likely on Friday absent concessions.
+    2024-08-28  w=0.369  [strike]
+      Union leaders said a general strike in downtown was likely next week absent concessions.
+    2024-08-29  w=0.116  [strike]
+      Members of the teachers union voted to strike, threatening a walkout across downtown on Friday.
+    2024-08-25  w=0.069  [strike]
+      Members of the civil servants union voted to strike, threatening a walkout across the industrial zone on Friday.
+    2024-08-24  w=0.019  [unrest]
+      The city council imposed a curfew in downtown following unrest over the hiring freeze.
+
+Forecast  region=region-01  origin=2024-09-04  horizon=7d
+  probability = 0.799   (truth: 0)
+  conformal set = {1}
+  top precursors (attribution weight):
+    2024-08-27  w=0.403  [strike]
+      Union leaders said a general strike in downtown was likely on Friday absent concessions.
+    2024-08-28  w=0.369  [strike]
+      Union leaders said a general strike in downtown was likely next week absent concessions.
+    2024-08-29  w=0.116  [strike]
+      Members of the teachers union voted to strike, threatening a walkout across downtown on Friday.
+    2024-08-25  w=0.069  [strike]
+      Members of the civil servants union voted to strike, threatening a walkout across the industrial zone on Friday.
+    2024-08-24  w=0.019  [unrest]
+      The city council imposed a curfew in downtown following unrest over the hiring freeze.
+
+(771/1134 forecasts abstained; example:)
+Forecast  region=region-00  origin=2024-04-15  horizon=7d
+  probability = 0.082   (truth: 0)
+  conformal set = {0, 1}   [ABSTAIN]
+  top precursors (attribution weight):
+    2024-04-02  w=0.153  [-]
+      Retail sales in downtown rose modestly, according to a quarterly survey. Retail sales in downtown rose modestly, according to a quarterly survey. Reta
+    2024-04-07  w=0.067  [-]
+      The capital museum announced a summer exhibition of regional photography. Retail sales in the capital rose modestly, according to a quarterly survey.
+    2024-04-11  w=0.052  [-]
+      The downtown museum announced a summer exhibition of regional photography. Retail sales in downtown rose modestly, according to a quarterly survey.
+    2024-04-10  w=0.047  [conceded]
+      The regional authority conceded on pay, and the teachers union suspended planned action.
+    2024-04-10  w=0.043  [-]
+      The north museum announced a summer exhibition of regional photography. The capital marathon drew record participation over the weekend. The port dist
+
+total wall time 43.3s
