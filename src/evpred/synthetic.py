@@ -57,13 +57,13 @@ _DEESCALATION_TEMPLATES = [
 
 _BACKGROUND_TEMPLATES = [
     "Rainfall in {place} was above the seasonal average, the weather service said.",
-    "The {place} football club appointed a new manager ahead of the season.",
+    "The {Place} football club appointed a new manager ahead of the season.",
     "A new commuter line opened in {place}, cutting journey times by {n} minutes.",
     "Retail sales in {place} rose modestly, according to a quarterly survey.",
-    "The {place} museum announced a summer exhibition of regional photography.",
+    "The {Place} museum announced a summer exhibition of regional photography.",
     "Local growers in {place} reported a strong harvest this year.",
     "A technology firm said it would open an office in {place}, adding {n} jobs.",
-    "The {place} marathon drew record participation over the weekend.",
+    "The {Place} marathon drew record participation over the weekend.",
 ]
 
 _ACTORS = ["teachers union", "transport workers union", "students association",
@@ -142,6 +142,8 @@ class EventSimulator:
             noun=self.rng.choice(_NOUNS),
             place=self.rng.choice(["the capital", "the port district", "the north",
                                    "downtown", "the industrial zone"]),
+            Place=self.rng.choice(["the capital", "the port district", "the north",
+                                   "downtown", "the industrial zone"]).replace("the ", ""),
             day=self.rng.choice(_DAYS),
             n=int(self.rng.integers(3, 400)),
         )

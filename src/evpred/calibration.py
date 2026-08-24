@@ -4,10 +4,13 @@ The survey's stated requirement is that a forecast be "logically accurate and
 close to infallible", and that it come with support. Infallible is not on
 offer, but two things are, and neither appears in the surveyed systems:
 
-1. **Calibration.** A raw MIL score is a ranking, not a probability. Isotonic or
-   Platt scaling on a *held-out, strictly later* window turns it into one, so
-   "0.7" means roughly 70% of such days see the event. Reported via Brier score
-   and expected calibration error rather than accuracy alone.
+1. **Calibration.** A raw MIL score is a ranking, not a probability. Platt
+   scaling (default) or isotonic regression on a *held-out, strictly later*
+   window turns it into one, so "0.7" means roughly 70% of such days see the
+   event. Reported via Brier score and expected calibration error rather than
+   accuracy alone. Every fitted map is checked for rank preservation before it
+   is accepted -- see ``Calibrator._preserves_ranking`` for the failure this
+   guards against.
 
 2. **Conformal abstention.** Split conformal prediction gives a marginal
    coverage guarantee -- at level ``alpha``, the returned label set contains the
@@ -25,6 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.stats import spearmanr
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 
@@ -40,15 +44,28 @@ class Calibrator:
 
     Isotonic is non-parametric and monotone; it needs more data than Platt but
     does not assume the score-to-probability map is sigmoidal. Below
-    ``min_isotonic`` calibration points the constructor silently prefers Platt,
-    because isotonic on tiny samples is a step function that overfits badly.
+    ``min_isotonic`` points, Platt is used instead.
+
+    That threshold is high (250) for a specific reason. Isotonic is only *weakly*
+    monotone: it is a step function, and on a small calibration set it has few
+    steps, so many distinct scores collapse onto one probability. Those ties
+    destroy ranking -- measured here, isotonic fitted on 93 windows took a
+    blend from 0.567 ROC-AUC to 0.494, i.e. from useful to worthless, while
+    looking like a routine calibration step. Platt is strictly increasing and so
+    preserves AUC exactly, which is the safer default whenever data is thin.
     """
 
-    def __init__(self, method: str = "isotonic", min_isotonic: int = 50) -> None:
+    def __init__(
+        self,
+        method: str = "platt",
+        min_isotonic: int = 250,
+        min_rank_correlation: float = 0.99,
+    ) -> None:
         if method not in {"isotonic", "platt", "none"}:
             raise ValueError(f"unknown calibration method: {method!r}")
         self.method = method
         self.min_isotonic = min_isotonic
+        self.min_rank_correlation = min_rank_correlation
         self._model = None
         self._fitted_method = "none"
 
@@ -69,12 +86,41 @@ class Calibrator:
             iso = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
             iso.fit(scores, labels)
             self._model = iso
-        else:
+            self._fitted_method = "isotonic"
+            if not self._preserves_ranking(scores):
+                # Isotonic fits a *constant* whenever the calibration slice shows
+                # no increasing score-label relationship -- which happens
+                # routinely on a hard fold -- and a constant has no ranking at
+                # all. Observed here on 2 of 4 walk-forward folds: raw scores
+                # ranking at 0.75 ROC-AUC came out of the calibrator as a single
+                # value, 0.166 for every window, scoring exactly 0.500. Platt
+                # cannot do this: it is strictly increasing by construction.
+                self._model = None
+                self._fitted_method = "none"
+                method = "platt"
+
+        if method == "platt":
             lr = LogisticRegression(C=1e6, solver="lbfgs")
             lr.fit(scores.reshape(-1, 1), labels)
             self._model = lr
-        self._fitted_method = method
+            self._fitted_method = "platt"
+            if not self._preserves_ranking(scores):  # pragma: no cover - degenerate
+                self._model = None
+                self._fitted_method = "none"
         return self
+
+    def _preserves_ranking(self, scores: np.ndarray) -> bool:
+        """Reject a calibration map that flattens or reverses the ordering.
+
+        Calibration is meant to relabel scores, not to reorder or erase them. A
+        map that collapses distinct scores onto one probability has thrown away
+        everything the model learned, so it is safer to fall back than to ship it.
+        """
+        out = self.transform(scores)
+        if np.unique(out).size < 3:
+            return False
+        rho = float(spearmanr(scores, out).statistic)
+        return bool(np.isfinite(rho) and rho >= self.min_rank_correlation)
 
     def transform(self, scores: np.ndarray) -> np.ndarray:
         scores = np.asarray(scores, dtype=np.float64).ravel()

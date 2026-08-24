@@ -382,7 +382,6 @@ class NestedMIL:
                 options={
                     "maxiter": self.config.max_iter,
                     "ftol": self.config.tol,
-                    "disp": self.config.verbose,
                 },
             )
         self._fit = self._unpack(result.x, d, n_regions)
@@ -406,15 +405,22 @@ class NestedMIL:
         return self._fit.w0 + self._fit.V[r], self._fit.b0 + self._fit.c[r]
 
     def decision_function(self, groups: list[PooledGroup]) -> np.ndarray:
+        """Group scores.
+
+        Threads are pinned for the same reason as in ``fit``: this is one small
+        matvec per group, and multithreaded BLAS spends more time synchronising
+        than computing at these shapes.
+        """
         if self._fit is None:
             raise RuntimeError("call fit() first")
         out = np.empty(len(groups), dtype=np.float64)
-        for i, g in enumerate(groups):
-            w_r, b_r = self._weights_for(g.region)
-            if g.X.shape[0] == 0:
-                out[i] = b_r
-            else:
-                out[i], _ = self._pool(g.X @ w_r + b_r, g.members())
+        with threadpool_limits(limits=1):
+            for i, g in enumerate(groups):
+                w_r, b_r = self._weights_for(g.region)
+                if g.X.shape[0] == 0:
+                    out[i] = b_r
+                else:
+                    out[i], _ = self._pool(g.X @ w_r + b_r, g.members())
         return out
 
     def predict_proba(self, groups: list[PooledGroup]) -> np.ndarray:
