@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRAMAAN-X — Analyst Console</title>
+<style>
+:root{
+  --ground:#eef1f4; --surface:#fff; --surface-2:#f6f9fb; --ink:#0f1a21; --ink-2:#4b5c67;
+  --ink-3:#788994; --rule:#d2dce3; --accent:#0d6a8b; --accent-soft:#dcebf2;
+  --alert:#b23f35; --watch:#9a6a14; --monitor:#256b5c;
+}
+:root{--ink-3:#788994}
+@media (prefers-color-scheme:dark){:root{
+  --ground:#0a1015; --surface:#111a21; --surface-2:#16212a; --ink:#e3ebf1; --ink-2:#9aacb8;
+  --ink-3:#71838f; --rule:#22313b; --accent:#52b4d6; --accent-soft:#0f2e3b;
+  --alert:#e5796c; --watch:#dda83f; --monitor:#5fbca3;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+header{border-bottom:1px solid var(--rule);background:var(--surface);padding:18px 24px;
+  display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+h1{margin:0;font-size:19px;letter-spacing:-.01em;font-weight:650}
+h1 span{color:var(--accent)}
+.tagline{color:var(--ink-2);font-size:13px}
+.pill{margin-left:auto;font:11px/1 ui-monospace,monospace;letter-spacing:.08em;
+  text-transform:uppercase;padding:6px 10px;border-radius:3px;border:1px solid var(--rule);
+  background:var(--surface-2);color:var(--ink-2)}
+.pill.ok{color:var(--monitor);border-color:var(--monitor)}
+.pill.off{color:var(--alert);border-color:var(--alert)}
+main{max-width:1180px;margin:0 auto;padding:22px 24px 60px;display:flex;flex-direction:column;gap:20px}
+section{background:var(--surface);border:1px solid var(--rule);border-radius:4px}
+.sec-head{padding:13px 18px;border-bottom:1px solid var(--rule);background:var(--surface-2);
+  font:11px/1 ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+  display:flex;align-items:center;gap:10px}
+.sec-body{padding:18px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,select,button{font:inherit;padding:9px 11px;border:1px solid var(--rule);border-radius:3px;
+  background:var(--surface);color:var(--ink)}
+input[type=text]{flex:1;min-width:260px}
+button{background:var(--accent);color:#fff;border-color:transparent;cursor:pointer;font-weight:600}
+button:hover{filter:brightness(1.08)}
+button.ghost{background:var(--surface-2);color:var(--ink);border-color:var(--rule);font-weight:500}
+button:disabled{opacity:.5;cursor:not-allowed}
+.stats{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.stat{border:1px solid var(--rule);border-radius:3px;padding:12px 13px;background:var(--surface-2)}
+.stat .k{font:10px/1 ui-monospace,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.stat .v{font-size:23px;font-weight:650;margin-top:5px;font-variant-numeric:tabular-nums}
+.stat .s{font-size:12px;color:var(--ink-2);margin-top:2px}
+.funnel{display:flex;flex-direction:column;gap:7px}
+.fstep{display:grid;grid-template-columns:110px 1fr 86px;gap:11px;align-items:center;font-size:13px}
+.fbar{height:22px;background:var(--accent-soft);border-radius:2px;position:relative;overflow:hidden}
+.fbar i{position:absolute;inset:0;background:var(--accent);border-radius:2px;display:block}
+.fnum{text-align:right;font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--rule);color:var(--ink-3);
+  font:10px/1 ui-monospace,monospace;letter-spacing:.11em;text-transform:uppercase;font-weight:500}
+td{padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tr.hit{cursor:pointer}
+tr.hit:hover td{background:var(--surface-2)}
+.num{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{font:10.5px/1 ui-monospace,monospace;padding:3px 6px;border-radius:2px;
+  background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.spark{width:100%;height:74px;display:block}
+.muted{color:var(--ink-2);font-size:13px}
+.err{color:var(--alert);font-size:13px}
+dialog{border:1px solid var(--rule);border-radius:5px;background:var(--surface);color:var(--ink);
+  max-width:680px;width:92vw;padding:0}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.dlg-head{padding:14px 18px;border-bottom:1px solid var(--rule);display:flex;gap:12px;align-items:center}
+.dlg-body{padding:18px;max-height:62vh;overflow:auto}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:6px 14px;font-size:13px}
+.kv dt{color:var(--ink-3);font-family:ui-monospace,monospace;font-size:11.5px}
+.kv dd{margin:0}
+.warn{border-left:2px solid var(--watch);background:color-mix(in srgb,var(--watch) 8%,transparent);
+  padding:9px 12px;border-radius:2px;font-size:13px;margin-top:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>PRAMAAN<span>-X</span></h1>
+  <span class="tagline">Analyst console — evidence retrieval and cascade telemetry</span>
+  <span class="pill" id="conn">connecting</span>
+</header>
+
+<main>
+  <section>
+    <div class="sec-head">Corpus</div>
+    <div class="sec-body">
+      <div class="row" style="margin-bottom:16px">
+        <label class="muted">Synthetic corpus length
+          <input type="number" id="days" value="240" min="30" max="2000" style="width:96px;margin-left:6px">
+          days
+        </label>
+        <button id="ingest">Build and index</button>
+        <span class="muted" id="ingest-status"></span>
+      </div>
+      <div class="stats" id="stats"><span class="muted">No corpus indexed yet.</span></div>
+      <svg class="spark" id="spark" aria-label="Daily document volume"></svg>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">Evidence retrieval</div>
+    <div class="sec-body">
+      <div class="row">
+        <input type="text" id="q" placeholder="e.g. reservoir levels approached the seasonal spill threshold">
+        <label class="muted">as of <input type="date" id="asof" style="margin-left:4px"></label>
+        <select id="stop">
+          <option value="rerank" selected>full cascade</option>
+          <option value="sparse">stop after sparse</option>
+          <option value="dense">stop after dense</option>
+          <option value="fusion">stop after fusion</option>
+          <option value="late">stop after late interaction</option>
+        </select>
+        <button id="go">Search</button>
+      </div>
+      <p class="muted" style="margin:10px 0 0">
+        <strong>as of</strong> is the forecast origin. Documents published on or after it are
+        excluded before any scoring, so results are what was knowable at that moment.
+      </p>
+      <div id="funnel" style="margin-top:16px"></div>
+      <div id="results" style="margin-top:14px"></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlg">
+  <div class="dlg-head"><strong id="dlg-title">Document</strong>
+    <button class="ghost" style="margin-left:auto" onclick="document.getElementById('dlg').close()">Close</button>
+  </div>
+  <div class="dlg-body" id="dlg-body"></div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const fmt = n => n == null ? "—" : n.toLocaleString();
+const pct = n => (100 * n).toFixed(1) + "%";
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) {
+    let detail = r.statusText;
+    try { detail = (await r.json()).detail || detail; } catch (e) {}
+    throw new Error(detail);
+  }
+  return r.json();
+}
+
+async function refresh() {
+  try {
+    const s = await api("/status");
+    $("#conn").textContent = s.ready ? "indexed" : "no corpus";
+    $("#conn").className = "pill " + (s.ready ? "ok" : "off");
+    if (!s.ready) return;
+    const d = s.stage0.dedup, c = s.stage0.cleaning, v = s.stage0.validation;
+    $("#stats").innerHTML = [
+      stat("Raw documents", fmt(s.documents_raw), "before stage 0"),
+      stat("After dedup", fmt(s.documents_canonical), pct(d.reduction) + " collapsed"),
+      stat("Duplicate clusters", fmt(d.clusters), `${fmt(d.exact)} exact · ${fmt(d.near)} near · ${fmt(d.simhash)} simhash`),
+      stat("Boilerplate stripped", fmt(c.stripped), fmt(c.chars_removed) + " chars"),
+      stat("Clock repairs", fmt(v.retrieved_before_published), "retrieval before publication"),
+      stat("Index build", s.build_seconds + "s", s.profile),
+    ].join("");
+    drawSpark(await api("/timeline?days=180"));
+  } catch (e) {
+    $("#conn").textContent = "unreachable"; $("#conn").className = "pill off";
+  }
+}
+
+const stat = (k, v, s) => `<div class="stat"><div class="k">${k}</div><div class="v">${v}</div><div class="s">${s}</div></div>`;
+
+function drawSpark(t) {
+  const svg = $("#spark"), s = t.series;
+  if (!s || !s.length) { svg.innerHTML = ""; return; }
+  const w = svg.clientWidth || 900, h = 74, max = Math.max(...s.map(r => r.n)) || 1;
+  const pts = s.map((r, i) => [i * w / (s.length - 1 || 1), h - 6 - (r.n / max) * (h - 14)]);
+  const line = pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+  const area = line + ` L ${w} ${h} L 0 ${h} Z`;
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  svg.innerHTML =
+    `<path d="${area}" fill="var(--accent-soft)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>` +
+    `<text x="2" y="11" font-size="10" fill="var(--ink-3)" font-family="ui-monospace,monospace">daily volume · peak ${max}</text>`;
+}
+
+$("#ingest").onclick = async () => {
+  const btn = $("#ingest"); btn.disabled = true;
+  $("#ingest-status").textContent = "building…";
+  try {
+    await api("/ingest/synthetic", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ days: Number($("#days").value) })
+    });
+    $("#ingest-status").textContent = "";
+    await refresh();
+  } catch (e) { $("#ingest-status").innerHTML = `<span class="err">${e.message}</span>`; }
+  btn.disabled = false;
+};
+
+$("#go").onclick = async () => {
+  const q = $("#q").value.trim();
+  if (!q) return;
+  const body = { query: q, k: 20, stop_after: $("#stop").value };
+  if ($("#asof").value) body.as_of = $("#asof").value + "T00:00:00Z";
+  $("#results").innerHTML = `<p class="muted">searching…</p>`;
+  try {
+    const r = await api("/search", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    drawFunnel(r.cascade); drawResults(r);
+  } catch (e) {
+    $("#funnel").innerHTML = "";
+    $("#results").innerHTML = `<p class="err">${e.message}</p>`;
+  }
+};
+
+function drawFunnel(c) {
+  const labels = ["corpus", "sparse ∪ dense", "late interaction", "cross-encoder"];
+  const n = c.narrowing, max = n[0] || 1;
+  const t = c.timings_ms || {};
+  const keys = [null, "sparse", "late", "rerank"];
+  $("#funnel").innerHTML = `<div class="funnel">` + labels.map((l, i) => `
+    <div class="fstep">
+      <span class="muted">${l}</span>
+      <span class="fbar"><i style="width:${Math.max(100 * n[i] / max, n[i] ? 0.6 : 0)}%"></i></span>
+      <span class="fnum">${fmt(n[i])}${keys[i] && t[keys[i]] != null ? " · " + t[keys[i]].toFixed(0) + "ms" : ""}</span>
+    </div>`).join("") + `</div>`;
+}
+
+function drawResults(r) {
+  if (!r.results.length) { $("#results").innerHTML = `<p class="muted">No documents matched before the cutoff.</p>`; return; }
+  const comps = ["bm25", "dense", "late", "cross", "recency", "source_independence"];
+  $("#results").innerHTML = `<table><thead><tr>
+      <th>Document</th><th>Published</th><th>Source</th>
+      <th class="num">Score</th><th>Components</th></tr></thead><tbody>` +
+    r.results.map(h => `<tr class="hit" data-id="${h.doc_id}">
+      <td><code>${h.doc_id}</code><div class="muted">${(h.span || "").slice(0, 110)}…</div></td>
+      <td class="num">${(h.published_at || "").slice(0, 10)}</td>
+      <td>${h.source_family}<div class="muted">${h.source_id}</div></td>
+      <td class="num">${h.score.toFixed(3)}</td>
+      <td><div class="chips">${comps.filter(c => h.components[c] != null)
+        .map(c => `<span class="chip">${c} ${h.components[c].toFixed(2)}</span>`).join("")}</div></td>
+    </tr>`).join("") + `</tbody></table>`;
+  document.querySelectorAll("tr.hit").forEach(tr => tr.onclick = () => openDoc(tr.dataset.id));
+}
+
+async function openDoc(id) {
+  const [doc, cluster] = await Promise.all([api(`/documents/${id}`), api(`/documents/${id}/cluster`)]);
+  $("#dlg-title").textContent = doc.doc_id;
+  const weak = cluster.independence < 0.5 && cluster.size > 1;
+  $("#dlg-body").innerHTML = `<dl class="kv">
+      <dt>published</dt><dd>${doc.published_at}</dd>
+      <dt>source</dt><dd>${doc.source_id} (${doc.source_family})</dd>
+      <dt>cluster size</dt><dd>${cluster.size}</dd>
+      <dt>source families</dt><dd>${cluster.distinct_source_families}</dd>
+      <dt>independence</dt><dd>${cluster.independence.toFixed(2)}</dd>
+    </dl>${weak ? `<div class="warn"><strong>Low source independence.</strong>
+      ${cluster.size} copies span only ${cluster.distinct_source_families} syndication
+      ${cluster.distinct_source_families === 1 ? "family" : "families"} — this is one voice
+      republished, not corroboration.</div>` : ""}
+    <p style="margin-top:14px;white-space:pre-wrap">${doc.text}</p>`;
+  $("#dlg").showModal();
+}
+
+$("#q").addEventListener("keydown", e => { if (e.key === "Enter") $("#go").click(); });
+refresh();
+</script>
+</body>
+</html>

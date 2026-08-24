@@ -1,0 +1,119 @@
+{
+  "hardware_profile": "gpu_80gb",
+  "seed": 20260824,
+  "horizon_days": 7,
+  "artifacts_dir": "artifacts",
+  "tracking": "local",
+  "mlflow_uri": "http://localhost:5000",
+  "experiment": "pramaan-x",
+  "stage0": {
+    "exact_dedup": true,
+    "minhash_permutations": 128,
+    "minhash_bands": 32,
+    "minhash_threshold": 0.8,
+    "simhash_bits": 64,
+    "simhash_hamming_threshold": 3,
+    "strip_boilerplate": true,
+    "min_tokens": 12,
+    "require_timestamp": true,
+    "max_future_skew_hours": 6,
+    "cache_dir": ".cache/pramaan"
+  },
+  "stage1": {
+    "bm25_k1": 1.5,
+    "bm25_b": 0.75,
+    "lexical_trigger_percentile": 0.85,
+    "relevance_threshold": 0.12,
+    "relevance_target_recall": 0.98,
+    "burst_cusum_k": 0.5,
+    "burst_cusum_h": 5.0,
+    "burst_cusum_warmup": 0.25,
+    "bocpd_hazard": 0.008333333333333333,
+    "bocpd_threshold": 0.25,
+    "extractor": "rule",
+    "extractor_min_type_score": 3.0,
+    "burst_requires_lexical": true,
+    "burst_lexical_percentile": 0.85,
+    "gliner_model": "knowledgator/gliner-relex-large-v1.0",
+    "embedder": "jina-v5-small",
+    "embed_dim": 1024,
+    "retain_on_any": true
+  },
+  "stage2": {
+    "bm25_top_k": 200,
+    "dense_top_k": 200,
+    "late_top_k": 60,
+    "rerank_top_k": 20,
+    "rrf_k": 60,
+    "engine": "memory",
+    "graph_backend": "memory",
+    "reranker": "jina-reranker-3.5",
+    "use_learned_fusion": true,
+    "mtrm_horizons": [
+      1,
+      3,
+      7,
+      30,
+      90,
+      365
+    ],
+    "lantern_long_days": 180,
+    "lantern_short_days": 14,
+    "lantern_evidence_budget": 12,
+    "ithi_max_per_type": 8
+  },
+  "stage3": {
+    "provider": "stub",
+    "base_url": "http://localhost:8000/v1",
+    "model": "Qwen/Qwen3.8-27B",
+    "teacher_model": null,
+    "temperature": 0.7,
+    "max_tokens": 768,
+    "timeout_s": 60.0,
+    "ambiguity_threshold": 0.55,
+    "scatter_samples": 6,
+    "scatter_temperature": 0.95,
+    "max_calls": 4000,
+    "cache_responses": true
+  },
+  "stage4": {
+    "tabular_models": [
+      "lightgbm",
+      "xgboost",
+      "catboost"
+    ],
+    "n_folds": 5,
+    "hazard_hidden": [
+      64,
+      32
+    ],
+    "hazard_epochs": 120,
+    "hazard_lr": 0.003,
+    "hazard_intervals": 6,
+    "use_aft": true,
+    "openset_evt_tail_frac": 0.1,
+    "calibrators": [
+      "isotonic",
+      "venn_abers",
+      "temperature"
+    ],
+    "random_state": 20260824
+  },
+  "stage5": {
+    "epsilon": 0.1,
+    "delta": 0.1,
+    "lambda_grid": 200,
+    "limited_fp_budget": 0.35,
+    "alert_probability": 0.6,
+    "alert_min_independent_sources": 2,
+    "watch_probability": 0.25,
+    "ledger_path": "artifacts/ledger.jsonl"
+  },
+  "eval": {
+    "temporal_folds": 4,
+    "embargo_days": 7,
+    "required_recall": 1.0,
+    "ndcg_k": 10,
+    "recall_k": 50
+  }
+}

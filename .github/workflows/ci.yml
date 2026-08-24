@@ -1,0 +1,81 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONHASHSEED: "0"      # dedup and hashing must be bit-reproducible in CI
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: pip install ruff
+      - run: ruff check pramaan_x tests
+      - run: ruff format --check pramaan_x tests
+        continue-on-error: true
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "${{ matrix.python-version }}", cache: pip}
+      - run: pip install ".[boost,serve,llm,dev]"
+      - name: Run tests
+        run: pytest tests -q --durations=10
+
+  # The retrieval benchmark is a separate job because it is the one measurement
+  # the design brief forbids skipping. A drop in Recall@K is a build failure,
+  # not a line in a log nobody reads.
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12", cache: pip}
+      - run: pip install ".[boost,serve,llm,dev]"
+      - name: Retrieval Recall@K
+        run: python -m pramaan_x.cli bench --days 300 | tee benchmark.txt
+      - uses: actions/upload-artifact@v4
+        with: {name: retrieval-benchmark, path: benchmark.txt}
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: pramaan-x:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test the image
+        run: |
+          docker run -d --name px -p 8000:8000 pramaan-x:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/health && break || sleep 2
+          done
+          curl -fsS http://localhost:8000/health
+          curl -fsS -X POST http://localhost:8000/ingest/synthetic \
+            -H 'Content-Type: application/json' -d '{"days":60}' > /dev/null
+          curl -fsS -X POST http://localhost:8000/search \
+            -H 'Content-Type: application/json' \
+            -d '{"query":"reservoir spill threshold","k":3}' | head -c 400
+          docker rm -f px

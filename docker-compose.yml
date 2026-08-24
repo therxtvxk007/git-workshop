@@ -1,0 +1,83 @@
+# Docker Compose first; Kubernetes only when real traffic justifies it.
+#
+# Only `api` is required. Everything else is behind a profile, because the
+# defaults run entirely in-process: MemoryEngine instead of Qdrant, MemoryGraph
+# instead of Neo4j, the local run store instead of MLflow. Start a service when
+# you have outgrown the in-process one, not before -- an idle Neo4j is not
+# architecture, it is a container.
+
+services:
+  api:
+    build: .
+    image: pramaan-x:1.0.0
+    ports: ["8000:8000"]
+    environment:
+      PRAMAAN_CONFIG: /app/configs/cpu_only.json
+      OMP_NUM_THREADS: "4"
+    volumes:
+      - artifacts:/app/artifacts
+      - cache:/app/.cache
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # --- optional backends -------------------------------------------------
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    profiles: ["vector"]
+    ports: ["6333:6333", "6334:6334"]
+    volumes: [qdrant:/qdrant/storage]
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:5.26-community
+    profiles: ["graph"]
+    ports: ["7474:7474", "7687:7687"]
+    environment:
+      NEO4J_AUTH: neo4j/pramaan-dev-only
+      NEO4J_server_memory_heap_max__size: 2G
+    volumes: [neo4j:/data]
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.19.0
+    profiles: ["tracking"]
+    ports: ["5000:5000"]
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --default-artifact-root /mlflow/artifacts
+    volumes: [mlflow:/mlflow]
+    restart: unless-stopped
+
+  # Requires an NVIDIA runtime. The served model is the one named in the
+  # hardware profile; quantisation is chosen there, not here.
+  vllm:
+    image: vllm/vllm-openai:latest
+    profiles: ["llm"]
+    ports: ["8001:8000"]
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+    command: >
+      --model Qwen/Qwen3.8-27B
+      --quantization fp8
+      --max-model-len 65536
+      --gpu-memory-utilization 0.90
+    volumes: [hf:/root/.cache/huggingface]
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: 1, capabilities: [gpu]}]
+    restart: unless-stopped
+
+volumes:
+  artifacts: {}
+  cache: {}
+  qdrant: {}
+  neo4j: {}
+  mlflow: {}
+  hf: {}
