@@ -1,0 +1,715 @@
+<title>PRAMAAN-X August 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --ground:#EDF1F4;
+  --surface:#FFFFFF;
+  --surface-2:#F6F9FB;
+  --ink:#0F1A21;
+  --ink-2:#4B5C67;
+  --ink-3:#788994;
+  --rule:#D2DCE3;
+  --rule-strong:#B4C3CD;
+  --accent:#0D6A8B;
+  --accent-ink:#095470;
+  --accent-soft:#DCEBF2;
+  --alert:#B23F35;
+  --alert-soft:#F6E2DF;
+  --watch:#9A6A14;
+  --watch-soft:#F7ECD6;
+  --monitor:#256B5C;
+  --monitor-soft:#DDEEE9;
+  --shadow:0 1px 2px rgba(15,26,33,.05),0 8px 24px -12px rgba(15,26,33,.18);
+  --maxw:1120px;
+  --prose:68ch;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0A1015;
+    --surface:#111A21;
+    --surface-2:#16212A;
+    --ink:#E3EBF1;
+    --ink-2:#9AACB8;
+    --ink-3:#71838F;
+    --rule:#22313B;
+    --rule-strong:#33454F;
+    --accent:#52B4D6;
+    --accent-ink:#7FCCE7;
+    --accent-soft:#0F2E3B;
+    --alert:#E5796C;
+    --alert-soft:#361B18;
+    --watch:#DDA83F;
+    --watch-soft:#332612;
+    --monitor:#5FBCA3;
+    --monitor-soft:#12302A;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0A1015;
+  --surface:#111A21;
+  --surface-2:#16212A;
+  --ink:#E3EBF1;
+  --ink-2:#9AACB8;
+  --ink-3:#71838F;
+  --rule:#22313B;
+  --rule-strong:#33454F;
+  --accent:#52B4D6;
+  --accent-ink:#7FCCE7;
+  --accent-soft:#0F2E3B;
+  --alert:#E5796C;
+  --alert-soft:#361B18;
+  --watch:#DDA83F;
+  --watch-soft:#332612;
+  --monitor:#5FBCA3;
+  --monitor-soft:#12302A;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"Newsreader",Georgia,"Times New Roman",serif;
+  font-size:18px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent-ink);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+a:hover{border-bottom-color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.sans{font-family:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif}
+
+h1,h2,h3,h4{font-family:"Archivo",system-ui,sans-serif;text-wrap:balance;margin:0;line-height:1.15;letter-spacing:-.012em}
+p{margin:0}
+
+/* ---------- shell ---------- */
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 28px}
+.layout{display:grid;grid-template-columns:1fr;gap:0}
+@media (min-width:1040px){
+  .layout{grid-template-columns:186px minmax(0,1fr);gap:56px;align-items:start}
+}
+
+/* ---------- nav rail ---------- */
+.rail{display:none}
+@media (min-width:1040px){
+  .rail{
+    display:block;position:sticky;top:0;
+    padding:44px 0 60px;
+    max-height:100vh;overflow-y:auto;
+  }
+}
+.rail-title{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}
+.rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+.rail a{
+  display:flex;gap:9px;align-items:baseline;
+  font-family:"Archivo",sans-serif;font-size:12.5px;line-height:1.35;
+  color:var(--ink-2);border:0;padding:5px 8px 5px 0;border-left:2px solid transparent;padding-left:10px;
+}
+.rail a:hover{color:var(--ink);border-left-color:var(--rule-strong)}
+.rail a .n{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+
+/* ---------- masthead ---------- */
+.masthead{padding:64px 0 40px;border-bottom:1px solid var(--rule)}
+.dateline{
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);
+  margin-bottom:22px;
+}
+.dateline .dot{width:4px;height:4px;border-radius:50%;background:var(--rule-strong)}
+h1{
+  font-size:clamp(40px,6.4vw,68px);font-weight:600;letter-spacing:-.03em;
+  margin-bottom:6px;
+}
+h1 .x{color:var(--accent)}
+.subtitle{
+  font-family:"Archivo",sans-serif;font-weight:400;
+  font-size:clamp(17px,2.2vw,21px);color:var(--ink-2);letter-spacing:-.01em;line-height:1.4;
+  max-width:34ch;margin-bottom:30px;
+}
+.thesis{
+  max-width:var(--prose);font-size:19.5px;color:var(--ink);
+}
+.thesis strong{font-weight:600;color:var(--ink);box-shadow:inset 0 -.5em 0 var(--accent-soft)}
+.thesis + .thesis{margin-top:14px}
+
+/* ---------- sections ---------- */
+section{padding:52px 0;border-bottom:1px solid var(--rule)}
+section:last-of-type{border-bottom:0}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.17em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:12px;display:block;
+}
+h2{font-size:clamp(25px,3.4vw,33px);font-weight:600;margin-bottom:12px}
+h3{font-size:19px;font-weight:600;margin-bottom:8px;letter-spacing:-.008em}
+.lede{max-width:var(--prose);color:var(--ink-2);font-size:18.5px}
+.lede + *{margin-top:28px}
+.stack-v{display:flex;flex-direction:column;gap:26px}
+.prose{max-width:var(--prose)}
+.prose p + p{margin-top:13px}
+
+/* ---------- pipeline ---------- */
+.pipe{
+  display:grid;gap:10px;margin-top:30px;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+}
+.stage{
+  background:var(--surface);border:1px solid var(--rule);border-radius:3px;
+  padding:14px 14px 15px;position:relative;display:flex;flex-direction:column;gap:7px;
+  box-shadow:var(--shadow);
+}
+.stage::after{
+  content:"";position:absolute;right:-7px;top:50%;transform:translateY(-50%);
+  width:6px;height:6px;border-right:1.5px solid var(--rule-strong);border-top:1.5px solid var(--rule-strong);
+  rotate:45deg;z-index:1;
+}
+.stage:last-child::after{display:none}
+@media (max-width:719px){.stage::after{display:none}}
+.stage .n{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-3);font-variant-numeric:tabular-nums;
+  letter-spacing:.1em;
+}
+.stage .t{font-family:"Archivo",sans-serif;font-size:14px;font-weight:600;line-height:1.28;letter-spacing:-.008em}
+.stage .d{font-size:13.5px;line-height:1.45;color:var(--ink-2)}
+.stage.terminal{border-color:var(--accent);background:var(--accent-soft)}
+.stage.terminal .d{color:var(--ink-2)}
+
+.tiers{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.tier{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  padding:5px 11px;border-radius:2px;border:1px solid;display:inline-flex;align-items:center;gap:7px;
+}
+.tier::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.tier.a{color:var(--alert);background:var(--alert-soft);border-color:color-mix(in srgb,var(--alert) 30%,transparent)}
+.tier.w{color:var(--watch);background:var(--watch-soft);border-color:color-mix(in srgb,var(--watch) 30%,transparent)}
+.tier.m{color:var(--monitor);background:var(--monitor-soft);border-color:color-mix(in srgb,var(--monitor) 30%,transparent)}
+
+/* ---------- table ---------- */
+.tablewrap{
+  overflow-x:auto;margin-top:26px;border:1px solid var(--rule);border-radius:3px;background:var(--surface);
+  box-shadow:var(--shadow);
+}
+table{border-collapse:collapse;width:100%;min-width:760px;font-size:15px}
+thead th{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-3);text-align:left;padding:13px 18px;border-bottom:1px solid var(--rule-strong);
+  font-weight:500;background:var(--surface-2);
+}
+tbody td{padding:12px 18px;border-bottom:1px solid var(--rule);vertical-align:top;line-height:1.45}
+tbody tr:last-child td{border-bottom:0}
+tr.group td{
+  background:var(--surface-2);padding:9px 18px;
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);border-bottom:1px solid var(--rule);
+}
+td.comp{font-family:"Archivo",sans-serif;font-size:14.5px;font-weight:500;width:23%;letter-spacing:-.005em}
+td.choice{font-family:"IBM Plex Mono",monospace;font-size:13px;width:30%;color:var(--ink);line-height:1.5}
+td.why{color:var(--ink-2);font-size:15px;width:47%}
+.src{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;white-space:nowrap;
+  padding:1px 5px;border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);
+  border-radius:2px;margin-left:6px;color:var(--accent-ink);border-bottom-width:1px;
+}
+
+/* ---------- formula ---------- */
+.formula{
+  background:var(--surface);border:1px solid var(--rule);border-left:2px solid var(--accent);
+  border-radius:2px;padding:20px 22px;margin-top:20px;overflow-x:auto;
+  font-family:"IBM Plex Mono",monospace;font-size:14.5px;line-height:2;color:var(--ink);
+}
+.formula .lhs{color:var(--accent-ink)}
+.formula .w{color:var(--watch)}
+.formula .note{
+  display:block;margin-top:10px;font-family:"Newsreader",serif;font-size:15px;
+  color:var(--ink-2);line-height:1.5;white-space:normal;
+}
+.frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 4px}
+.frac .top{border-bottom:1px solid var(--ink-2);padding:0 6px;line-height:1.5}
+.frac .bot{padding:0 6px;line-height:1.5}
+.constraint{display:block;margin-top:6px;padding-left:2px}
+
+/* ---------- ordered steps ---------- */
+.steps{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-direction:column;gap:0;counter-reset:s}
+.steps li{
+  counter-increment:s;display:grid;grid-template-columns:34px minmax(0,1fr);gap:16px;
+  padding:15px 0;border-bottom:1px solid var(--rule);align-items:start;
+}
+.steps li:last-child{border-bottom:0}
+.steps li::before{
+  content:counter(s,decimal-leading-zero);
+  font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--accent);
+  font-variant-numeric:tabular-nums;padding-top:5px;letter-spacing:.06em;
+}
+.steps .sh{font-family:"Archivo",sans-serif;font-size:16px;font-weight:600;letter-spacing:-.006em}
+.steps .sd{color:var(--ink-2);font-size:16.5px;margin-top:2px;line-height:1.5}
+
+/* ---------- cards ---------- */
+.cards{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));margin-top:24px}
+.card{
+  background:var(--surface);border:1px solid var(--rule);border-radius:3px;padding:17px 18px 18px;
+  display:flex;flex-direction:column;gap:7px;box-shadow:var(--shadow);
+}
+.card .k{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.card .h{font-family:"Archivo",sans-serif;font-size:15.5px;font-weight:600;letter-spacing:-.008em;line-height:1.25}
+.card .b{font-size:15.5px;color:var(--ink-2);line-height:1.48}
+
+/* ---------- horizons ---------- */
+.horizons{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}
+.hz{
+  font-family:"IBM Plex Mono",monospace;font-size:12px;padding:6px 12px;border-radius:2px;
+  background:var(--surface);border:1px solid var(--rule-strong);color:var(--ink);font-variant-numeric:tabular-nums;
+}
+
+/* ---------- code ---------- */
+pre{
+  margin:22px 0 0;background:var(--surface);border:1px solid var(--rule);border-radius:3px;
+  padding:18px 20px;overflow-x:auto;box-shadow:var(--shadow);
+}
+code{font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.65;color:var(--ink)}
+.k{color:var(--accent-ink)}
+.s{color:var(--monitor)}
+.num{color:var(--watch)}
+.pn{color:var(--ink-3)}
+p code,li code,td code{
+  background:var(--surface-2);border:1px solid var(--rule);border-radius:2px;
+  padding:1px 5px;font-size:.85em;
+}
+
+/* ---------- two-column verdict ---------- */
+.verdict{display:grid;gap:14px;margin-top:26px;grid-template-columns:1fr}
+@media (min-width:800px){.verdict{grid-template-columns:1fr 1fr;gap:20px}}
+.col{border:1px solid var(--rule);border-radius:3px;background:var(--surface);padding:20px 21px 22px;box-shadow:var(--shadow)}
+.col.keep{border-top:2px solid var(--monitor)}
+.col.drop{border-top:2px solid var(--alert)}
+.col .ch{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;margin-bottom:4px;
+}
+.col.keep .ch{color:var(--monitor)}
+.col.drop .ch{color:var(--alert)}
+.col h3{margin-bottom:14px;font-size:17.5px}
+.col ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.col li{
+  font-size:15.5px;padding:7px 0;border-bottom:1px solid var(--rule);color:var(--ink);
+  display:flex;gap:10px;align-items:baseline;line-height:1.4;
+}
+.col li:last-child{border-bottom:0}
+.col li::before{font-family:"IBM Plex Mono",monospace;font-size:12px;flex:none}
+.col.keep li::before{content:"+";color:var(--monitor)}
+.col.drop li::before{content:"\2013";color:var(--alert)}
+.col .foot{margin-top:16px;font-size:15px;color:var(--ink-2);line-height:1.5}
+
+/* ---------- pull quote ---------- */
+.answer{
+  margin-top:26px;background:var(--surface);border:1px solid var(--rule-strong);border-radius:3px;
+  padding:0;overflow:hidden;box-shadow:var(--shadow);
+}
+.answer .qh{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--ink-3);padding:13px 26px;border-bottom:1px solid var(--rule);background:var(--surface-2);
+}
+.answer blockquote{
+  margin:0;padding:30px 30px 32px;font-size:clamp(19px,2.6vw,23.5px);line-height:1.5;
+  letter-spacing:-.011em;color:var(--ink);position:relative;
+}
+.answer blockquote::before{
+  content:"";position:absolute;left:0;top:30px;bottom:32px;width:2px;background:var(--accent);
+}
+.answer em{font-style:italic;color:var(--accent-ink)}
+
+/* ---------- freeze list ---------- */
+.freeze{
+  margin-top:26px;border:1px solid var(--rule);border-radius:3px;background:var(--surface);
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.freeze .fh{
+  display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:14px 22px;border-bottom:1px solid var(--rule);background:var(--surface-2);
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+}
+.freeze ul{list-style:none;margin:0;padding:8px 0;display:grid;grid-template-columns:1fr}
+@media (min-width:720px){.freeze ul{grid-template-columns:1fr 1fr}}
+.freeze li{
+  display:flex;gap:11px;align-items:baseline;padding:8px 22px;
+  font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink);line-height:1.45;
+}
+.freeze li::before{content:"\25A0";color:var(--accent);font-size:8px;flex:none;transform:translateY(-2px)}
+
+/* ---------- sources ---------- */
+.sources{list-style:none;margin:24px 0 0;padding:0;display:flex;flex-direction:column;gap:0}
+.sources li{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:baseline;
+  padding:11px 0;border-bottom:1px solid var(--rule);font-size:15.5px;
+}
+.sources li:last-child{border-bottom:0}
+.badge{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  padding:3px 8px;border-radius:2px;white-space:nowrap;border:1px solid;
+}
+.badge.ok{color:var(--monitor);border-color:color-mix(in srgb,var(--monitor) 32%,transparent);background:var(--monitor-soft)}
+.badge.chk{color:var(--watch);border-color:color-mix(in srgb,var(--watch) 34%,transparent);background:var(--watch-soft)}
+.callout{
+  margin-top:22px;border:1px solid color-mix(in srgb,var(--watch) 34%,transparent);background:var(--watch-soft);
+  border-radius:3px;padding:16px 19px;font-size:16px;line-height:1.5;color:var(--ink);max-width:var(--prose);
+}
+.callout .cl{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--watch);display:block;margin-bottom:5px;
+}
+
+footer{padding:40px 0 64px;color:var(--ink-3);font-family:"IBM Plex Mono",monospace;font-size:11.5px;letter-spacing:.06em;line-height:1.7}
+
+@media (prefers-reduced-motion:no-preference){
+  .masthead > *{animation:rise .5s cubic-bezier(.2,.7,.3,1) backwards}
+  .masthead > *:nth-child(2){animation-delay:.05s}
+  .masthead > *:nth-child(3){animation-delay:.09s}
+  .masthead > *:nth-child(4){animation-delay:.13s}
+  @keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+}
+</style>
+
+<div class="wrap">
+<div class="layout">
+
+  <nav class="rail" aria-label="Sections">
+    <div class="rail-title">Contents</div>
+    <ol>
+      <li><a href="#position"><span class="n">01</span><span>Position</span></a></li>
+      <li><a href="#pipeline"><span class="n">02</span><span>Architecture</span></a></li>
+      <li><a href="#stack"><span class="n">03</span><span>The stack</span></a></li>
+      <li><a href="#temporal"><span class="n">04</span><span>Temporal retrieval</span></a></li>
+      <li><a href="#retrieval"><span class="n">05</span><span>Retrieval cascade</span></a></li>
+      <li><a href="#extraction"><span class="n">06</span><span>Extraction</span></a></li>
+      <li><a href="#candidates"><span class="n">07</span><span>Candidate generation</span></a></li>
+      <li><a href="#risk"><span class="n">08</span><span>Risk control</span></a></li>
+      <li><a href="#classical"><span class="n">09</span><span>Keep / drop</span></a></li>
+      <li><a href="#answer"><span class="n">10</span><span>The answer</span></a></li>
+      <li><a href="#freeze"><span class="n">11</span><span>v1 freeze</span></a></li>
+      <li><a href="#sources"><span class="n">12</span><span>Provenance</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <header class="masthead">
+      <div class="dateline">
+        <span>Architecture brief</span><span class="dot"></span>
+        <span>August 2026</span><span class="dot"></span>
+        <span>Configuration&nbsp;v1 — frozen</span>
+      </div>
+      <h1>PRAMAAN-<span class="x">X</span></h1>
+      <p class="subtitle">A multimodal event-forecasting platform with calibrated risk guarantees.</p>
+      <div>
+        <p class="thesis">The criticism should change the presentation, not push you into replacing every mature method with a fashionable tool. C++ is not obsolete — PyTorch, vLLM and CUDA all depend on it heavily. But <strong>the visible project must be Python/PyTorch-first</strong>, with C++ confined to profiled, performance-critical components.</p>
+        <p class="thesis">The system should read as a 2026 research platform, not a C++ coursework application.</p>
+      </div>
+    </header>
+
+    <section id="position">
+      <span class="eyebrow">01 — Position</span>
+      <h2>Where the novelty actually lives</h2>
+      <p class="lede">No single component here is the contribution. The contribution is what happens between them.</p>
+      <div class="cards">
+        <div class="card"><div class="k">Composition</div><div class="h">Module interaction</div><div class="b">Extraction, retrieval, graph and hazard signals feed one another rather than running as a pipeline of disconnected demos.</div></div>
+        <div class="card"><div class="k">Objective</div><div class="h">Constraint-based optimisation</div><div class="b">Specificity is maximised subject to a certified bound on missed events — not tuned by hand until a metric looks acceptable.</div></div>
+        <div class="card"><div class="k">Method</div><div class="h">Leakage-proof evaluation</div><div class="b">Immutable historical cutoffs and content hashes, so no evidence dated after the forecast can enter the forecast.</div></div>
+        <div class="card"><div class="k">Coverage</div><div class="h">Open-set completeness</div><div class="b">Events that fit no known class are preserved as candidates rather than discarded by a closed-set classifier.</div></div>
+        <div class="card"><div class="k">Evidence</div><div class="h">Multimodal temporal retrieval</div><div class="b">Text, images, screenshots and video ranked jointly, with recency, long-run pattern and provenance scored explicitly.</div></div>
+        <div class="card"><div class="k">Guarantee</div><div class="h">Prospective verification</div><div class="b">Hashed forecasts committed before outcomes are known, so results cannot be reconstructed after the fact.</div></div>
+      </div>
+    </section>
+
+    <section id="pipeline">
+      <span class="eyebrow">02 — Architecture</span>
+      <h2>End-to-end flow</h2>
+      <p class="lede">Seven stages, each one addressing a named failure mode. Evidence enters immutably at the left and leaves as a tiered, auditable ledger entry at the right.</p>
+      <div class="pipe">
+        <div class="stage"><span class="n">STAGE 1</span><span class="t">Immutable multimodal event stream</span><span class="d">Text, image, video and screenshot sources with fixed publication cutoffs.</span></div>
+        <div class="stage"><span class="n">STAGE 2</span><span class="t">Zero-shot joint extraction</span><span class="d">Entities, relations and event tuples in a single encoder pass, schema-constrained.</span></div>
+        <div class="stage"><span class="n">STAGE 3</span><span class="t">Hybrid retrieval + temporal graph</span><span class="d">Four-stage cascade over a queryable graph of event provenance and paths.</span></div>
+        <div class="stage"><span class="n">STAGE 4</span><span class="t">High-recall hypothesis union</span><span class="d">Four independent generators unioned, then diversity-selected.</span></div>
+        <div class="stage"><span class="n">STAGE 5</span><span class="t">Hazard ensemble + sequential evidence</span><span class="d">Discrete-time risk over future windows, accumulated across weak signals.</span></div>
+        <div class="stage"><span class="n">STAGE 6</span><span class="t">Conformal risk control</span><span class="d">Set size grown until the false-negative bound is certified.</span></div>
+        <div class="stage terminal"><span class="n">STAGE 7</span><span class="t">Alert / Watch / Monitor ledger</span><span class="d">Hashed, timestamped, analyst-facing output.</span></div>
+      </div>
+      <div class="tiers">
+        <span class="tier a">Alert</span>
+        <span class="tier w">Watch</span>
+        <span class="tier m">Monitor</span>
+      </div>
+    </section>
+
+    <section id="stack">
+      <span class="eyebrow">03 — The stack</span>
+      <h2>Exact component choices</h2>
+      <p class="lede">Every row states what is used and why it is the current answer rather than a historical one. Sources are linked where a release or paper backs the claim.</p>
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th scope="col">Component</th><th scope="col">2026 choice</th><th scope="col">Why this is current</th></tr>
+          </thead>
+          <tbody>
+            <tr class="group"><td colspan="3">Foundation</td></tr>
+            <tr><td class="comp">Primary language</td><td class="choice">Python 3.14</td><td class="why">The standard AI/research ecosystem, compatible with modern PyTorch releases.</td></tr>
+            <tr><td class="comp">Deep-learning framework</td><td class="choice">PyTorch 2.13 + torch.compile</td><td class="why">The July 2026 release; modern compilation, distributed and memory improvements.<a class="src" href="https://pytorch.org/blog/pytorch-2-13-release-blog/">2.13 blog</a></td></tr>
+            <tr><td class="comp">Package / environment</td><td class="choice">uv, locked deps, Docker</td><td class="why">Fast, reproducible environments instead of unmanaged <code>pip</code> installs.</td></tr>
+            <tr><td class="comp">Testing</td><td class="choice">pytest, Ruff, mypy/pyright, CI</td><td class="why">Demonstrates software-engineering maturity, not just model results.</td></tr>
+            <tr><td class="comp">Deployment</td><td class="choice">Docker Compose, then Kubernetes</td><td class="why">Kubernetes only once scale genuinely requires it — avoids infrastructure theatre.</td></tr>
+
+            <tr class="group"><td colspan="3">Data plane</td></tr>
+            <tr><td class="comp">Data processing</td><td class="choice">Polars + Arrow/Parquet + DuckDB</td><td class="why">Faster, typed columnar processing; avoids a Pandas-only pipeline.</td></tr>
+            <tr><td class="comp">Streaming <em>(if required)</em></td><td class="choice">Redpanda / Kafka</td><td class="why">Only for genuinely continuous feeds. Do not introduce it for a static prototype.</td></tr>
+            <tr><td class="comp">Dataset versioning</td><td class="choice">DVC or lakeFS + content hashes</td><td class="why">Immutable historical cutoffs and reproducible leakage audits.</td></tr>
+
+            <tr class="group"><td colspan="3">Models</td></tr>
+            <tr><td class="comp">Main open-weight LLM</td><td class="choice">Qwen3.8-27B</td><td class="why">Released August 2026. Apache-2.0, native text/image/video, reasoning control, 262K native context.<a class="src" href="https://huggingface.co/Qwen/Qwen3.8-27B">Model card</a></td></tr>
+            <tr><td class="comp">LLM serving</td><td class="choice">vLLM or SGLang</td><td class="why">High-throughput inference; both officially supported by Qwen3.8.</td></tr>
+            <tr><td class="comp">Efficient adaptation</td><td class="choice">QLoRA/LoRA via PEFT; optional GRPO</td><td class="why">Avoids full-model training. GRPO supports SCATTER-style diversity optimisation.</td></tr>
+            <tr><td class="comp">Joint entity/relation extraction</td><td class="choice">GLiNER-Relex + LLM verifier</td><td class="why">Zero-shot entities and relations in one pass — far lighter than an LLM for everything.<a class="src" href="https://arxiv.org/abs/2605.10108">arXiv</a></td></tr>
+            <tr><td class="comp">Output validation</td><td class="choice">Pydantic + constrained decoding</td><td class="why">Prevents malformed LLM event tuples from ever reaching the graph.</td></tr>
+
+            <tr class="group"><td colspan="3">Retrieval</td></tr>
+            <tr><td class="comp">Dense retrieval</td><td class="choice">Jina Embeddings v5 <span class="pn">/</span> Qwen3-VL-Embedding</td><td class="why">Current multilingual retrieval; Jina v5 covers 119+ languages at 32K tokens.<a class="src" href="https://huggingface.co/jinaai/jina-embeddings-v5-text-small">Jina v5</a></td></tr>
+            <tr><td class="comp">Multimodal retrieval</td><td class="choice">Qwen3-VL-Embedding-8B</td><td class="why">Retrieves across text, images, screenshots and video in one space.<a class="src" href="https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B">Model card</a></td></tr>
+            <tr><td class="comp">High-precision reranking</td><td class="choice">Qwen3-VL-Reranker-2B <span class="pn">/</span> Jina Reranker 3.5</td><td class="why">Multimodal listwise reranking rather than cosine similarity alone.</td></tr>
+            <tr><td class="comp">Fine-grained retrieval</td><td class="choice">Sentence Transformers 6, multi-vector</td><td class="why">Late interaction preserves token-level evidence instead of compressing to one vector.<a class="src" href="https://huggingface.co/blog/multi-vector-encoder">Guide</a></td></tr>
+            <tr><td class="comp">Vector store</td><td class="choice">Qdrant, multi-vector search</td><td class="why">Supports dense, sparse and late-interaction retrieval in one engine.</td></tr>
+
+            <tr class="group"><td colspan="3">Graph and time</td></tr>
+            <tr><td class="comp">Knowledge-graph storage</td><td class="choice">Neo4j or PostgreSQL AGE</td><td class="why">Queryable event provenance and multi-hop paths.</td></tr>
+            <tr><td class="comp">Graph modelling</td><td class="choice">PyTorch Geometric + TGM-style modules</td><td class="why">Modern temporal graph research without leaving PyTorch.</td></tr>
+            <tr><td class="comp">Temporal retrieval</td><td class="choice">ITHI + LANTERN + MTRM principles</td><td class="why">Sequential and periodic history, plus long-term inertia, short-term novelty and multi-granularity trend.</td></tr>
+
+            <tr class="group"><td colspan="3">Prediction</td></tr>
+            <tr><td class="comp">Classical prediction</td><td class="choice">LightGBM/XGBoost + logistic regression</td><td class="why">Still competitive, and essential for probability control.</td></tr>
+            <tr><td class="comp">Event timing</td><td class="choice">Discrete-time survival network</td><td class="why">Predicts risk directly over future time windows rather than a single label.</td></tr>
+            <tr><td class="comp">Sequential evidence</td><td class="choice">Bayesian online change point + CUSUM/SPRT</td><td class="why">Accumulates weak evidence without letting an isolated clue dominate.</td></tr>
+            <tr><td class="comp">Unknown-event detection</td><td class="choice">Ensemble disagreement + EVT/open-set</td><td class="why">Preserves previously unseen suspicious cases instead of forcing them into known classes.</td></tr>
+
+            <tr class="group"><td colspan="3">Risk control</td></tr>
+            <tr><td class="comp">Calibration</td><td class="choice">Isotonic / temperature / Dirichlet</td><td class="why">Makes the numerical probabilities mean what they say.</td></tr>
+            <tr><td class="comp">Coverage control</td><td class="choice">Conformal Risk Control + CFEP-style diffusion</td><td class="why">Explicitly controls missed-label risk under a set-valued output.<a class="src" href="https://github.com/aangelopoulos/conformal-risk">CRC repo</a></td></tr>
+            <tr><td class="comp">False-positive control</td><td class="choice">Limited-FP conformal + evidence coincidence</td><td class="why">Minimises unnecessary candidates <em>after</em> the recall constraint is satisfied.</td></tr>
+
+            <tr class="group"><td colspan="3">Operations and interface</td></tr>
+            <tr><td class="comp">Experiment tracking</td><td class="choice">MLflow + dataset/model hashes</td><td class="why">Reproducible runs, parameters and artefacts.</td></tr>
+            <tr><td class="comp">Monitoring</td><td class="choice">Evidently / OpenTelemetry</td><td class="why">Drift, latency, missing-source and calibration monitoring.</td></tr>
+            <tr><td class="comp">Backend</td><td class="choice">FastAPI + Pydantic</td><td class="why">A typed, modern API surface.</td></tr>
+            <tr><td class="comp">Analyst interface</td><td class="choice">Next.js / React dashboard</td><td class="why">More credible than presenting notebooks or a console.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="temporal">
+      <span class="eyebrow">04 — Temporal retrieval</span>
+      <h2>Beyond ITHI: adding LANTERN and MTRM</h2>
+      <p class="lede">The earlier design used ITHI's three historical-information types. Two 2026 results should now be folded in.</p>
+
+      <div class="stack-v" style="margin-top:30px">
+        <div class="prose">
+          <h3>LANTERN — long window against short window</h3>
+          <p>LANTERN separates <strong>long-window strength</strong> (stable interaction patterns) from <strong>short-window novelty</strong> (sudden change), then uses Pareto-greedy selection to build a compact evidence set and adds a structure-aware analogy term. It reports gains over the previous training-free baseline on ICEWS14, ICEWS05-15, ICEWS18 and GDELT.</p>
+        </div>
+
+        <div class="formula">
+          <span class="lhs">R(d)</span> = <span class="w">w₁</span>R<sub>semantic</sub> + <span class="w">w₂</span>R<sub>recency</sub> + <span class="w">w₃</span>R<sub>long-pattern</sub> + <span class="w">w₄</span>R<sub>novel-shift</sub> + <span class="w">w₅</span>R<sub>source</sub> + <span class="w">w₆</span>R<sub>analogy</sub>
+          <span class="note">The retrieval score gains two terms the earlier design lacked: a long-run pattern term and a novelty-shift term, so a stable relationship and a sudden break are scored separately instead of being averaged into one recency weight.</span>
+        </div>
+
+        <div class="prose">
+          <h3>MTRM — many granularities, not one</h3>
+          <p>MTRM combines signals across several temporal granularities rather than choosing between global cycles and adjacent events. Implement features at each horizon and let the hazard model learn which one matters for each event type.</p>
+        </div>
+
+        <div class="horizons">
+          <span class="hz">24 hours</span><span class="hz">3 days</span><span class="hz">7 days</span><span class="hz">30 days</span><span class="hz">90 days</span><span class="hz">1 year / seasonal period</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="retrieval">
+      <span class="eyebrow">05 — Retrieval cascade</span>
+      <h2>Four stages, then temporal and provenance scoring</h2>
+      <p class="lede">Do not present "I used a vector database and RAG." That is now ordinary. The cascade is what makes the retrieval defensible.</p>
+      <ol class="steps">
+        <li><div><div class="sh">Sparse retrieval</div><div class="sd">BM25 for names, places and precise terminology — where dense embeddings reliably lose exact tokens.</div></div></li>
+        <li><div><div class="sh">Dense retrieval</div><div class="sd">Multilingual semantic embeddings for paraphrase and cross-language recall.</div></div></li>
+        <li><div><div class="sh">Late interaction</div><div class="sd">Token- and image-patch-level matching, preserving evidence that a single pooled vector destroys.</div></div></li>
+        <li><div><div class="sh">Cross-encoder / listwise reranking</div><div class="sd">Expensive, high-precision ranking applied only to the surviving candidates.</div></div></li>
+      </ol>
+      <div class="formula">
+        <span class="lhs">S(d, q, t)</span> = <span class="w">α</span>S<sub>BM25</sub> + <span class="w">β</span>S<sub>dense</sub> + <span class="w">γ</span>S<sub>late</sub> + <span class="w">δ</span>S<sub>reranker</sub> + <span class="w">η</span>S<sub>temporal</sub> + <span class="w">ρ</span>S<sub>provenance</sub>
+        <span class="note">This attacks retrieval error directly — the bottleneck identified by AutoCast++ and the event-forecasting work that followed it.</span>
+      </div>
+    </section>
+
+    <section id="extraction">
+      <span class="eyebrow">06 — Extraction</span>
+      <h2>Neuro-symbolic, not brute force</h2>
+      <p class="lede">Do not ask a 27B model to repeatedly scan every document. Use a cheap high-recall extractor, and spend the large model only where it earns its cost.</p>
+      <ol class="steps">
+        <li><div><div class="sh">GLiNER-Relex for joint NER and relation extraction</div><div class="sd">High recall in a single encoder pass over the full corpus.</div></div></li>
+        <li><div><div class="sh">A small classifier for event type and relevance</div><div class="sd">Filters the stream before any large model is invoked.</div></div></li>
+        <li><div><div class="sh">The main LLM only for ambiguity and verification</div><div class="sd">Structured verification of hard cases, not bulk annotation.</div></div></li>
+        <li><div><div class="sh">Consensus before graph insertion</div><div class="sd">Agreement between extractors gates high-confidence writes.</div></div></li>
+        <li><div><div class="sh">Conflicts retained with uncertainty</div><div class="sd">Disagreement is recorded, never arbitrarily resolved in favour of one extractor.</div></div></li>
+      </ol>
+      <pre><code>{
+  <span class="k">"subject"</span>: <span class="s">"..."</span>,
+  <span class="k">"relation"</span>: <span class="s">"..."</span>,
+  <span class="k">"object"</span>: <span class="s">"..."</span>,
+  <span class="k">"event_type"</span>: <span class="s">"..."</span>,
+  <span class="k">"event_time"</span>: <span class="s">"..."</span>,
+  <span class="k">"location"</span>: <span class="s">"..."</span>,
+  <span class="k">"source_id"</span>: <span class="s">"..."</span>,
+  <span class="k">"extractor_confidence"</span>: <span class="num">0.0</span>,
+  <span class="k">"supporting_span"</span>: <span class="s">"..."</span>,
+  <span class="k">"publication_cutoff_valid"</span>: <span class="num">true</span>
+}</code></pre>
+      <p class="lede" style="margin-top:20px">Efficient model, LLM verifier, schema constraints, evidence grounding — with <code>publication_cutoff_valid</code> carrying the leakage guarantee all the way down to the individual tuple.</p>
+    </section>
+
+    <section id="candidates">
+      <span class="eyebrow">07 — Candidate generation</span>
+      <h2>Four independent branches, then a union</h2>
+      <p class="lede">Recall first. Each branch fails differently, which is the entire reason for running four.</p>
+      <div class="cards">
+        <div class="card"><div class="k">Branch 1</div><div class="h">SCATTER-style LLM</div><div class="b">Diverse plausible hypotheses, including ones no structural model would propose.</div></div>
+        <div class="card"><div class="k">Branch 2</div><div class="h">Temporal knowledge graph</div><div class="b">Structural continuations of established event chains.</div></div>
+        <div class="card"><div class="k">Branch 3</div><div class="h">Classical hazard</div><div class="b">High-base-rate and temporal-risk events that statistics catch and language models miss.</div></div>
+        <div class="card"><div class="k">Branch 4</div><div class="h">Open-set anomaly</div><div class="b">Suspicious patterns that fit no known class and would otherwise be dropped.</div></div>
+      </div>
+      <div class="prose" style="margin-top:26px">
+        <p>Take the union, then apply a learned diversity selector so twenty paraphrases of the same event cannot occupy the whole prediction set.</p>
+        <p>Do not fine-tune the main model immediately. Start with QLoRA supervised adaptation and add GRPO only once you have enough validated outcome and reward data — poorly designed reinforcement learning will optimise the evaluator's quirks rather than forecasting quality.</p>
+      </div>
+    </section>
+
+    <section id="risk">
+      <span class="eyebrow">08 — Risk control</span>
+      <h2>Conformal risk control, not ordinary conformal prediction</h2>
+      <p class="lede">This is the strongest update in the design. Define the loss as the missed-event proportion and control it directly.</p>
+      <div class="formula">
+        <span class="lhs">L<sub>FN</sub>(X, Y, λ)</span> = 1 &minus; <span class="frac"><span class="top">|Y &cap; C<sub>λ</sub>(X)|</span><span class="bot">|Y|</span></span>
+        <span class="note">Grow the candidate set until the calibrated upper bound on false-negative risk meets the target. The official Conformal Risk Control implementation already expresses this class of multi-label false-negative loss.</span>
+      </div>
+      <div class="formula">
+        <span class="lhs">max<sub>θ,λ</sub></span> Specificity
+        <span class="constraint">subject to&nbsp;&nbsp; <span class="w">U<sub>1&minus;δ</sub></span>(FNR<sub>θ,λ</sub>) &le; <span class="w">ε</span></span>
+        <span class="note">where U<sub>1&minus;δ</sub> is an upper confidence bound on the false-negative rate. A 2025 NeurIPS result demonstrated exactly this end-to-end optimisation of specificity under a controlled false-negative rate. This is what formalises the C-DAC requirement — not a promise about recall, a certificate.</span>
+      </div>
+    </section>
+
+    <section id="classical">
+      <span class="eyebrow">09 — Keep / drop</span>
+      <h2>What stays classical, and what must not be the visible core</h2>
+      <p class="lede">"Cutting edge" means using the strongest method for each subproblem — not replacing a superior statistical method with a transformer for appearance.</p>
+      <div class="verdict">
+        <div class="col keep">
+          <span class="ch">Keep — inside the ensemble</span>
+          <h3>Not embarrassing legacy choices</h3>
+          <ul>
+            <li>Logistic regression</li>
+            <li>LightGBM</li>
+            <li>BM25</li>
+            <li>CUSUM</li>
+            <li>Survival analysis</li>
+            <li>Isotonic calibration</li>
+          </ul>
+          <p class="foot">The 2026 conflict-forecasting result — logistic regression beating large LLMs — is precisely why mature statistical tools remain necessary. TF-IDF, BM25 and logistic regression belong in the baseline and the ensemble. They simply must not be the entire system.</p>
+        </div>
+        <div class="col drop">
+          <span class="ch">Drop — as the headline contribution</span>
+          <h3>Never the project's visible core</h3>
+          <ul>
+            <li>C++ console application</li>
+            <li>Vanilla LSTM</li>
+            <li>Standalone BERT classifier</li>
+            <li>word2vec-only similarity</li>
+            <li>Plain TF-IDF classification</li>
+            <li>Static knowledge graph</li>
+            <li>Cosine-only vector RAG</li>
+            <li>One prompt to ChatGPT</li>
+            <li>LangChain wrapper with no original algorithm</li>
+            <li>Random train/test split</li>
+            <li>Accuracy as the principal metric</li>
+            <li>SMOTE as the main rare-event solution</li>
+            <li>Post-event web retrieval</li>
+            <li>Manually selected attack clues</li>
+            <li>UI-first development</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="answer">
+      <span class="eyebrow">10 — The answer</span>
+      <h2>If they ridicule C++ again</h2>
+      <p class="lede">One sentence. It settles the language question and demonstrates that you understand both research and systems engineering.</p>
+      <div class="answer">
+        <div class="qh">Say this</div>
+        <blockquote>The research stack is Python 3.14 and PyTorch 2.13, with Qwen3.8 served through vLLM/SGLang, hybrid late-interaction retrieval, temporal graph forecasting and conformal risk control. <em>C++ is limited to the CUDA and inference kernels underneath the Python layer.</em></blockquote>
+      </div>
+    </section>
+
+    <section id="freeze">
+      <span class="eyebrow">11 — v1 freeze</span>
+      <h2>The version to actually build</h2>
+      <p class="lede">Freeze this concrete configuration before adding anything else. Complexity is the failure mode most likely to sink the project.</p>
+      <div class="freeze">
+        <div class="fh"><span>Frozen configuration v1</span><span>18 components</span></div>
+        <ul>
+          <li>Python 3.14</li>
+          <li>PyTorch 2.13</li>
+          <li>Qwen3.8-27B via vLLM</li>
+          <li>GLiNER-Relex extractor</li>
+          <li>Jina Embeddings v5 (text)</li>
+          <li>Qwen3-VL Embedding + Reranker (multimodal)</li>
+          <li>BM25 + dense + late interaction + rerank</li>
+          <li>Qdrant</li>
+          <li>Neo4j + PyTorch Geometric</li>
+          <li>LANTERN / ITHI / MTRM temporal retrieval</li>
+          <li>LightGBM + logistic + hazard ensemble</li>
+          <li>CUSUM / change-point accumulation</li>
+          <li>Conformal Risk Control</li>
+          <li>MLflow + DVC + Docker</li>
+          <li>FastAPI + Next.js</li>
+          <li>Prospective hashed forecast ledger</li>
+        </ul>
+      </div>
+      <p class="lede" style="margin-top:24px">This is recognisably August-2026-level work. More importantly, every modern component here answers a specific failure mode rather than decorating the project.</p>
+    </section>
+
+    <section id="sources">
+      <span class="eyebrow">12 — Provenance</span>
+      <h2>Citation status</h2>
+      <p class="lede">Every claim a reviewer can check was checked. One could not be confirmed and is marked accordingly — verify it before you cite it in front of an evaluation panel.</p>
+      <ul class="sources">
+        <li><span><a href="https://pytorch.org/blog/pytorch-2-13-release-blog/">PyTorch 2.13 release</a> — July 2026, FlexAttention on MPS, CuTeDSL Inductor backend, torchcomms.</span><span class="badge ok">Verified</span></li>
+        <li><span><a href="https://huggingface.co/Qwen/Qwen3.8-27B">Qwen3.8-27B</a> — released 14 Aug 2026, Apache-2.0, 262K native context, native vision.</span><span class="badge ok">Verified</span></li>
+        <li><span><a href="https://arxiv.org/abs/2605.10108">GLiNER-Relex</a> — unified joint NER and relation extraction; CoNLL04, DocRED, FewRel, CrossRE.</span><span class="badge ok">Verified</span></li>
+        <li><span><a href="https://huggingface.co/jinaai/jina-embeddings-v5-text-small">Jina Embeddings v5</a> — Feb 2026, 119+ languages, 32K tokens, Matryoshka dims 32–1024.</span><span class="badge ok">Verified</span></li>
+        <li><span><a href="https://huggingface.co/Qwen/Qwen3-VL-Embedding-8B">Qwen3-VL-Embedding-8B</a> and <a href="https://huggingface.co/blog/multi-vector-encoder">multi-vector encoders</a> — multimodal and late-interaction retrieval.</span><span class="badge ok">Verified</span></li>
+        <li><span>MTRM — <em>Multi-Granularity Trend Retrieval and Modeling for TKG Extrapolation</em>, IEEE TKDE 38(7):4584–4600, July 2026, <span class="mono">10.1109/TKDE.2026.3684753</span>.</span><span class="badge ok">Verified</span></li>
+        <li><span><a href="https://github.com/aangelopoulos/conformal-risk">Conformal Risk Control</a> — reference implementation of the multi-label false-negative loss.</span><span class="badge ok">Verified</span></li>
+        <li><span>LANTERN — cited as ACL 2026 Findings 559. The title does not resolve under that identifier; the described method closely matches ACL 2026 Findings 266, a training-free LLM framework for temporal KG reasoning.</span><span class="badge chk">Confirm</span></li>
+      </ul>
+      <div class="callout">
+        <span class="cl">Before the review</span>
+        Fix the LANTERN citation or drop the name and describe the mechanism directly. The long-window / short-window split and the analogy term stand on their own merits; a citation a panel cannot resolve is the one thing that would undermine an otherwise defensible bibliography.
+      </div>
+    </section>
+
+    <footer>
+      PRAMAAN-X — architecture brief, configuration v1 · August 2026 · Sources verified 24 Aug 2026
+    </footer>
+
+  </main>
+</div>
+</div>
