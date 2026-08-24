@@ -79,7 +79,8 @@ def type_table(rows):
         if r["kind"] == "joint" and r["scenario"] != "null":
             conf[r["scenario"]][r["predicted_type"]] += 1
     hdr = " ".join(f"{s[:8]:>10s}" for s in SCEN)
-    print(f"  {'true \\ called':16s} {hdr}")
+    label = "true / called"
+    print(f"  {label:16s} {hdr}")
     ok = tot = 0
     for sc in SCEN:
         print(f"  {sc:16s} " + " ".join(f"{conf[sc][p]:10d}" for p in SCEN))

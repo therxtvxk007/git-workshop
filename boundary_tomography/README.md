@@ -86,6 +86,64 @@ pushes `tau` towards 1 to limit the damage, and the *true* curve scores worse
 than somebody's private discontinuity. On the economic scenario this alone was
 the difference between 4.5 cells of error and 1.3.
 
+## Results
+
+155 runs, 129 core-minutes, 5 seeds per interface type plus 10 placebo worlds.
+
+**Geometry** (median distance from the true curve, cells):
+
+| method | physical | administrative | economic |
+|---|---|---|---|
+| joint inversion | 0.28 | **0.17** | **1.54** |
+| shared permeability | 0.30 | 0.26 | 1.25 |
+| wombling + RD, given this method's detector | 0.30 | 0.59 | 1.25 |
+| plain areal wombling | 0.30 | 0.59 | 5.52 |
+| best single tracer (oracle, chosen after the fact) | 0.29 | 0.17 | 1.04 |
+| typical single tracer (median over tracers) | 5.97 | 7.30 | 7.44 |
+
+A *typical* single tracer misses by 6–7.4 cells; the joint fit by 0.17–1.54. But an
+oracle picking the best tracer after the fact does nearly as well as the joint fit —
+and hand plain wombling this method's own detector and chronology screen, and the
+geometry gap almost closes. **Most of the geometry gain comes from the detector, not
+from the physics-based refinement. Geometry is not the contribution.**
+
+The economic column carries one hard failure (17.5 cells) where the true interface sits
+at `x = 7.7`, against the domain edge, while all five distractors sit centrally. Less
+transport crosses a near-edge interface, so it loses. Excluding it: 1.28 +- 0.70. The
+study region has to extend well past the suspected frontier.
+
+**Chronology** — mean error in per-epoch activity: 0.00 (always-present), 0.01 (dated
+frontier), 0.12 (late-appearing). Existing boundary detection has no chronology at all.
+
+**Permeability profile** — MAE 0.13 against wombling's 0.21; interface type called
+correctly 14/15 against 5/15. But the classifier compares profile *shape*, so a
+shapeless profile lands on "physical" by default: on placebo data it said "physical"
+10 times out of 10, and the baseline's 5/15 is exactly the 5 physical runs. The
+informative result is the **9/10 non-default calls** (administrative 5/5, economic 4/5).
+A real version needs an explicit "no interface" class.
+
+### Against the project's own kill criteria
+
+* **"Kill it if it repeatedly invents boundaries in placebo regions"** — *triggers*.
+  On placebo worlds the method reports permeability below 0.5 for 44% of tracers
+  (median 0.75), and only the administrative frontier clears the placebo distribution
+  (4/5 seeds). The mountain interface clears it 0/5, the market jurisdiction 1/5. The
+  detection statistic is not calibrated against a null.
+* **"Kill it if change-surface detection plus geographic RD performs equally well"** —
+  *mixed*. On geometry, near enough yes. On the permeability profile and the interface
+  type, no.
+* **"Kill it if the recovered boundary cannot predict an independent outcome"** —
+  *survives*. A held-out, strongly blocked tracer gains up to +0.059 R2 against +0.005
+  for a randomly placed curve, with permeability recovered at 0.10 against a true 0.10.
+  Where the held-out tracer is porous the gain is correctly ~0.
+
+**Where this leaves the project.** The defensible claim is not "we localise vanished
+frontiers" — that ground is occupied by Bayesian multivariate difference-boundary
+detection, and the experiment agrees. It is *"the permeability signature identifies what
+a vanished frontier was, and when it existed"*, with localisation as machinery rather
+than as the claim. Before that is defensible the calibration hole has to be filled: as
+it stands the method finds an interface whether or not one is there.
+
 ## Reproducing
 
 ```

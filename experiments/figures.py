@@ -27,6 +27,14 @@ DIVERGE = LinearSegmentedColormap.from_list(
 SEQ = LinearSegmentedColormap.from_list("seq", ["#f5f5f2", "#a8c6e8", "#12467e"])
 
 
+def _show(ax, m, cmap=None):
+    """Percentile-clipped so the ridge is visible; a rank-fused map has almost
+    no dynamic range at its extremes and washes out under a raw scale."""
+    lo, hi = np.percentile(m, [2, 99])
+    return ax.imshow(m, cmap=cmap or SEQ, origin="lower", aspect="auto",
+                     vmin=lo, vmax=hi, interpolation="nearest")
+
+
 def _frame(ax, title=None):
     ax.set_xticks([]); ax.set_yticks([])
     for sp in ax.spines.values():
@@ -58,7 +66,7 @@ def fitted(scenario, seed, cache):
 
 
 # --------------------------------------------------------------------------
-def fig_why_fusion(path, scenario="economic", seed=0):
+def fig_why_fusion(path, scenario="administrative", seed=0):
     """Each tracer sees two ridges; only one of them is shared."""
     data = S.generate(scenario, seed)
     cfg, tr = data["cfg"], data["truth"]
@@ -68,7 +76,7 @@ def fig_why_fusion(path, scenario="economic", seed=0):
 
     fig, axes = plt.subplots(1, 6, figsize=(13.2, 2.65), facecolor=SURFACE)
     for m, ax in enumerate(axes[:5]):
-        ax.imshow(maps[m], cmap=SEQ, origin="lower", aspect="auto")
+        _show(ax, maps[m])
         _curve(ax, tr["ctrl"], cfg.ny, color=INK, lw=1.8)
         d = tr["distractors"][m]
         if d["horizontal"]:
@@ -79,7 +87,7 @@ def fig_why_fusion(path, scenario="economic", seed=0):
             _curve(ax, d["ctrl"], cfg.ny, color=ORANGE, lw=1.6, ls=(0, (4, 2)))
         _frame(ax, f"{S.TRACERS[m]}\n" + r"$\tau$ = " + f"{tr['tau'][m]:.2f}")
         ax.set_xlim(0, cfg.nx - 2); ax.set_ylim(0, cfg.ny - 1)
-    axes[5].imshow(fused, cmap=SEQ, origin="lower", aspect="auto")
+    _show(axes[5], fused)
     _curve(axes[5], tr["ctrl"], cfg.ny, color=INK, lw=1.8)
     _frame(axes[5], "rank-fused\nacross tracers")
     axes[5].set_xlim(0, cfg.nx - 2); axes[5].set_ylim(0, cfg.ny - 1)
@@ -106,7 +114,7 @@ def fig_recovery(path, cache, seed=0):
         data = S.generate(sc, seed)
         cfg, tr = data["cfg"], data["truth"]
         f = fitted(sc, seed, cache)
-        ax.imshow(np.array(f["fused"]), cmap=SEQ, origin="lower", aspect="auto")
+        _show(ax, np.array(f["fused"]))
         _curve(ax, tr["ctrl"], cfg.ny, color=INK, lw=2.4, label="true interface")
         _curve(ax, f["ctrl"], cfg.ny, color=BLUE, lw=2.0, ls=(0, (5, 2)),
                label="joint inversion")

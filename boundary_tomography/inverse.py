@@ -248,16 +248,27 @@ def chronologies(n_epochs):
 
 
 def screen(cfg, obs, cands):
-    """Score candidate curves against chronology hypotheses on a permeability grid.
+    """Choose which candidate discontinuity is the *shared* one.
 
     Given geometry and chronology the tracers are separable, so one solve at a
     shared trial permeability yields every tracer's residual at that value at
     once, and the per-tracer minimum over the grid is the profiled score.  That
-    makes the whole screen a handful of solves per combination instead of M
+    makes the whole screen a handful of solves per combination rather than M
     nested one-dimensional searches.
+
+    The aggregate is concave in per-tracer gain, and that is not a detail.  This
+    step is model selection -- *which* of these curves is the interface every
+    tracer crosses -- and the answer is the one that helps many tracers, not the
+    one that helps a single tracer most.  Summing raw gains has the project's own
+    premise backwards: one tracer's strong private discontinuity outvotes a
+    moderate interface shared by five, and the search locks onto a river.  A
+    square root makes five small gains beat one large one, which is the
+    identifying assumption written down as an objective.
     """
     M = obs.shape[1]
     K = np.ones(M)
+    sse0, tss0 = evaluate(cfg, obs, None, None, K)
+    frac0 = sse0 / np.maximum(tss0, 1e-12)              # no-interface baseline
     best = None
     for c in cands:
         for (on, off) in chronologies(cfg.n_epochs):
@@ -266,9 +277,10 @@ def screen(cfg, obs, cands):
                     evaluate(cfg, obs, c, np.full(M, t), K, on, off))
                 for t in TAU_GRID
             ])                                          # (n_grid, M)
-            o = float(frac.min(axis=0).sum())
-            if best is None or o < best[0]:
-                best = (o, c, TAU_GRID[frac.argmin(axis=0)], on, off)
+            f = frac.min(axis=0)
+            score = float(np.sqrt(np.maximum(frac0 - f, 0.0)).sum())
+            if best is None or score > best[0]:
+                best = (score, c, TAU_GRID[frac.argmin(axis=0)], on, off)
     return best
 
 

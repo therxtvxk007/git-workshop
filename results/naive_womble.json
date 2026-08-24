@@ -1,0 +1,102 @@
+[
+ {
+  "scenario": "physical",
+  "seed": 0,
+  "mae": 0.3375999790636449
+ },
+ {
+  "scenario": "physical",
+  "seed": 1,
+  "mae": 0.3841011211504795
+ },
+ {
+  "scenario": "physical",
+  "seed": 2,
+  "mae": 0.13784881053269726
+ },
+ {
+  "scenario": "physical",
+  "seed": 3,
+  "mae": 0.17866460116632238
+ },
+ {
+  "scenario": "physical",
+  "seed": 4,
+  "mae": 0.30222685074870903
+ },
+ {
+  "scenario": "administrative",
+  "seed": 0,
+  "mae": 0.5938998682615334
+ },
+ {
+  "scenario": "administrative",
+  "seed": 1,
+  "mae": 1.6279502704235207
+ },
+ {
+  "scenario": "administrative",
+  "seed": 2,
+  "mae": 0.17380910394865395
+ },
+ {
+  "scenario": "administrative",
+  "seed": 3,
+  "mae": 0.7471514473786683
+ },
+ {
+  "scenario": "administrative",
+  "seed": 4,
+  "mae": 0.26150669933641996
+ },
+ {
+  "scenario": "economic",
+  "seed": 0,
+  "mae": 5.516855836672333
+ },
+ {
+  "scenario": "economic",
+  "seed": 1,
+  "mae": 2.547894824838719
+ },
+ {
+  "scenario": "economic",
+  "seed": 2,
+  "mae": 3.437137174051908
+ },
+ {
+  "scenario": "economic",
+  "seed": 3,
+  "mae": 9.684046259529367
+ },
+ {
+  "scenario": "economic",
+  "seed": 4,
+  "mae": 6.650322496585328
+ },
+ {
+  "scenario": "null",
+  "seed": 0,
+  "mae": 5.830940727696986
+ },
+ {
+  "scenario": "null",
+  "seed": 1,
+  "mae": 4.391543107624889
+ },
+ {
+  "scenario": "null",
+  "seed": 2,
+  "mae": 6.538529523490666
+ },
+ {
+  "scenario": "null",
+  "seed": 3,
+  "mae": 12.059046249640687
+ },
+ {
+  "scenario": "null",
+  "seed": 4,
+  "mae": 8.600322484067163
+ }
+]
