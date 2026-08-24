@@ -1,0 +1,2 @@
+[console_scripts]
+evpred = evpred.cli:main

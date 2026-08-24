@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: evpred
+Version: 0.1.0
+Summary: Hybrid LLM + classical ML event prediction from English unstructured text
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.24
+Requires-Dist: scipy>=1.10
+Requires-Dist: scikit-learn>=1.3
+Provides-Extra: llm
+Requires-Dist: anthropic>=0.40; extra == "llm"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4; extra == "dev"
