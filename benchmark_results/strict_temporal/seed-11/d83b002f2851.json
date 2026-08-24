@@ -1,0 +1,299 @@
+{
+  "availability_violations": {
+    "by_reason": {},
+    "sample": [],
+    "total": 0
+  },
+  "backends": {
+    "embedder": "hashing (1024d)",
+    "fusion_backend": "lambdarank",
+    "late_interaction": "MaxSim over hashed token vectors (pramaan_x.stage2_retrieve.late_interaction)",
+    "reranker": "lexical",
+    "sparse": "in-process Okapi BM25 (pramaan_x.stage1_scan.bm25)",
+    "vector_engine": "memory"
+  },
+  "benchmark": "oracle_target_retrieval",
+  "config_fingerprint": "4759053bc868595e",
+  "created_at": "2026-08-24T23:00:48.742957+00:00",
+  "dataset": {
+    "earliest": "2025-01-01 00:00:00+00:00",
+    "file_bytes": 1018111,
+    "file_hash": "a35093a8ed7a3e8a2ce276a9362a4922f48f210abc0076c45e74aec5339368d7",
+    "generator": {
+      "backfill_fraction": 0.12,
+      "days": 540,
+      "generator": "pramaan_x.data.synth.SyntheticCorpus",
+      "missing_retrieval_fraction": 0.04,
+      "n_event_types": 6,
+      "n_locations": 12,
+      "seed": 11,
+      "synthetic": true
+    },
+    "latest": "2026-06-25 12:00:00+00:00",
+    "logical_hash": "4ac10a281656d82b9c53583c9edaa4f99ebce688096362d0f1d093ad16f4ca80",
+    "n_documents": 12999,
+    "name": "synthetic_corpus"
+  },
+  "does_not_measure": "event forecasting; no metric here is a forecasting score and none may be reported as one",
+  "environment": {
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "python": "3.11.15"
+  },
+  "extra": {
+    "corpus_logical_hash_recheck": "b5bd90629927e9833a9568158907a45adc5f935634c3a9bb1f90c23e148507ae",
+    "fitted_corpus_sizes": {
+      "distinct": 59,
+      "max": 8644,
+      "mean": 4122.932203389831,
+      "min": 89,
+      "n_fitted_indexes": 59
+    },
+    "fusion_component_weights": {
+      "bm25": 0.199,
+      "cross": 0.1487777777777778,
+      "dense": 0.177,
+      "late": 0.2101111111111111,
+      "long_history": 0.0,
+      "novelty": 0.0,
+      "recency": 0.13733333333333334,
+      "source_independence": 0.12777777777777777
+    },
+    "index_scope": "documents available strictly before each forecast origin",
+    "lexicon_fit": {
+      "label_cutoff": "2025-09-10T00:00:00+00:00",
+      "max_event_used": "2025-09-19T00:00:00+00:00",
+      "max_published_at": "2025-09-09T22:00:00+00:00",
+      "n_documents": 4230,
+      "n_positive": 477,
+      "train_end": "2025-10-01T00:00:00+00:00"
+    },
+    "stage0": {
+      "cleaning": {
+        "chars_removed": 42375,
+        "input": 12999,
+        "languages": {
+          "en": 12999
+        },
+        "stripped": 2825,
+        "too_short": 0
+      },
+      "dedup": {
+        "clusters": 9086,
+        "exact": 3295,
+        "input": 12999,
+        "near": 119,
+        "reduction": 0.301,
+        "removed": 3913,
+        "simhash": 499
+      },
+      "elapsed_s": 13.47,
+      "surviving": 9086,
+      "validation": {
+        "future": 0,
+        "input": 12999,
+        "missing_retrieval": 507,
+        "missing_timestamp": 0,
+        "ok": 12999,
+        "rejected": 0,
+        "retrieved_before_published": 0
+      },
+      "work_avoided": 0.301
+    }
+  },
+  "forecast_origins": [
+    "2026-01-25T00:00:00+00:00",
+    "2026-02-01T00:00:00+00:00",
+    "2026-02-08T00:00:00+00:00",
+    "2026-02-15T00:00:00+00:00",
+    "2026-02-22T00:00:00+00:00",
+    "2026-03-01T00:00:00+00:00",
+    "2026-03-08T00:00:00+00:00",
+    "2026-03-15T00:00:00+00:00",
+    "2026-03-22T00:00:00+00:00",
+    "2026-03-29T00:00:00+00:00",
+    "2026-04-05T00:00:00+00:00",
+    "2026-04-12T00:00:00+00:00",
+    "2026-04-19T00:00:00+00:00",
+    "2026-04-26T00:00:00+00:00",
+    "2026-05-03T00:00:00+00:00",
+    "2026-05-10T00:00:00+00:00",
+    "2026-05-17T00:00:00+00:00",
+    "2026-05-24T00:00:00+00:00",
+    "2026-05-31T00:00:00+00:00",
+    "2026-06-07T00:00:00+00:00",
+    "2026-06-14T00:00:00+00:00",
+    "2026-06-21T00:00:00+00:00"
+  ],
+  "git": {
+    "branch": "claude/pramaan-evaluation-firewall",
+    "commit": "1015d5755c27ce59101732cd2ac89350eee5d9d1",
+    "dirty": true,
+    "dirty_files": [
+      "benchmark_results/"
+    ]
+  },
+  "invariants": {
+    "no_future_document_fitted": "pass",
+    "no_post_origin_results": "pass",
+    "no_test_labels_in_preprocessing": "pass",
+    "no_test_labels_in_training": "pass"
+  },
+  "measures": "precursor-evidence retrieval for a GIVEN target (location and event type supplied by an oracle)",
+  "method": "strict_temporal",
+  "metrics": {
+    "dense": {
+      "empty": 0,
+      "latency_ms.max": 13.204,
+      "latency_ms.mean": 5.658,
+      "latency_ms.p50": 5.494,
+      "latency_ms.p95": 6.27,
+      "latency_ms.total": 452.66,
+      "mrr": 0.2002,
+      "ndcg@10": 0.1298,
+      "ndcg@100": 0.2438,
+      "ndcg@20": 0.1579,
+      "ndcg@50": 0.2145,
+      "precision@10": 0.0525,
+      "precision@100": 0.0177,
+      "precision@20": 0.0369,
+      "precision@50": 0.0275,
+      "queries": 80,
+      "recall@10": 0.1688,
+      "recall@100": 0.5919,
+      "recall@20": 0.2556,
+      "recall@50": 0.464,
+      "relevant_documents": 245
+    },
+    "fusion": {
+      "empty": 0,
+      "latency_ms.max": 7.219,
+      "latency_ms.mean": 5.917,
+      "latency_ms.p50": 5.879,
+      "latency_ms.p95": 6.8,
+      "latency_ms.total": 473.349,
+      "mrr": 0.1928,
+      "ndcg@10": 0.1285,
+      "ndcg@100": 0.2432,
+      "ndcg@20": 0.1635,
+      "ndcg@50": 0.2195,
+      "precision@10": 0.05,
+      "precision@100": 0.0175,
+      "precision@20": 0.0394,
+      "precision@50": 0.0288,
+      "queries": 80,
+      "recall@10": 0.1735,
+      "recall@100": 0.5852,
+      "recall@20": 0.279,
+      "recall@50": 0.4821,
+      "relevant_documents": 245
+    },
+    "late": {
+      "empty": 0,
+      "latency_ms.max": 26.653,
+      "latency_ms.mean": 20.073,
+      "latency_ms.p50": 19.652,
+      "latency_ms.p95": 23.975,
+      "latency_ms.total": 1605.815,
+      "mrr": 0.151,
+      "ndcg@10": 0.1106,
+      "ndcg@100": 0.2049,
+      "ndcg@20": 0.1349,
+      "ndcg@50": 0.1871,
+      "precision@10": 0.0563,
+      "precision@100": 0.0267,
+      "precision@20": 0.0375,
+      "precision@50": 0.0273,
+      "queries": 80,
+      "recall@10": 0.1879,
+      "recall@100": 0.5331,
+      "recall@20": 0.2662,
+      "recall@50": 0.4608,
+      "relevant_documents": 245
+    },
+    "rerank": {
+      "empty": 0,
+      "latency_ms.max": 38.344,
+      "latency_ms.mean": 32.4,
+      "latency_ms.p50": 32.107,
+      "latency_ms.p95": 35.295,
+      "latency_ms.total": 2592.005,
+      "mrr": 0.7161,
+      "ndcg@10": 0.6085,
+      "ndcg@100": 0.6468,
+      "ndcg@20": 0.6377,
+      "ndcg@50": 0.646,
+      "precision@10": 0.205,
+      "precision@100": 0.0244,
+      "precision@20": 0.1156,
+      "precision@50": 0.0485,
+      "queries": 80,
+      "recall@10": 0.6963,
+      "recall@100": 0.8054,
+      "recall@20": 0.7777,
+      "recall@50": 0.8023,
+      "relevant_documents": 245
+    },
+    "sparse": {
+      "empty": 0,
+      "latency_ms.max": 4.632,
+      "latency_ms.mean": 2.948,
+      "latency_ms.p50": 2.748,
+      "latency_ms.p95": 4.124,
+      "latency_ms.total": 235.872,
+      "mrr": 0.1854,
+      "ndcg@10": 0.1289,
+      "ndcg@100": 0.2462,
+      "ndcg@20": 0.1583,
+      "ndcg@50": 0.2193,
+      "precision@10": 0.05,
+      "precision@100": 0.0181,
+      "precision@20": 0.0375,
+      "precision@50": 0.0293,
+      "queries": 80,
+      "recall@10": 0.1871,
+      "recall@100": 0.6112,
+      "recall@20": 0.2729,
+      "recall@50": 0.4877,
+      "relevant_documents": 245
+    }
+  },
+  "n_forecast_origins": 22,
+  "n_index_builds": 59,
+  "protocol": {
+    "availability_rule": "available_at = max(published_at, retrieved_at); usable at origin T only if published_at < T and retrieved_at < T; missing retrieved_at is rejected unless the document carries an explicit trusted_historical_snapshot flag",
+    "calibration_end": "2026-01-04T00:00:00+00:00",
+    "calibration_start": "2025-10-22T00:00:00+00:00",
+    "effective_embargo_days": 21,
+    "embargo_days": 7,
+    "label_cutoff": "2025-09-10T00:00:00+00:00",
+    "label_lookahead_days": 21,
+    "n_test_origins": 22,
+    "n_train_origins": 39,
+    "notes": [
+      "synthetic corpus; no real-world validity is claimed"
+    ],
+    "origin_stride_days": 7,
+    "permitted_fitting": [
+      "bm25_corpus_statistics: documents available strictly before the fold origin",
+      "hashing_idf: documents available strictly before the fold origin",
+      "vector_index: documents available strictly before the fold origin",
+      "lexicon_log_odds: training-window documents with training-window labels only",
+      "learned_fusion_lambdamart: training-window queries only"
+    ],
+    "query_generation_rule": "oracle_target: the query text is the target location verbatim plus the top-n terms of the training-fitted lexicon for the target's event type. The target location and event type are GIVEN, not inferred. This is an evidence-retrieval protocol, not an event-forecasting protocol.",
+    "test_end": "2026-06-24T23:00:01+00:00",
+    "test_start": "2026-01-25T00:00:00+00:00",
+    "train_end": "2025-10-01T00:00:00+00:00",
+    "train_start": "2025-01-01T00:00:00+00:00",
+    "version": "oracle-target-retrieval/1"
+  },
+  "protocol_fingerprint": "b706da737315d86f",
+  "queries": {
+    "evaluated": 80,
+    "relevant_documents": 245,
+    "test": 80,
+    "train": 101
+  },
+  "schema_version": 2,
+  "seed": 11
+}
