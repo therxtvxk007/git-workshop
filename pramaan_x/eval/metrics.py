@@ -14,7 +14,7 @@ predicting "no event" forever, and any system tuned against it will learn to.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -35,6 +35,14 @@ def recall_at_k(retrieved: Sequence[str], relevant: set[str], k: int) -> float:
 
 
 def precision_at_k(retrieved: Sequence[str], relevant: set[str], k: int) -> float:
+    """Fraction of the top k that is relevant.
+
+    Reported alongside recall rather than instead of it. On this task the
+    relevant set is tiny (a handful of precursor documents), so precision@k is
+    bounded above by |relevant|/k and a low value at k=50 is arithmetic, not a
+    verdict. It is here because an analyst reads a fixed-length list and cares
+    what fraction of it is worth reading.
+    """
     if k <= 0:
         return 0.0
     top = retrieved[:k]
@@ -72,14 +80,22 @@ class RetrievalReport:
     mrr: float
     n_queries: int
     n_empty: int = 0
+    precision: dict[int, float] = field(default_factory=dict)
+    n_relevant: int = 0                 # summed over evaluated queries
+    latency_ms: dict[str, float] = field(default_factory=dict)
 
     def summary(self) -> dict[str, float | int]:
-        out: dict[str, float | int] = {"queries": self.n_queries, "empty": self.n_empty}
+        out: dict[str, float | int] = {"queries": self.n_queries, "empty": self.n_empty,
+                                       "relevant_documents": self.n_relevant}
         for k, v in sorted(self.recall.items()):
             out[f"recall@{k}"] = round(v, 4)
+        for k, v in sorted(self.precision.items()):
+            out[f"precision@{k}"] = round(v, 4)
         for k, v in sorted(self.ndcg.items()):
             out[f"ndcg@{k}"] = round(v, 4)
         out["mrr"] = round(self.mrr, 4)
+        for k, v in sorted(self.latency_ms.items()):
+            out[f"latency_ms.{k}"] = round(v, 3)
         return out
 
 
@@ -88,27 +104,35 @@ def evaluate_retrieval(
     *,
     ks: Sequence[int] = (10, 20, 50, 100),
     graded: Sequence[dict[str, float]] | None = None,
+    latency_ms: dict[str, float] | None = None,
 ) -> RetrievalReport:
     """`runs` is a sequence of (ranked doc ids, relevant doc ids) per query."""
     rec: dict[int, list[float]] = {k: [] for k in ks}
+    prec: dict[int, list[float]] = {k: [] for k in ks}
     nd: dict[int, list[float]] = {k: [] for k in ks}
     rr: list[float] = []
     empty = 0
+    n_relevant = 0
     for i, (ranked, relevant) in enumerate(runs):
         if not relevant:
             empty += 1
             continue
+        n_relevant += len(relevant)
         for k in ks:
             rec[k].append(recall_at_k(ranked, relevant, k))
+            prec[k].append(precision_at_k(ranked, relevant, k))
             rel_map = graded[i] if graded else dict.fromkeys(relevant, 1.0)
             nd[k].append(ndcg_at_k(ranked, rel_map, k))
         rr.append(mrr(ranked, relevant))
     return RetrievalReport(
         recall={k: float(np.mean(v)) if v else float("nan") for k, v in rec.items()},
+        precision={k: float(np.mean(v)) if v else float("nan") for k, v in prec.items()},
         ndcg={k: float(np.mean(v)) if v else float("nan") for k, v in nd.items()},
         mrr=float(np.mean(rr)) if rr else float("nan"),
         n_queries=len(runs) - empty,
         n_empty=empty,
+        n_relevant=n_relevant,
+        latency_ms=dict(latency_ms or {}),
     )
 
 

@@ -35,7 +35,9 @@ def reciprocal_rank_fusion(
         w = float(weights.get(name, 1.0)) if weights else 1.0
         for rank, doc_id in enumerate(ranked, start=1):
             scores[doc_id] = scores.get(doc_id, 0.0) + w / (k + rank)
-    return sorted(scores.items(), key=lambda kv: -kv[1])
+    # doc_id breaks ties, so the fused order is a function of the inputs and
+    # not of dict insertion order.
+    return sorted(scores.items(), key=lambda kv: (-kv[1], kv[0]))
 
 
 @dataclass
@@ -81,6 +83,14 @@ class LearnedFusion:
                 num_leaves=self.num_leaves, random_state=self.random_state,
                 label_gain=list(self.label_gain), verbose=-1,
                 min_child_samples=5,
+                # Reproducibility, not speed. LightGBM's default histogram
+                # construction is thread-count dependent: the same data and the
+                # same seed give different trees on a machine with a different
+                # core count or a different load, which for a benchmark whose
+                # whole claim is reproducibility is fatal. `deterministic` plus
+                # `force_row_wise` plus a single thread fixes the result at the
+                # cost of wall-clock time we can afford at this corpus size.
+                deterministic=True, force_row_wise=True, num_threads=1,
             )
             self._model.fit(X, y, group=list(groups))
             self.backend = "lambdarank"

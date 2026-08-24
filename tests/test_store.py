@@ -14,7 +14,13 @@ import polars as pl
 import pytest
 
 from pramaan_x.data.store import DOC_SCHEMA, DocumentStore, documents_to_frame
-from pramaan_x.data.versioning import LeakageAudit, build_manifest, hash_frame, write_dvc_stub
+from pramaan_x.data.versioning import (
+    LeakageAudit,
+    build_manifest,
+    hash_frame,
+    hash_parquet,
+    write_content_pointer,
+)
 
 
 def test_schema_is_enforced(documents):
@@ -154,9 +160,71 @@ def test_leakage_audit_fires_on_future_documents(documents):
         dirty.raise_if_dirty()
 
 
-def test_dvc_stub_written(documents, tmp_path):
+def test_content_pointer_hashes_are_real_and_correctly_labelled(documents, tmp_path):
+    """The bug this replaces: a field labelled `md5` holding 32 characters of a
+    SHA-256 over the *logical* rows, in a file named `.dvc`. Every hash here is
+    named for the algorithm and the bytes it was actually computed over."""
+    import json
+
     store = DocumentStore.from_documents(documents)
     path = store.write(tmp_path / "c.parquet")
     manifest = build_manifest("c", store.frame, config_fingerprint="abc")
-    stub = write_dvc_stub(path, manifest)
-    assert stub.exists() and "outs:" in stub.read_text()
+    pointer = write_content_pointer(path, manifest)
+
+    assert pointer.name == "c.parquet.pointer.json"
+    assert not pointer.name.endswith(".dvc")
+    body = json.loads(pointer.read_text())
+    assert body["file_sha256"] == hash_parquet(path)
+    assert body["logical_sha256"] == hash_frame(store.frame)
+    assert body["size_bytes"] == path.stat().st_size
+    assert "md5" not in body
+    assert "not a DVC pointer" in body["not_dvc"]
+
+
+def test_no_dvc_pointer_is_written_anywhere(documents, tmp_path):
+    """DVC is not configured in this repository, so nothing may emit a file
+    that claims it is."""
+    store = DocumentStore.from_documents(documents)
+    path = store.write(tmp_path / "c.parquet")
+    write_content_pointer(path, build_manifest("c", store.frame,
+                                               config_fingerprint="abc"))
+    assert list(tmp_path.rglob("*.dvc")) == []
+
+
+# ------------------------------------------------ the availability view ---
+
+
+def test_available_at_drops_documents_crawled_after_the_origin(documents):
+    """`as_of` keeps them because they were published in time. `available_at`
+    does not, because we did not have them."""
+    from pramaan_x.eval.availability import is_available
+
+    store = DocumentStore.from_documents(documents)
+    span = store.frame["published_at"]
+    origin = span.min() + (span.max() - span.min()) * 0.5
+    published_view = store.as_of(origin, canonical_only=False)
+    available_view = store.available_at(origin, canonical_only=False)
+    assert available_view.height < published_view.height
+    assert available_view["retrieved_at"].max() < origin
+    assert available_view["published_at"].max() < origin
+    by_id = {d.doc_id: d for d in documents}
+    for doc_id in available_view["doc_id"].to_list()[:200]:
+        assert is_available(by_id[doc_id], origin)
+
+
+def test_available_at_rejects_missing_acquisition_time_by_default(documents):
+    store = DocumentStore.from_documents(documents)
+    origin = store.frame["published_at"].max()
+    strict = store.available_at(origin, canonical_only=False)
+    assert strict["retrieved_at"].null_count() == 0
+    trusting = store.available_at(origin, canonical_only=False, trusted_snapshot=True)
+    assert trusting.height > strict.height
+
+
+def test_retrieved_at_is_not_backfilled_from_published_at(documents):
+    """The silent substitution that made the acquisition rule a no-op."""
+    store = DocumentStore.from_documents(documents)
+    assert store.frame["retrieved_at"].null_count() > 0, (
+        "the corpus must contain documents with no acquisition time, or the "
+        "rule is never exercised"
+    )

@@ -2,9 +2,13 @@
 queries.
 
 The reason this is not Pandas + CSV is not fashion. Every leakage audit and
-every temporal fold in this system is a range query over `published_at`; DuckDB
-does those over Parquet without loading the corpus, and Polars' typed schema
-turns a silently-coerced timestamp into an error instead of a wrong answer.
+every temporal fold in this system is a range query over the availability
+timestamps; DuckDB does those over Parquet without loading the corpus, and
+Polars' typed schema turns a silently-coerced timestamp into an error instead
+of a wrong answer.
+
+`retrieved_at` is nullable and is never back-filled from `published_at`. See
+`pramaan_x.eval.availability` for the rule that consumes it.
 """
 
 from __future__ import annotations
@@ -43,7 +47,10 @@ def documents_to_frame(docs: Iterable[Document]) -> pl.DataFrame:
             "title": d.title,
             "text": d.text,
             "published_at": d.published_at,
-            "retrieved_at": d.retrieved_at or d.published_at,
+            # Never substituted: a missing acquisition time is a fact about
+            # the document, and filling it with `published_at` would assert
+            # zero crawl latency on a document we know nothing about.
+            "retrieved_at": d.retrieved_at,
             "language": d.language,
             "modality": d.modality.value if isinstance(d.modality, Modality) else str(d.modality),
             "content_hash": d.content_hash,
@@ -59,11 +66,14 @@ def documents_to_frame(docs: Iterable[Document]) -> pl.DataFrame:
 
 
 class DocumentStore:
-    """Parquet-backed corpus with an as-of view.
+    """Parquet-backed corpus with temporal views.
 
-    `as_of` is the only supported way to read for a forecast. Reading the raw
-    frame and filtering by hand is exactly how publication-cutoff leakage gets
-    reintroduced, so the convenient path is the safe one.
+    `available_at` is the only supported way to read for a backtest: it applies
+    both halves of the availability rule. `as_of` applies the publication
+    cutoff alone and is deliberately weaker -- it is kept so the contaminated
+    legacy diagnostic can be run and its cost quantified, not because it is
+    safe. Reading the raw frame and filtering by hand is how leakage gets
+    reintroduced, so the convenient paths are the audited ones.
     """
 
     def __init__(self, frame: pl.DataFrame | None = None, path: str | Path | None = None):
@@ -100,14 +110,39 @@ class DocumentStore:
     # --------------------------------------------------------- views ---
 
     def as_of(self, cutoff: datetime, *, canonical_only: bool = True) -> pl.DataFrame:
-        """Everything publishable knowledge could contain at `cutoff`.
+        """Publication cutoff only. **Not sufficient for a backtest.**
 
-        Filters on `published_at`, not `retrieved_at`: a document that existed
-        in the world but had not been crawled yet is still legitimately usable
-        by a retrospective backtest, whereas one published after the cutoff is
-        never usable regardless of when we happened to fetch it.
+        This filters on `published_at` alone, which answers "did the
+        information exist" and not "had we acquired it". A document published
+        before the cutoff but crawled after it is returned here and must not
+        be: use `available_at()` for anything whose result is reported as a
+        measurement. This view is retained for corpus inspection and for the
+        `contaminated_legacy_diagnostic` benchmark, whose entire purpose is to
+        quantify what this weaker rule buys.
         """
         f = self._frame.filter(pl.col("published_at") < cutoff)
+        if canonical_only:
+            f = f.filter(pl.col("is_canonical"))
+        return f
+
+    def available_at(self, origin: datetime, *, canonical_only: bool = True,
+                     trusted_snapshot: bool = False) -> pl.DataFrame:
+        """The corpus as it stood at `origin`: the backtest read path.
+
+        Applies `available_at = max(published_at, retrieved_at)` with strict
+        inequality on both sides. Rows with a null `retrieved_at` are dropped
+        unless `trusted_snapshot` is set, which is the caller asserting that
+        this frame came from a historical archive whose acquisition time is
+        known not to postdate publication.
+        """
+        f = self._frame.filter(pl.col("published_at") < origin)
+        if trusted_snapshot:
+            f = f.filter(
+                pl.col("retrieved_at").is_null() | (pl.col("retrieved_at") < origin)
+            )
+        else:
+            f = f.filter(pl.col("retrieved_at").is_not_null()
+                         & (pl.col("retrieved_at") < origin))
         if canonical_only:
             f = f.filter(pl.col("is_canonical"))
         return f

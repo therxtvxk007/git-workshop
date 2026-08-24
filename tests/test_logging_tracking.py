@@ -78,9 +78,40 @@ def test_non_finite_metrics_are_dropped(tmp_path):
     assert metrics["nan"] is None and metrics["inf"] is None
 
 
-def test_mlflow_failure_falls_back_to_local(tmp_path):
-    """A tracking outage must never fail a forecast run."""
+def test_mlflow_failure_falls_back_to_local(tmp_path, loopback_direct):
+    """A tracking outage must never fail a run.
+
+    `loopback_direct` is required: without it an inherited `HTTP_PROXY` would
+    send this request to the proxy, and the test would be asserting something
+    about the proxy rather than about an unreachable tracking server.
+    """
     tracker = build_tracker("mlflow", uri="http://127.0.0.1:1", root=str(tmp_path))
     assert isinstance(tracker, LocalTracker)
     tracker.start_run("fallback")
     tracker.end_run()
+
+
+def test_bench_command_actually_drives_the_tracker(tmp_path, monkeypatch):
+    """Tracking is wired to the benchmark, not an unused adapter.
+
+    The earlier state of this repository had `tracking.py` imported by nothing
+    but its own tests. This runs the real `bench` command and asserts a run
+    landed in the store with the benchmark's metrics and artefact path in it.
+    """
+    from pramaan_x.cli import main
+
+    monkeypatch.chdir(tmp_path)
+    rc = main([
+        "bench", "--days", "150", "--locations", "4", "--event-types", "3",
+        "--seeds", "5", "--methods", "strict", "--stages", "rerank",
+        "--results-dir", str(tmp_path / "benchmark_results"),
+    ])
+    assert rc == 0
+    runs = LocalTracker(root=tmp_path / "artifacts" / "runs").history()
+    assert runs, "the benchmark recorded no tracking run"
+    run = runs[0]
+    assert run["tags"]["benchmark"] == "oracle_target_retrieval"
+    assert run["tags"]["method"] == "strict_temporal"
+    assert "recall@10" in run["metrics"]
+    events = (tmp_path / "artifacts" / "runs" / run["run_id"] / "events.jsonl").read_text()
+    assert "benchmark_artefact" in events

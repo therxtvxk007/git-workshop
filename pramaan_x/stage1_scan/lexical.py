@@ -70,7 +70,10 @@ class LexicalIndicators:
         total_neg = sum(neg.get(t, 0) for t in vocab)
         total_all = total_pos + total_neg
         out: dict[str, float] = {}
-        for t in vocab:
+        # `vocab` is a set, so iterating it directly builds `out` in an order
+        # that depends on PYTHONHASHSEED. Sorting first makes the insertion
+        # order a property of the data.
+        for t in sorted(vocab):
             yi_p, yi_n = pos.get(t, 0), neg.get(t, 0)
             alpha = self.prior_strength * (yi_p + yi_n) / max(total_all, 1) * 1000.0
             alpha = max(alpha, 0.01)
@@ -80,7 +83,12 @@ class LexicalIndicators:
             var = 1.0 / (yi_p + alpha) + 1.0 / (yi_n + alpha)
             out[t] = float(delta / np.sqrt(var))
 
-        ranked = sorted(out.items(), key=lambda kv: -abs(kv[1]))[:top_k]
+        # Ties are broken by the term, never by dict order. Without this the
+        # top-k cut lands on a different set of terms under a different hash
+        # seed, the generated queries change, and every metric in the benchmark
+        # moves -- while the artefact still reports the same `seed`. A recorded
+        # seed that does not determine the result is worse than none.
+        ranked = sorted(out.items(), key=lambda kv: (-abs(kv[1]), kv[0]))[:top_k]
         return dict(ranked)
 
     # ------------------------------------------------------------ score ---
@@ -105,7 +113,7 @@ class LexicalIndicators:
 
     def top_terms(self, n: int = 20, event_type: str | None = None) -> list[tuple[str, float]]:
         table = self.per_event_type.get(event_type, self.scores) if event_type else self.scores
-        return sorted(table.items(), key=lambda kv: -kv[1])[:n]
+        return sorted(table.items(), key=lambda kv: (-kv[1], kv[0]))[:n]
 
     def query_for(self, event_type: str, n: int = 25) -> str:
         """A BM25 query built from the learned lexicon, not from an analyst's

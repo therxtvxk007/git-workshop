@@ -9,3 +9,6 @@ tests
 .ruff_cache
 *.parquet
 *.png
+benchmark_results
+uv.lock
+.venv

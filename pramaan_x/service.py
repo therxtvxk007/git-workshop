@@ -124,6 +124,14 @@ class PramaanService:
         return {
             "query": query,
             "as_of": as_of.isoformat() if as_of else None,
+            # Say which rule was actually applied. The served index is built
+            # once over the whole corpus, so this path enforces the publication
+            # cutoff and nothing else; calling it a backtest would be false.
+            "cutoff_rule": "publication_only",
+            "measures": (
+                "evidence retrieval for the query as written; not a forecast, "
+                "not a calibrated score, and not a backtest measurement"
+            ),
             "cascade": stats.summary(),
             "results": [
                 {

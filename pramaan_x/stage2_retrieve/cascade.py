@@ -228,7 +228,11 @@ class RetrievalCascade:
         its own ordering is unreadable to anyone consuming the API."""
         if self.fusion is not None and self.fusion.fitted:
             scores = self.fusion.score([components[d] for d in ids])
-            return sorted(zip(ids, scores.tolist(), strict=True), key=lambda kv: -kv[1])
+            # doc_id breaks ties here and in the fallback below: two documents
+            # the ranker cannot separate must still come back in the same order
+            # on every run.
+            return sorted(zip(ids, scores.tolist(), strict=True),
+                          key=lambda kv: (-kv[1], kv[0]))
         # Without a trained ranker, fall back to RRF order with the reranker
         # score as the dominant term where it exists. Explicitly a fallback:
         # these coefficients are not learned and are not claimed to be optimal.
@@ -236,7 +240,7 @@ class RetrievalCascade:
             c = components[d]
             return (2.0 * c.get("cross", 0.0) + 1.0 * c.get("late", 0.0)
                     + 60.0 * c.get("rrf", 0.0) + 0.2 * c.get("recency", 0.0))
-        return sorted(((d, key(d)) for d in ids), key=lambda kv: -kv[1])
+        return sorted(((d, key(d)) for d in ids), key=lambda kv: (-kv[1], kv[0]))
 
     @staticmethod
     def _stage_score(comp: dict[str, float]) -> float:

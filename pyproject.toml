@@ -1,7 +1,7 @@
 [project]
 name = "pramaan-x"
-version = "1.0.0"
-description = "Compute-cascade event forecasting with conformal risk control"
+version = "0.4.0"
+description = "Precursor-evidence retrieval cascade (stages 0-3); not a forecasting system"
 requires-python = ">=3.11"
 dependencies = [
   "numpy>=1.26",

@@ -114,12 +114,17 @@ class Stage1Config:
     # A document is retained if ANY detector fires. Union, not intersection --
     # intersecting detectors is how you lose recall.
     retain_on_any: bool = True
-    # Defaults come from a 36-point grid over (extractor floor, lexical
-    # percentile, relevance target recall, burst percentile) measured on a held
-    # out window: every point held 100% precursor recall, and retention ranged
-    # 37%-83%. These settings sit at 39% rather than the sweep minimum of 37%,
-    # because tuning to the extreme of a single window is how an operating point
-    # stops generalising.
+    # UNVERIFIED. These defaults were previously annotated as coming from a
+    # "36-point grid ... every point held 100% precursor recall, retention
+    # 37%-83%", and the README repeated "100% precursor recall at 39%
+    # retention" as a measured result. That sweep is not in this repository:
+    # no script runs it, no artefact records it, and no test fails if the
+    # numbers are wrong. The claim has been withdrawn.
+    #
+    # The values below are plausible starting points and nothing more. Stage 1
+    # is also not wired into the served pipeline or the benchmark (see the
+    # implementation-status table in README.md), so nothing currently measures
+    # them at all.
 
 
 @dataclass

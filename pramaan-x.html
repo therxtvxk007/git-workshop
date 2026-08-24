@@ -373,6 +373,28 @@ footer{padding:40px 0 64px;color:var(--ink-3);font-family:"IBM Plex Mono",monosp
 }
 </style>
 
+<style>
+.design-brief-banner{
+  max-width:var(--maxw);margin:24px auto 0;padding:16px 20px;
+  border:2px solid var(--alert);border-radius:8px;background:var(--alert-soft);
+  color:var(--ink);font-size:.95rem;line-height:1.55;
+}
+.design-brief-banner strong{display:block;margin-bottom:6px;font-size:1.02rem}
+.design-brief-banner code{font-family:"IBM Plex Mono",ui-monospace,monospace}
+</style>
+
+<div class="design-brief-banner" role="note">
+  <strong>This is a design brief, not a description of working software.</strong>
+  It sets out an intended system: a compute cascade with risk models, conformal
+  risk control, temporal-graph forecasting and a prospective forecast ledger.
+  <b>Stages 4 and 5 are not implemented</b>, and several components described
+  here (the temporal graph, ITHI, LANTERN, MTRM, Qdrant, Neo4j, MLflow and the
+  LLM providers) are not reachable from the running service. Nothing in this
+  repository forecasts events.
+  Read <code>README.md</code> — specifically its implementation-status table —
+  for what actually exists, what has been measured, and on what corpus.
+</div>
+
 <div class="wrap">
 <div class="layout">
 

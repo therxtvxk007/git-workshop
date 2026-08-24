@@ -1,10 +1,22 @@
 """Dataset versioning by content hash.
 
-DVC handles the storage; what DVC cannot do for us is prove that a *result* was
-produced from a particular corpus under a particular cutoff. That is what the
-manifest here is for: it pins the corpus content, the cutoff, and the config
-fingerprint together, so a metric can always be traced to the exact inputs that
-produced it. A backtest whose corpus cannot be reconstructed is an anecdote.
+What this module does: pin a corpus's content, the cutoff it was read at, and
+the config fingerprint together, so a metric can always be traced to the exact
+inputs that produced it. A backtest whose corpus cannot be reconstructed is an
+anecdote.
+
+**What this module is not: DVC.** An earlier version of this file wrote a file
+named `<corpus>.dvc` containing a field labelled `md5` whose value was the first
+32 hex characters of a SHA-256 digest of the frame's *logical* content. That is
+not an MD5, not a hash of the bytes DVC would hash, and not a pointer `dvc
+checkout` could ever resolve -- three separate ways of being wrong, presented as
+DVC compatibility. It has been replaced by `write_content_pointer`, which writes
+a `.pointer.json` and names its hashes honestly.
+
+DVC is not configured in this repository and this module does not pretend it is.
+Wiring it up means `dvc init`, a remote, and `dvc add` producing its own `.dvc`
+files with its own hashes; until somebody does that, nothing here should carry
+the extension.
 """
 
 from __future__ import annotations
@@ -115,28 +127,47 @@ def build_manifest(
     )
 
 
-def write_dvc_stub(path: str | Path, manifest: DatasetManifest) -> Path:
-    """Emit a `.dvc` pointer alongside the manifest so `dvc checkout` works in
-    a deployment that has DVC configured, without making DVC a hard dependency
-    of the library."""
+def write_content_pointer(path: str | Path, manifest: DatasetManifest) -> Path:
+    """Write `<file>.pointer.json` next to a data file.
+
+    Every hash is labelled with the algorithm that produced it and the thing it
+    was computed over, because that is the entire job of a pointer file:
+
+      `file_sha256`     SHA-256 of the bytes on disk -- "the same artefact"
+      `logical_sha256`  order-independent digest of the rows -- "the same corpus"
+
+    This is not a DVC pointer and does not claim to be one. It is not consumed
+    by `dvc checkout`; it is consumed by a human or a script asking whether two
+    files are the same data.
+    """
     path = Path(path)
-    stub = path.with_suffix(path.suffix + ".dvc")
-    stub.write_text(
-        "outs:\n"
-        f"- md5: {manifest.content_hash[:32]}\n"
-        f"  size: {path.stat().st_size if path.exists() else 0}\n"
-        f"  path: {path.name}\n"
-        f"  desc: {manifest.name} @ {manifest.created_at}\n"
-    )
-    return stub
+    pointer = path.with_suffix(path.suffix + ".pointer.json")
+    payload = {
+        "format": "pramaan-x/content-pointer/1",
+        "not_dvc": "this file is not a DVC pointer and dvc cannot resolve it",
+        "path": path.name,
+        "size_bytes": path.stat().st_size if path.exists() else 0,
+        "file_sha256": hash_parquet(path) if path.exists() else None,
+        "logical_sha256": manifest.content_hash,
+        "manifest_id": manifest.id,
+        "name": manifest.name,
+        "created_at": manifest.created_at,
+        "git_commit": manifest.git_commit,
+        "config_fingerprint": manifest.config_fingerprint,
+        "cutoff": manifest.cutoff,
+    }
+    pointer.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    return pointer
 
 
 class LeakageAudit:
-    """Assert that nothing dated at or after the forecast origin was visible.
+    """Publication-cutoff audit: nothing *published* at or after the origin.
 
-    Run this on every evaluation fold. The cost is one comparison per document;
-    the alternative is publishing a lead-time number that is an artefact of
-    post-event reporting.
+    This is one half of the availability rule and is deliberately named for the
+    half it checks. It does not look at `retrieved_at`, so a document published
+    before the origin and crawled after it passes here and is still unusable.
+    `pramaan_x.eval.availability` implements the full rule and is what an
+    evaluation must use; this remains for corpus-level publication audits.
     """
 
     def __init__(self, cutoff: datetime) -> None:

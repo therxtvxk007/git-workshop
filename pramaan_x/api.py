@@ -18,6 +18,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
+from . import __version__
 from .config import Config
 from .service import NotReady, PramaanService
 from .util.logging import configure, get_logger
@@ -49,8 +50,10 @@ class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=1000)
     as_of: datetime | None = Field(
         default=None,
-        description="Forecast origin. Documents published at or after this are "
-                    "excluded from retrieval. Omit only for retrospective study.",
+        description="Forecast origin. Documents *published* at or after this are "
+                    "excluded. Acquisition time (`retrieved_at`) is NOT applied "
+                    "here -- see `cutoff_rule` in the response. Omit only for "
+                    "retrospective study.",
     )
     k: int = Field(default=20, ge=1, le=200)
     stop_after: Literal["sparse", "dense", "fusion", "late", "rerank"] = "rerank"
@@ -80,6 +83,14 @@ class SearchHit(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     as_of: datetime | None
+    cutoff_rule: str = Field(
+        description="Which temporal rule this response actually enforced. "
+                    "`publication_only` means acquisition latency was not "
+                    "applied and the result is not a backtest measurement."
+    )
+    measures: str = Field(
+        description="What the ranking is and is not evidence about."
+    )
     cascade: dict[str, Any]
     results: list[SearchHit]
 
@@ -112,13 +123,24 @@ class ClusterResponse(BaseModel):
 def create_app(config: Config | None = None) -> FastAPI:
     configure()
     app = FastAPI(
-        title="PRAMAAN-X",
-        version="1.0.0",
-        summary="Compute-cascade event forecasting with conformal risk control",
+        title="PRAMAAN-X evidence retrieval",
+        version=__version__,
+        summary="Precursor-evidence retrieval cascade (stages 0-3). Not a forecasting service.",
         description=(
-            "Evidence retrieval and cascade telemetry. Every retrieval endpoint "
-            "accepts an `as_of` forecast origin and enforces it before scoring: "
-            "documents published at or after that instant are never returned."
+            "Evidence retrieval and cascade telemetry.\n\n"
+            "**This service retrieves evidence. It does not forecast events.** "
+            "Stages 4 (risk models) and 5 (conformal risk control) are not "
+            "implemented, so nothing here produces a calibrated probability, a "
+            "tier or a lead time.\n\n"
+            "`/search` takes an `as_of` forecast origin and applies a "
+            "**publication cutoff only**: documents published at or after that "
+            "instant are never returned. It does *not* apply the full "
+            "availability rule (`max(published_at, retrieved_at)`), because the "
+            "served index is built once over the whole corpus rather than per "
+            "origin. Use the `oracle_target_retrieval` benchmark "
+            "(`pramaan bench`) for anything reported as a measurement; this "
+            "endpoint is an interactive tool, and its response says so in "
+            "`cutoff_rule`."
         ),
     )
     if config is not None:

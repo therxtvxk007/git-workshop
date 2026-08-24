@@ -83,7 +83,7 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
 <body>
 <header>
   <h1>PRAMAAN<span>-X</span></h1>
-  <span class="tagline">Analyst console — evidence retrieval and cascade telemetry</span>
+  <span class="tagline">Analyst console — evidence retrieval and cascade telemetry. Not a forecasting console.</span>
   <span class="pill" id="conn">connecting</span>
 </header>
 
@@ -120,8 +120,16 @@ dialog::backdrop{background:rgba(0,0,0,.45)}
         <button id="go">Search</button>
       </div>
       <p class="muted" style="margin:10px 0 0">
-        <strong>as of</strong> is the forecast origin. Documents published on or after it are
-        excluded before any scoring, so results are what was knowable at that moment.
+        <strong>as of</strong> is the forecast origin. This console applies a
+        <strong>publication cutoff only</strong>: documents published on or after it are excluded
+        before any scoring, but acquisition latency (<code>retrieved_at</code>) is not applied,
+        because the served index is built once over the whole corpus. These results are an
+        interactive tool, not a backtest measurement — run
+        <code>pramaan bench</code> (oracle_target_retrieval) for anything reported as a number.
+      </p>
+      <p class="muted" style="margin:6px 0 0">
+        Ranking quality here is <strong>evidence retrieval</strong>. It is not a forecast, not a
+        probability, and not a lead time: stages 4 and 5 are not implemented.
       </p>
       <div id="funnel" style="margin-top:16px"></div>
       <div id="results" style="margin-top:14px"></div>

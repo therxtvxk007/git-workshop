@@ -16,6 +16,14 @@ builds in every failure mode the cascade is supposed to survive:
                          the clearest possible language -- the leakage trap
   * weak diffuse signal  precursors are individually uninformative; only
                          accumulation separates them from noise
+  * acquisition lag      a fraction of documents is crawled days after
+                         publication, so `published_at < T` does not imply the
+                         document could have been used at T
+  * missing acquisition  a fraction carries no `retrieved_at` at all, which a
+                         backtest must reject rather than guess at
+
+Everything here is synthetic. No number produced from this corpus is evidence
+about real-world reporting, and nothing in this repository claims otherwise.
 """
 
 from __future__ import annotations
@@ -205,6 +213,16 @@ class SynthConfig:
     max_copies: int = 9
     post_event_docs_per_event: tuple[int, int] = (1, 4)
     change_points_per_target: tuple[int, int] = (0, 3)
+    # --- acquisition timing -------------------------------------------------
+    # `retrieved_at` is when the crawler actually had the document. Most feeds
+    # arrive within minutes; a meaningful minority is backfilled days later,
+    # and some records reach the store with no acquisition time at all. These
+    # three parameters are what make the availability rule bite instead of
+    # being a no-op, so they default on.
+    prompt_lag_minutes: tuple[int, int] = (1, 240)
+    backfill_fraction: float = 0.12
+    backfill_lag_days: tuple[int, int] = (1, 30)
+    missing_retrieval_fraction: float = 0.04
     seed: int = 20260824
 
 
@@ -244,7 +262,11 @@ class SyntheticCorpus:
 
         # Regime changes: piecewise multiplicative level shifts.
         n_cp = rng.integers(cfg.change_points_per_target[0], cfg.change_points_per_target[1] + 1)
-        cps = sorted(rng.choice(np.arange(30, T - 30), size=int(n_cp), replace=False).tolist()) if n_cp else []
+        # A change point needs 30 days of stream on either side to be a regime
+        # rather than an edge effect, so a corpus shorter than that carries none.
+        interior = np.arange(30, T - 30)
+        n_cp = min(int(n_cp), interior.size)
+        cps = sorted(rng.choice(interior, size=n_cp, replace=False).tolist()) if n_cp else []
         regime = np.ones(T)
         level = 1.0
         prev = 0
@@ -375,7 +397,7 @@ class SyntheticCorpus:
             title=title,
             text=body,
             published_at=pub,
-            retrieved_at=pub + timedelta(minutes=int(rng.integers(1, 240))),
+            retrieved_at=self._acquisition_time(pub, rng),
             language="en",
             modality=Modality.TEXT,
             content_hash=content_hash(title, body),
@@ -397,14 +419,30 @@ class SyntheticCorpus:
                 source_id=src2,
                 title=title,
                 text=text2,
-                published_at=pub + timedelta(hours=int(rng.integers(0, 30))),
-                retrieved_at=pub + timedelta(hours=int(rng.integers(1, 36))),
+                published_at=(copy_pub := pub + timedelta(hours=int(rng.integers(0, 30)))),
+                retrieved_at=self._acquisition_time(copy_pub, rng),
                 content_hash=content_hash(title, text2),
                 meta={"synth_target": target.key(), "synth_noise": noise,
                       "source_family": fam2, "syndicated": True},
             ))
             gt.duplicate_of[cid] = doc_id
         return doc_id
+
+    def _acquisition_time(self, pub: datetime, rng) -> datetime | None:
+        """When the crawler had the document, or None if it never recorded one.
+
+        Three regimes, in the order they are drawn: no acquisition time at all,
+        a backfilled document crawled days after publication, and the ordinary
+        case of a feed picked up within hours.
+        """
+        cfg = self.cfg
+        u = float(rng.random())
+        if u < cfg.missing_retrieval_fraction:
+            return None
+        if u < cfg.missing_retrieval_fraction + cfg.backfill_fraction:
+            return pub + timedelta(days=int(rng.integers(*cfg.backfill_lag_days)),
+                                   hours=int(rng.integers(0, 24)))
+        return pub + timedelta(minutes=int(rng.integers(*cfg.prompt_lag_minutes)))
 
     @staticmethod
     def _paraphrase(text: str, rng) -> str:

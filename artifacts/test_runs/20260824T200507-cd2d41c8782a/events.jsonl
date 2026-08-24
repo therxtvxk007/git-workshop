@@ -1,4 +1,0 @@
-{"kind": "meta", "ts": 1787601907.8941543, "name": "smoke", "tags": {"suite": "table"}, "started_at": 1787601907.8941524, "run_id": "20260824T200507-cd2d41c8782a"}
-{"kind": "params", "ts": 1787601907.8944094, "stage2": {"rrf_k": 60}}
-{"kind": "metrics", "ts": 1787601907.8944697, "step": null, "recall@10": 0.535, "mrr": 0.751, "bad": null}
-{"kind": "end", "ts": 1787601907.894509, "status": "FINISHED", "ended_at": 1787601907.8945086}

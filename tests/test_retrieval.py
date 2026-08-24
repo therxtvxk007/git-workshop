@@ -1,13 +1,11 @@
-"""Retrieval regression guard.
+"""oracle_target_retrieval: the scientific invariants, then the quality floors.
 
-The risk table forbids trusting this component without measuring Recall@K, so
-the measurement is a test rather than a one-off script. The floors are set below
-the values measured on the full corpus, which is the point: they catch a
-regression without failing on ordinary run-to-run variation.
+The order is deliberate. A retrieval number from a contaminated pipeline is not
+a weaker result, it is a different quantity, so the firewall tests come first
+and the quality floors are only meaningful once they pass.
 
-Measured on the 420-day corpus (98 held-out queries):
-    heuristic ordering   R@10 0.199  nDCG@10 0.177  MRR 0.324
-    learned fusion       R@10 0.535  nDCG@10 0.527  MRR 0.751
+Every invariant here is written so that the contaminated legacy method fails
+it. A check both methods satisfy would be testing nothing.
 """
 
 from __future__ import annotations
@@ -16,112 +14,341 @@ from datetime import timedelta
 
 import pytest
 
-from pramaan_x.config import Stage2Config
-from pramaan_x.eval.retrieval_bench import build_queries, run_benchmark, stage_width, train_fusion
-from pramaan_x.stage0_ingest.pipeline import run_stage0
+from pramaan_x.config import Config, Stage2Config
+from pramaan_x.eval.availability import available_documents, is_available
+from pramaan_x.eval.harness import prepare, run_method
+from pramaan_x.eval.invariants import (
+    InvariantViolation,
+    assert_future_append_invariance,
+    assert_no_future_document_fitted,
+    assert_no_post_origin_results,
+    assert_no_test_labels_in_training,
+    check_all,
+    synthesise_future_documents,
+)
+from pramaan_x.eval.oracle_target_retrieval import (
+    LEGACY,
+    STRICT,
+    FullCorpusIndexProvider,
+    SnapshotIndexProvider,
+    format_table,
+    stage_width,
+)
 from pramaan_x.stage1_scan.embed import HashingEmbedder
-from pramaan_x.stage1_scan.lexical import LexicalIndicators
-from pramaan_x.stage2_retrieve.cascade import RetrievalCascade
 from pramaan_x.stage2_retrieve.rerank import LexicalReranker
+
+DAYS = 420
+SEED = 20260824
+STAGES = ("rerank",)
 
 
 @pytest.fixture(scope="module")
-def bench():
-    from pramaan_x.data.synth import SynthConfig, SyntheticCorpus
-
-    docs, gt = SyntheticCorpus(SynthConfig(days=300, n_locations=8)).generate()
-    corpus = run_stage0(docs).documents
-    split = min(d.published_at for d in corpus) + timedelta(days=200)
-    train = [d for d in corpus if d.published_at < split]
-
-    labels, types = [], []
-    for d in train:
-        key = d.meta.get("synth_target", "none|none")
-        _, event_type = key.split("|")
-        y = 0
-        if event_type != "none":
-            for when in gt.events.get(key, []):
-                if 0 < (when - d.published_at).days <= 21:
-                    y = 1
-                    break
-        labels.append(y)
-        types.append(event_type)
-
-    lexicon = LexicalIndicators().fit([d.full_text for d in train], labels,
-                                      event_types=types)
-    embedder = HashingEmbedder(1024).fit([d.full_text for d in corpus])
-    start = min(d.published_at for d in corpus)
-    end = max(d.published_at for d in corpus)
-    return {
-        "corpus": corpus, "gt": gt, "lexicon": lexicon, "embedder": embedder,
-        "train_q": build_queries(gt, lexicon, corpus, window=(start, split)),
-        "test_q": build_queries(gt, lexicon, corpus, window=(split, end)),
-    }
+def cfg() -> Config:
+    return Config().apply_profile()
 
 
-def test_query_set_is_non_trivial(bench):
-    assert len(bench["test_q"]) >= 20
-    assert all(q.relevant for q in bench["test_q"])
+@pytest.fixture(scope="module")
+def prep(cfg):
+    return prepare(cfg, days=DAYS, seed=SEED, n_locations=10, n_event_types=6)
 
 
-def test_reranking_improves_precision_at_the_top(bench):
-    """The reranker's entire justification. If it does not beat fusion on
-    nDCG@10 it is pure cost and should be removed from the cascade."""
-    reports = run_benchmark(bench["corpus"], bench["test_q"], bench["embedder"],
-                            LexicalReranker(), stages=("fusion", "rerank"))
-    assert reports["rerank"].ndcg[10] > reports["fusion"].ndcg[10]
-    assert reports["rerank"].mrr > reports["fusion"].mrr
+@pytest.fixture(scope="module")
+def strict_run(prep, cfg, tmp_path_factory):
+    return run_method(
+        prep, cfg, STRICT, stages=STAGES, results_dir=tmp_path_factory.mktemp("strict")
+    )
 
 
-def test_learned_fusion_beats_heuristic_ordering(bench):
-    """The brief says not to hand-set the component weights. This is the
-    measurement that backs the instruction."""
-    heuristic = run_benchmark(bench["corpus"], bench["test_q"], bench["embedder"],
-                              LexicalReranker(), stages=("rerank",))["rerank"]
-    fusion = train_fusion(bench["corpus"], bench["train_q"], bench["embedder"],
-                          LexicalReranker())
-    learned = run_benchmark(bench["corpus"], bench["test_q"], bench["embedder"],
-                            LexicalReranker(), stages=("rerank",),
-                            fusion=fusion)["rerank"]
-    assert learned.ndcg[10] > heuristic.ndcg[10] * 1.5
-    assert learned.mrr > heuristic.mrr
+@pytest.fixture(scope="module")
+def legacy_run(prep, cfg, tmp_path_factory):
+    return run_method(
+        prep, cfg, LEGACY, stages=STAGES, results_dir=tmp_path_factory.mktemp("legacy")
+    )
 
 
-def test_recall_floor_at_100(bench):
+# ============================================================ invariants ===
+
+
+def test_strict_run_passes_every_invariant(strict_run, prep):
+    verdicts = check_all(
+        strict_run.outcome,
+        prep.protocol,
+        strict_run.train_queries,
+        strict_run.test_queries,
+        prep.corpus,
+    )
+    assert set(verdicts.values()) == {"pass"}
+
+
+def test_no_fitted_index_saw_a_document_from_its_own_future(strict_run):
+    assert strict_run.outcome.fit_records, "nothing was recorded as fitted"
+    assert_no_future_document_fitted(strict_run.outcome.fit_records)
+
+
+def test_legacy_method_fails_the_future_fitting_invariant(legacy_run):
+    """Proof the invariant has teeth. The legacy index is fitted on the whole
+    corpus, so every origin's statistics depend on documents from after it."""
+    with pytest.raises(InvariantViolation, match="at or after their own forecast origin"):
+        assert_no_future_document_fitted(legacy_run.outcome.fit_records)
+
+
+def test_no_post_origin_document_is_returned(strict_run):
+    assert strict_run.outcome.availability_violations == []
+    assert_no_post_origin_results(strict_run.outcome)
+
+
+def test_legacy_method_returns_documents_it_could_not_have_had(legacy_run):
+    """Publication-date filtering lets through everything crawled late. This is
+    the concrete cost of the weaker rule, measured rather than asserted."""
+    assert legacy_run.outcome.availability_violations
+    with pytest.raises(InvariantViolation, match="violate the availability rule"):
+        assert_no_post_origin_results(legacy_run.outcome)
+
+
+def test_returned_documents_satisfy_the_rule_independently(strict_run, prep):
+    """Recomputed from the documents themselves rather than read off the run's
+    own audit, so a bug in the audit cannot make this pass."""
+    by_id = {d.doc_id: d for d in prep.corpus}
+    checked = 0
+    for stage_report in strict_run.outcome.reports.values():
+        assert stage_report.n_queries > 0
+    for q in strict_run.test_queries:
+        for doc_id in q.relevant:
+            assert is_available(by_id[doc_id], q.origin)
+            checked += 1
+    assert checked > 0
+
+
+def test_no_test_label_reaches_training(strict_run, prep):
+    assert_no_test_labels_in_training(
+        strict_run.train_queries,
+        strict_run.test_queries,
+        prep.protocol,
+        fitted_documents=prep.corpus,
+    )
+
+
+def test_train_and_test_queries_are_temporally_disjoint(strict_run, prep):
+    p = prep.protocol
+    assert strict_run.train_queries and strict_run.test_queries
+    assert all(p.contains("train", q.event_time) for q in strict_run.train_queries)
+    assert all(p.contains("test", q.event_time) for q in strict_run.test_queries)
+    assert max(q.event_time for q in strict_run.train_queries) < p.test_start
+    ids = {q.query_id for q in strict_run.train_queries}
+    assert not ids & {q.query_id for q in strict_run.test_queries}
+
+
+def test_a_training_query_labelling_a_post_train_document_is_caught(strict_run, prep):
+    """Negative control for the label-leakage invariant."""
+    import dataclasses
+
+    poisoned = dataclasses.replace(
+        strict_run.train_queries[0],
+        relevant=frozenset({strict_run.test_queries[0].query_id})
+        | strict_run.train_queries[0].relevant,
+        event_time=prep.protocol.test_start + timedelta(days=1),
+    )
+    with pytest.raises(InvariantViolation, match="outside the train window"):
+        assert_no_test_labels_in_training(
+            [poisoned], strict_run.test_queries, prep.protocol, fitted_documents=prep.corpus
+        )
+
+
+# ------------------------------------------- the future-append invariance ---
+
+
+def _rank_at_origins(cfg, queries):
+    """Returns a callable that indexes a corpus and ranks a fixed query set."""
+
+    def build_and_rank(corpus):
+        provider = SnapshotIndexProvider(
+            corpus,
+            cfg.stage2,
+            lambda: HashingEmbedder(cfg.stage1.embed_dim),
+            LexicalReranker,
+        )
+        return {
+            q.query_id: [
+                e.doc_id
+                for e in provider.for_origin(q.origin).retrieve(q.text, as_of=q.origin, top_k=50)[0]
+            ]
+            for q in queries
+        }
+
+    return build_and_rank
+
+
+def test_appending_future_documents_does_not_change_earlier_rankings(prep, cfg, strict_run):
+    """The decisive test.
+
+    Take a set of queries, rank them, then append documents dated after every
+    origin involved and rank again. Under snapshot indexing the two rankings
+    must be byte-identical: a single changed position means some fitted
+    statistic is a function of the future.
+    """
+    queries = strict_run.test_queries[:8]
+    assert queries
+    latest = max(q.origin for q in queries)
+    future = synthesise_future_documents(prep.corpus, 400, after=latest + timedelta(days=1), seed=1)
+    baseline = assert_future_append_invariance(_rank_at_origins(cfg, queries), prep.corpus, future)
+    assert any(baseline.values()), "the invariance held only because nothing ranked"
+
+
+def test_the_invariance_test_fails_on_the_contaminated_method(prep, cfg, strict_run):
+    """Negative control. Full-corpus fitting must visibly break invariance --
+    otherwise the previous test proves nothing about the firewall."""
+    queries = strict_run.test_queries[:8]
+    latest = max(q.origin for q in queries)
+    future = synthesise_future_documents(prep.corpus, 400, after=latest + timedelta(days=1), seed=1)
+
+    def build_and_rank(corpus):
+        embedder = HashingEmbedder(cfg.stage1.embed_dim).fit([d.full_text for d in corpus])
+        provider = FullCorpusIndexProvider(corpus, cfg.stage2, embedder, LexicalReranker())
+        return {
+            q.query_id: [
+                e.doc_id
+                for e in provider.for_origin(q.origin).retrieve(q.text, as_of=q.origin, top_k=50)[0]
+            ]
+            for q in queries
+        }
+
+    with pytest.raises(InvariantViolation, match="rankings changed"):
+        assert_future_append_invariance(build_and_rank, prep.corpus, future)
+
+
+def test_snapshot_cache_does_not_widen_what_an_index_sees(prep, cfg):
+    """Caching is a performance decision. Two lookups at the same origin must
+    return the same index, and an index at an earlier origin must be a strict
+    subset of a later one."""
+    provider = SnapshotIndexProvider(
+        prep.corpus, cfg.stage2, lambda: HashingEmbedder(cfg.stage1.embed_dim), LexicalReranker
+    )
+    origins = prep.protocol.origins("test")[:3]
+    first = provider.for_origin(origins[0])
+    assert provider.for_origin(origins[0]) is first
+    assert provider.n_builds == 1
+    early = set(first._docs)
+    late = set(provider.for_origin(origins[-1])._docs)
+    assert early < late
+    assert early == {d.doc_id for d in available_documents(prep.corpus, origins[0])}
+
+
+# ============================================================== quality ===
+
+
+def test_query_set_is_non_trivial(strict_run):
+    assert len(strict_run.test_queries) >= 20
+    assert all(q.relevant for q in strict_run.test_queries)
+    assert all(q.origin <= q.event_time for q in strict_run.test_queries)
+
+
+def test_queries_are_oracle_targets(strict_run):
+    """The query text is the target's location plus learned terms. This test
+    exists to keep the oracle assumption visible in the suite: if the location
+    ever stops appearing, the benchmark has quietly changed meaning."""
+    q = strict_run.test_queries[0]
+    assert q.text.startswith(q.location)
+    assert q.target_key == f"{q.location}|{q.event_type}"
+
+
+def test_recall_floor_at_100(strict_run):
     """Recall@100 is the ceiling on everything downstream: an evidence document
-    the cascade never returns cannot be recovered by any later stage."""
-    rep = run_benchmark(bench["corpus"], bench["test_q"], bench["embedder"],
-                        LexicalReranker(), stages=("rerank",))["rerank"]
-    assert rep.recall[100] > 0.60, f"R@100 fell to {rep.recall[100]:.3f}"
+    the cascade never returns cannot be recovered by any later stage.
+
+    The floor is set well below the measured value; it catches a regression,
+    not run-to-run variation. It is a floor on the *strict* method, which is
+    the only one whose numbers mean anything.
+    """
+    rep = strict_run.outcome.reports["rerank"]
+    assert rep.recall[100] > 0.45, f"R@100 fell to {rep.recall[100]:.3f}"
 
 
-def test_sparse_and_dense_contribute_differently(bench):
+def test_precision_is_reported_not_discarded(strict_run):
+    rep = strict_run.outcome.reports["rerank"]
+    assert set(rep.precision) == set(rep.recall)
+    assert all(0.0 <= v <= 1.0 for v in rep.precision.values())
+    assert "precision@10" in rep.summary()
+
+
+def test_latency_is_measured(strict_run):
+    rep = strict_run.outcome.reports["rerank"]
+    assert rep.latency_ms["mean"] > 0
+    assert rep.latency_ms["p95"] >= rep.latency_ms["p50"]
+
+
+def test_sparse_and_dense_contribute_differently(prep, cfg, strict_run):
     """If both retrievers returned the same documents, one of them is dead
     weight. Overlap below 90% is what justifies running the pair."""
-    cascade = RetrievalCascade(Stage2Config(), bench["embedder"],
-                               LexicalReranker()).index(bench["corpus"])
+    provider = SnapshotIndexProvider(
+        prep.corpus, cfg.stage2, lambda: HashingEmbedder(cfg.stage1.embed_dim), LexicalReranker
+    )
     overlaps = []
-    for q in bench["test_q"][:15]:
-        s = {e.doc_id for e in cascade.retrieve(q.text, as_of=q.as_of, top_k=50,
-                                                stop_after="sparse")[0]}
-        d = {e.doc_id for e in cascade.retrieve(q.text, as_of=q.as_of, top_k=50,
-                                                stop_after="dense")[0]}
+    for q in strict_run.test_queries[:15]:
+        cascade = provider.for_origin(q.origin)
+        s = {
+            e.doc_id
+            for e in cascade.retrieve(q.text, as_of=q.origin, top_k=50, stop_after="sparse")[0]
+        }
+        d = {
+            e.doc_id
+            for e in cascade.retrieve(q.text, as_of=q.origin, top_k=50, stop_after="dense")[0]
+        }
         if s and d:
             overlaps.append(len(s & d) / len(s | d))
     assert overlaps
     assert sum(overlaps) / len(overlaps) < 0.9
 
 
-def test_cutoff_is_enforced_in_the_cascade(bench):
-    cascade = RetrievalCascade(Stage2Config(), bench["embedder"],
-                               LexicalReranker()).index(bench["corpus"])
-    published = {d.doc_id: d.published_at for d in bench["corpus"]}
-    for q in bench["test_q"][:25]:
-        evidence, _ = cascade.retrieve(q.text, as_of=q.as_of, top_k=100)
-        assert all(published[e.doc_id] < q.as_of for e in evidence)
-
-
 def test_stage_widths_bound_reported_recall():
     cfg = Stage2Config()
     assert stage_width(cfg, "late") == cfg.late_top_k
     assert stage_width(cfg, "sparse") == cfg.bm25_top_k
+
+
+def test_table_states_what_the_benchmark_measures(strict_run, cfg):
+    table = format_table(strict_run.outcome.reports, cfg=cfg.stage2, method=STRICT)
+    assert "oracle_target_retrieval" in table
+    assert "GIVEN" in table
+    assert "not event forecasting" in table
+    assert STRICT in table
+
+
+def test_the_lexicon_saw_no_label_from_beyond_the_training_window(prep):
+    """Preprocessing is the leak nobody looks for.
+
+    The lexicon decides the *text* of every query in the benchmark, test
+    queries included. A label built from an event after `train_end` would put
+    post-training information into every query the retriever ever sees, and no
+    amount of careful indexing downstream could undo it.
+    """
+    from pramaan_x.eval.invariants import assert_lexicon_fitted_on_training_only
+
+    record = prep.lexicon_fit
+    assert record is not None and record.n_documents > 0
+    assert record.n_positive > 0, "a lexicon fitted on no positives learns nothing"
+    assert_lexicon_fitted_on_training_only(record, prep.protocol)
+
+
+def test_the_lexicon_invariant_catches_a_post_training_label(prep):
+    """Negative control: move one event past `train_end` and it must fire."""
+    import dataclasses
+
+    from pramaan_x.eval.invariants import (
+        InvariantViolation,
+        assert_lexicon_fitted_on_training_only,
+    )
+
+    poisoned = dataclasses.replace(
+        prep.lexicon_fit,
+        max_event_used=(prep.protocol.test_start + timedelta(days=3)).isoformat(),
+    )
+    with pytest.raises(InvariantViolation, match="at or after train_end"):
+        assert_lexicon_fitted_on_training_only(poisoned, prep.protocol)
+
+
+def test_both_methods_record_the_preprocessing_verdict(strict_run, legacy_run):
+    """Both arms share the lexicon, so both should pass this check. The legacy
+    method's contamination is in its indexes, not here -- and the artefact says
+    so rather than leaving the reader to infer which checks ran."""
+    for run in (strict_run, legacy_run):
+        assert run.payload["invariants"]["no_test_labels_in_preprocessing"] == "pass"

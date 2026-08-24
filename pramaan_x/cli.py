@@ -10,8 +10,10 @@ import argparse
 import json
 import sys
 from datetime import UTC, datetime
+from pathlib import Path
 
 from .config import HARDWARE_PROFILES, Config
+from .eval.artefact import BENCHMARK_RESULTS_DIR
 from .service import NotReady, PramaanService
 from .util.logging import configure, get_logger
 
@@ -91,67 +93,124 @@ def cmd_serve(args) -> int:
     return 0
 
 
+def _seeds(raw: str, default: int) -> list[int]:
+    if not raw:
+        return [default]
+    return [int(x) for x in raw.replace(",", " ").split()]
+
+
 def cmd_bench(args) -> int:
-    """Retrieval benchmark. The measurement the design brief requires before
-    any retrieval claim is made."""
-    from .data.synth import SynthConfig, SyntheticCorpus
-    from .eval.retrieval_bench import build_queries, format_table, run_benchmark, train_fusion
-    from .stage0_ingest.pipeline import run_stage0
-    from .stage1_scan.embed import build_embedder
-    from .stage1_scan.lexical import LexicalIndicators
-    from .stage2_retrieve.rerank import build_reranker
+    """oracle_target_retrieval.
+
+    Measures precursor-evidence retrieval for a target whose location and
+    event type are GIVEN. It is not an event-forecasting evaluation and no
+    number it prints may be reported as one.
+    """
+    import json as _json
+
+    from .eval.artefact import aggregate
+    from .eval.harness import prepare, run_method
+    from .eval.oracle_target_retrieval import LEGACY, STRICT, format_table
+    from .tracking import build_tracker
 
     cfg = _config(args)
-    docs, gt = SyntheticCorpus(SynthConfig(days=args.days, seed=cfg.seed)).generate()
-    corpus = run_stage0(docs, cfg.stage0).documents
-    start = min(d.published_at for d in corpus)
-    end = max(d.published_at for d in corpus)
-    split = start + (end - start) * 0.66
+    methods = [{"strict": STRICT, "legacy": LEGACY}[m]
+               for m in args.methods.replace(",", " ").split()]
+    seeds = _seeds(args.seeds, cfg.seed)
+    stages = tuple(args.stages.replace(",", " ").split())
+    tracker = build_tracker(cfg.tracking, uri=cfg.mlflow_uri,
+                            experiment=cfg.experiment,
+                            root=f"{cfg.artifacts_dir}/runs")
 
-    labels, types = [], []
-    for d in (t for t in corpus if t.published_at < split):
-        key = d.meta.get("synth_target", "none|none")
-        _, event_type = key.split("|")
-        y = 0
-        if event_type != "none":
-            for when in gt.events.get(key, []):
-                if 0 < (when - d.published_at).days <= 21:
-                    y = 1
-                    break
-        labels.append(y)
-        types.append(event_type)
+    print("oracle_target_retrieval")
+    print("  assumes the target location and event type are already known.")
+    print("  measures precursor-evidence retrieval only.")
+    print("  NOT an event-forecasting evaluation.\n")
 
-    train_docs = [d for d in corpus if d.published_at < split]
-    lexicon = LexicalIndicators().fit([d.full_text for d in train_docs], labels,
-                                      event_types=types)
-    embedder = build_embedder(cfg.stage1.embedder, cfg.stage1.embed_dim)
-    if hasattr(embedder, "fit"):
-        embedder.fit([d.full_text for d in corpus])
-    reranker = build_reranker(cfg.stage2.reranker)
+    collected: dict[str, list[dict]] = {m: [] for m in methods}
+    for seed in seeds:
+        prep = prepare(cfg, days=args.days, seed=seed,
+                       n_locations=args.locations, n_event_types=args.event_types,
+                       embargo_days=cfg.eval.embargo_days,
+                       origin_stride_days=args.origin_stride)
+        proto = prep.protocol
+        print(f"seed {seed}  corpus {len(prep.corpus)} canonical documents  "
+              f"protocol {proto.fingerprint()}")
+        print(f"  train  {proto.train_start.date()} -> {proto.train_end.date()}   "
+              f"embargo {proto.effective_embargo_days}d")
+        print(f"  calib  {proto.calibration_start.date()} -> {proto.calibration_end.date()}")
+        print(f"  TEST   {proto.test_start.date()} -> {proto.test_end.date()}  "
+              f"({len(proto.origins('test'))} forecast origins, locked)")
+        for method in methods:
+            run_name = f"oracle_target_retrieval:{method}:seed{seed}"
+            tracker.start_run(run_name, {"method": method, "seed": str(seed),
+                                         "benchmark": "oracle_target_retrieval"})
+            try:
+                res = run_method(prep, cfg, method, stages=stages,
+                                 use_fusion=not args.no_fusion,
+                                 results_dir=args.results_dir)
+                tracker.log_params({
+                    "seed": seed, "days": args.days, "method": method,
+                    "protocol_fingerprint": proto.fingerprint(),
+                    "config_fingerprint": cfg.fingerprint(),
+                    "dataset_logical_hash": prep.dataset.logical_hash,
+                })
+                final = res.outcome.reports[stages[-1]]
+                tracker.log_metrics({k: v for k, v in final.summary().items()
+                                     if isinstance(v, (int, float))})
+                if res.path is not None:
+                    tracker.log_artifact(res.path, kind="benchmark_artefact")
+            except Exception:
+                tracker.end_run("FAILED")
+                raise
+            tracker.end_run()
+            print()
+            print(format_table(res.outcome.reports, cfg=cfg.stage2, method=method))
+            viol = res.payload["availability_violations"]
+            print(f"  queries       {len(res.train_queries)} train / "
+                  f"{len(res.test_queries)} test")
+            print(f"  index builds  {res.outcome.n_index_builds}")
+            print(f"  availability violations  {viol['total']}  {viol['by_reason']}")
+            for name, verdict in res.payload["invariants"].items():
+                print(f"  invariant {name:32s} {verdict[:70]}")
+            print(f"  artefact      {res.path}")
+            collected[method].append(res.payload)
+        print()
 
-    train_q = build_queries(gt, lexicon, corpus, window=(start, split))
-    test_q = build_queries(gt, lexicon, corpus, window=(split, end))
-    print(f"corpus {len(corpus)} canonical documents | "
-          f"{len(train_q)} train / {len(test_q)} test queries\n")
+    summary: dict[str, object] = {"benchmark": "oracle_target_retrieval",
+                                  "stage": stages[-1], "seeds": seeds,
+                                  "methods": {}}
+    for method, payloads in collected.items():
+        if not payloads:
+            continue
+        agg = aggregate(payloads, stage=stages[-1])
+        summary["methods"][method] = agg
+        print(f"{method}  ({agg['n_seeds']} seeds, stop point {stages[-1]})")
+        print(f"  {'metric':<22}{'mean':>9}{'std':>9}{'min':>9}{'max':>9}")
+        for k in ("recall@10", "recall@100", "precision@10", "ndcg@10", "mrr"):
+            st = agg["statistics"].get(k)
+            if st:
+                print(f"  {k:<22}{st['mean']:>9.4f}{st['std']:>9.4f}"
+                      f"{st['min']:>9.4f}{st['max']:>9.4f}")
+        for row in agg["per_seed"]:
+            m = row["metrics"]
+            print(f"    seed {row['seed']:<12} R@10 {m.get('recall@10', float('nan')):.4f}"
+                  f"  nDCG@10 {m.get('ndcg@10', float('nan')):.4f}"
+                  f"  MRR {m.get('mrr', float('nan')):.4f}")
+        print()
 
-    print("heuristic ordering")
-    print(format_table(run_benchmark(corpus, test_q, embedder, reranker, cfg=cfg.stage2),
-                       cfg=cfg.stage2))
-    if not args.no_fusion:
-        fusion = train_fusion(corpus, train_q, embedder, reranker, cfg=cfg.stage2)
-        print("\nlearned fusion (LambdaMART)")
-        print(format_table(
-            run_benchmark(corpus, test_q, embedder, reranker, cfg=cfg.stage2,
-                          fusion=fusion, stages=("rerank",)), cfg=cfg.stage2))
-        print("\nlearned component weights:")
-        for k, v in sorted(fusion.weights().items(), key=lambda kv: -kv[1]):
-            print(f"  {k:22s} {v:.3f}")
+    out = Path(args.results_dir) / "summary.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(_json.dumps(summary, indent=2, sort_keys=True, default=str) + "\n")
+    print(f"summary written to {out}")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        prog="pramaan", description="PRAMAAN-X compute-cascade event forecasting")
+        prog="pramaan",
+        description="PRAMAAN-X evidence retrieval cascade (stages 0-3). "
+                    "Stages 4 and 5 are not implemented; this system does not forecast events.")
     parser.add_argument("--config", help="path to a YAML or JSON config")
     parser.add_argument("--profile", choices=sorted(HARDWARE_PROFILES),
                         help="hardware profile; overrides the config")
@@ -179,8 +238,23 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--json", action="store_true")
     p.set_defaults(fn=cmd_search)
 
-    p = sub.add_parser("bench", help="measure Recall@K across cascade stages")
-    p.add_argument("--days", type=int, default=300)
+    p = sub.add_parser(
+        "bench",
+        help="oracle_target_retrieval: precursor-evidence retrieval for a GIVEN "
+             "target. Not a forecasting evaluation.")
+    p.add_argument("--days", type=int, default=540)
+    p.add_argument("--locations", type=int, default=12)
+    p.add_argument("--event-types", dest="event_types", type=int, default=6)
+    p.add_argument("--seeds", default="",
+                   help="comma or space separated; defaults to the config seed")
+    p.add_argument("--methods", default="legacy,strict",
+                   help="any of: legacy (contaminated_legacy_diagnostic), "
+                        "strict (strict_temporal)")
+    p.add_argument("--stages", default="sparse,dense,fusion,late,rerank")
+    p.add_argument("--origin-stride", dest="origin_stride", type=int, default=7,
+                   help="days between forecast origins in the snapshot grid")
+    p.add_argument("--results-dir", dest="results_dir",
+                   default=BENCHMARK_RESULTS_DIR)
     p.add_argument("--no-fusion", action="store_true")
     p.set_defaults(fn=cmd_bench)
 

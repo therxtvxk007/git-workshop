@@ -44,18 +44,20 @@ def cusum(
     """Two-sided tabular CUSUM on standardised observations.
 
     `k` is the slack in standard deviations (half the shift we want to detect
-    quickly) and `h` the decision interval. Measured operating characteristics
-    on standard-normal input, 120 replications each:
+    quickly) and `h` the decision interval.
 
-        h     ARL0 (days)   mean delay after +2 sigma shift
-        4.0          162                   2.1
-        5.0          410                   2.7
-        6.0          982                   3.2
+    UNVERIFIED OPERATING POINT. An earlier version of this docstring quoted a
+    table of ARL0 and detection-delay figures (h=5.0 -> ARL0 410 days, 2.7-day
+    delay) as "measured ... 120 replications each". No such experiment exists
+    in this repository: there is no script that produces those numbers, no
+    artefact recording them, and no test that would fail if they were wrong.
+    They have been removed rather than restated, because a number nobody can
+    reproduce is worse than no number.
 
-    The default is h=5.0: roughly one false alarm per target per fourteen
-    months, with a real shift caught inside three days. h=4 is the textbook
-    value but at 72 targets it produces an alarm every other day across the
-    board, which trains analysts to ignore the channel.
+    What is actually known about the default h=5.0 is that it is a
+    conventional choice from the SPC literature and that it has not been
+    characterised on this corpus. Anyone relying on the false-alarm rate must
+    measure it first.
     """
     x = np.asarray(x, dtype=np.float64)
     if x.size == 0:

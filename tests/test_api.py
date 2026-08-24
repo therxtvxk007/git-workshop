@@ -144,4 +144,28 @@ def test_openapi_documents_every_route(client):
     spec = client.get("/openapi.json").json()
     for path in ("/search", "/status", "/ingest/synthetic", "/documents/{doc_id}"):
         assert path in spec["paths"]
-    assert spec["info"]["title"] == "PRAMAAN-X"
+    assert spec["info"]["title"] == "PRAMAAN-X evidence retrieval"
+
+
+def test_openapi_does_not_advertise_forecasting(client):
+    """The API label has to match what the code does. Stages 4 and 5 are not
+    implemented, so nothing in the served description may imply a forecast."""
+    info = client.get("/openapi.json").json()["info"]
+    blob = f"{info['title']} {info.get('summary', '')} {info.get('description', '')}"
+    assert "Not a forecasting service" in blob
+    assert "does not forecast events" in blob
+    assert "conformal risk control" not in blob.lower().replace(
+        "stages 4 (risk models) and 5 (conformal risk control) are not", "")
+
+
+def test_search_response_states_which_cutoff_rule_it_applied(ready_client):
+    """The served index is built once over the whole corpus, so this endpoint
+    enforces the publication cutoff only. Saying so in the payload is what
+    stops an interactive result being quoted as a backtest number."""
+    body = ready_client.post("/search", json={
+        "query": "reservoir levels spill threshold",
+        "as_of": "2025-03-01T00:00:00Z", "k": 5,
+    }).json()
+    assert body["cutoff_rule"] == "publication_only"
+    assert "not a forecast" in body["measures"]
+    assert "not a backtest measurement" in body["measures"]

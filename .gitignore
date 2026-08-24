@@ -1,0 +1,42 @@
+# Byte-compiled artefacts. These were tracked once; they made every checkout
+# non-reproducible in the one way nobody looks at.
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments and build products. Regenerate them from uv.lock; a committed
+# venv is a machine, not a dependency specification.
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Tool caches.
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.cache/
+.coverage
+htmlcov/
+
+# Generated run outputs. `artifacts/` holds corpora, run stores and parquet
+# built by the CLI: derived data, reconstructible from a seed and a commit.
+artifacts/
+*.parquet
+
+# Local editor and OS noise.
+.idea/
+.vscode/
+.DS_Store
+
+# Never commit an environment file.
+.env
+.env.*
+!.env.example
+
+# benchmark_results/ is deliberately NOT ignored. Those artefacts are the
+# evidence for every number in the README, and a claim whose artefact is not
+# in the repository is an assertion.

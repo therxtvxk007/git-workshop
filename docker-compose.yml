@@ -9,7 +9,7 @@
 services:
   api:
     build: .
-    image: pramaan-x:1.0.0
+    image: pramaan-x:0.4.0
     ports: ["8000:8000"]
     environment:
       PRAMAAN_CONFIG: /app/configs/cpu_only.json
