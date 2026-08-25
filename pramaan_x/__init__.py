@@ -5,5 +5,5 @@ Stages 4 (risk models) and 5 (conformal risk control) are not. Nothing in this
 package forecasts events; see README.md for the implementation-status table.
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 __all__ = ["__version__"]

@@ -54,6 +54,28 @@ forecasting performance**.
 Six things were wrong with the previous evaluation. Each is now a mechanism
 with a test that fails without it.
 
+### 0. One timestamp policy, applied wherever a document enters
+
+`eval/availability.py` refused a naive timestamp as undecidable while
+`stage0_ingest/validate.py` repaired the same value with
+`replace(tzinfo=UTC)`. Stage 0 runs first, so the repair always won and the
+documented contract was decorative.
+
+`pramaan_x/timestamps.py` now owns the decision and Stage 0, the store and the
+benchmark all call it. Under the default `strict` policy a naive
+`published_at` or `retrieved_at` is rejected with the reason preserved into the
+run artefact; no timezone is ever inferred. An aware timestamp in any zone is
+*converted*, which is arithmetic on a known instant and a different thing. An
+`assume_utc` mode exists for feeds whose zone an operator knows, and
+`require_strict` keeps it out of anything whose numbers are reported.
+
+The trusted-historical-snapshot flag now admits a document only when its value
+is exactly the boolean `True` -- `bool(meta.get(flag))` accepted the string
+`"false"`, which is what a JSON round trip of a boolean produces often enough
+to matter.
+
+`pramaan_x/timestamps.py` · tests: `tests/test_timestamp_policy.py`
+
 ### 1. Information availability, not just publication date
 
 ```
@@ -76,6 +98,18 @@ is rejected rather than assumed.
 
 `pramaan_x/eval/availability.py` · tests: `tests/test_availability.py`
 
+**Clusters.** After deduplication a document stands for its whole
+near-duplicate cluster, and the cluster's availability is that of its
+*earliest-available member*, not of its canonical. The canonical is the
+earliest-*published* member: if it was crawled late or never while a syndicated
+copy was in hand at the origin, then the story was in hand. Deciding otherwise
+let a deduplication step, whose only job is to stop double-counting evidence,
+silently delete it instead -- on the 300-day corpus that was 187 of 1,053
+multi-member clusters. Ground-truth precursor ids are mapped through the
+clusters before any query is built, so a document absorbed into a cluster
+counts as its canonical rather than vanishing, and syndicated copies of one
+story count once.
+
 ### 2. Nothing is fitted on the future
 
 At every forecast origin, BM25 corpus statistics, the hashing IDF table and the
@@ -87,7 +121,7 @@ the cache key *is* the origin.
 The learned fusion ranker (LambdaMART) is fitted only on training-window
 queries, using candidates drawn from those same per-origin indexes.
 
-### 3. Four executable invariants
+### 3. Executable invariants, from raw documents
 
 | Invariant | What it checks | Legacy method |
 | --- | --- | --- |
@@ -96,11 +130,21 @@ queries, using candidates drawn from those same per-origin indexes.
 | `no_post_origin_results` | no returned document violates the availability rule at its query's origin | **fails** |
 | future-append invariance | appending arbitrary post-origin documents leaves every earlier ranking byte-identical | **fails** |
 
-The last one is the decisive test. `tests/test_retrieval.py` runs it both ways:
-snapshot indexing is invariant, and the same test applied to full-corpus fitting
-raises — so the test is proven to have teeth rather than merely passing.
+The last one is the decisive test, and it now starts from **raw documents**
+rather than from an already-deduplicated corpus. The probe runs timestamp
+validation, cleaning, deduplication, the canonical/cluster mapping, the lexicon
+and the index, and compares every intermediate an appended document could
+perturb: which raw documents were admitted at the origin, the origin-restricted
+cluster view, each cluster's availability, the query text, the relevant set and
+the ranking. Its negative control fits the lexicon over the whole corpus and
+must fail.
 
-`pramaan_x/eval/invariants.py`
+Deduplication is *append-only* under a growing corpus -- no canonical changes,
+no document is reassigned, only post-origin members are added -- which is what
+makes the origin-restricted cluster view safe to rely on. That, too, is
+asserted rather than assumed.
+
+`pramaan_x/eval/invariants.py` · tests: `tests/test_raw_pipeline_invariance.py`
 
 ### 4. A locked temporal protocol
 
@@ -119,9 +163,23 @@ windows whatever it is called. Splits are temporal and contiguous;
 `tests/test_protocol.py` asserts the module contains no shuffling or
 random-split helper at all.
 
-The test window selects nothing — no threshold, no ranker parameter, no
-retrieval width, no vocabulary, no model variant, no operating point. The
-calibration window exists for that.
+The calibration span is split into a **selection** window, where widths,
+thresholds and variants are chosen, and a **regression** window, where CI
+quality floors are measured. Both precede the locked test window.
+
+The test window selects nothing, and that is now a mechanism rather than a
+sentence. `TemporalProtocol.assert_selection_window` refuses any window the
+protocol does not mark selectable, and the selector additionally checks that
+every query handed to it lies in the window it claims to be selecting on -- so
+labelling a call `selection` while passing test-window queries is caught too.
+The full candidate grid, the objective, every candidate's score and the winner
+are recorded in the artefact.
+
+The previous suite's only quality threshold was a Recall@100 floor asserted
+against the locked test window, which meant a build's fate depended on
+test-window performance: selection by another name. The floor moved to the
+regression window. `tests/test_selection.py` perturbs every test-window label
+and shows no selected parameter moves.
 
 ### 5. Machine-verifiable artefacts
 
@@ -137,74 +195,82 @@ same protocol on the same commit overwrites the same file rather than
 accumulating near-identical results to choose between. Nothing in that directory
 is typed by hand.
 
-### 6. `contaminated_legacy_diagnostic`, kept and measured
+### 6. A controlled ablation, and an unpaired reproduction kept apart from it
 
-The old method still runs, under a name that says what it is. It is the only way
-to quantify the contamination rather than assert it. Its artefacts record its
-failed invariants; nothing in this repository reports its numbers as a result.
+`strict_temporal` and `future_fitted_index_ablation` share a byte-identical
+query set -- same ids, text, origins and relevant sets -- plus the same lexicon,
+the same ranker training data, the same K values and the same widths. One thing
+differs: whether the index at each origin was fitted on documents available then
+or on the whole corpus. Both artefacts record the fingerprints that make that
+checkable from the files alone, and the ablation carries a per-query delta table
+rather than only a difference of means.
+
+`historical_legacy_reproduction_unpaired` reproduces the pre-firewall behaviour.
+It changes index scope, availability policy, origin placement and the
+relevant-document set together, so it builds a different query set: on the
+300-day corpus, all 19 shared query ids had different origins, 14 had different
+relevant sets, and the total relevant-document count differed 48 against 66. No
+delta is computed against it, and `run_method` raises if one is requested.
+
+### 7. Artefact identity covers the code
+
+The artefact path is keyed on the run's full scientific identity: commit,
+source-tree hash, `uv.lock` SHA-256, package version, protocol fingerprint,
+dataset logical and byte hashes, config fingerprint, backend identities *with
+versions*, method and seed. The previous key omitted the code revision, so two
+commits resolved to the same filename and a later run silently overwrote an
+earlier one.
+
+Publishing is refused while tracked source differs from `HEAD`, because a result
+attributed to a commit that does not contain the code that produced it is worse
+than an unattributed one. Generated output directories are excluded from that
+check -- a run writing its own artefact necessarily dirties the worktree -- and
+the exclusion list is explicit and tested.
 
 ## Results
 
-Three seeds (11, 29, 20260824), one 540-day synthetic corpus per seed,
-identical protocol on both arms. Stop point: the full cascade (`rerank`).
-`mean ± sd` is over seeds, n=3 — a spread from three runs is itself noisy, so
-read it as a spread and not as a confidence interval.
+Everything between the markers below is written by
+`tools/render_readme_results.py` from `benchmark_results/`. No benchmark number
+in this file is typed by hand, and `ruff`-style `--check` mode in CI fails the
+build if the prose and the artefacts disagree.
 
-| Metric | `contaminated_legacy_diagnostic` | `strict_temporal` | Δ |
-| --- | --- | --- | --- |
-| recall@10 | 0.532 ± 0.090 | 0.643 ± 0.070 | +0.111 |
-| recall@20 | 0.623 ± 0.115 | 0.719 ± 0.068 | +0.095 |
-| recall@50 | 0.725 ± 0.063 | 0.759 ± 0.039 | +0.034 |
-| recall@100 | 0.753 ± 0.039 | 0.768 ± 0.034 | +0.016 |
-| precision@10 | 0.199 ± 0.031 | 0.189 ± 0.015 | -0.009 |
-| ndcg@10 | 0.503 ± 0.058 | 0.556 ± 0.053 | +0.053 |
-| mrr | 0.677 ± 0.033 | 0.667 ± 0.042 | -0.010 |
+That guard exists because they did disagree. An earlier revision of this
+section read "33.2 ms mean, 32.6 ms p50, 37.3 ms p95" while the committed
+artefacts held different values: latency is wall-clock, so it moves between
+runs even when every metric is bit-identical, and a human carrying numbers from
+one run into prose describing another has no way to notice.
 
-Per seed:
-
-| Seed | Method | R@10 | R@100 | P@10 | nDCG@10 | MRR | Availability violations | Invariants | Artefact |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 11 | `contaminated_legacy_diagnostic` | 0.618 | 0.795 | 0.233 | 0.562 | 0.714 | 3060 | 3/4 fail | [`6071779e665a.json`](benchmark_results/contaminated_legacy_diagnostic/seed-11/6071779e665a.json) |
-| 11 | `strict_temporal` | 0.696 | 0.805 | 0.205 | 0.609 | 0.716 | 0 | all pass | [`d83b002f2851.json`](benchmark_results/strict_temporal/seed-11/d83b002f2851.json) |
-| 29 | `contaminated_legacy_diagnostic` | 0.539 | 0.746 | 0.192 | 0.499 | 0.668 | 4585 | 3/4 fail | [`e86618444a91.json`](benchmark_results/contaminated_legacy_diagnostic/seed-29/e86618444a91.json) |
-| 29 | `strict_temporal` | 0.669 | 0.760 | 0.187 | 0.555 | 0.646 | 0 | all pass | [`1b812b9047e1.json`](benchmark_results/strict_temporal/seed-29/1b812b9047e1.json) |
-| 20260824 | `contaminated_legacy_diagnostic` | 0.439 | 0.717 | 0.171 | 0.447 | 0.649 | 3748 | 3/4 fail | [`0b6df94e70cd.json`](benchmark_results/contaminated_legacy_diagnostic/seed-20260824/0b6df94e70cd.json) |
-| 20260824 | `strict_temporal` | 0.564 | 0.739 | 0.176 | 0.503 | 0.639 | 0 | all pass | [`735d890586b2.json`](benchmark_results/strict_temporal/seed-20260824/735d890586b2.json) |
-
-**Run shape** (seed 11): 22 locked forecast origins; 80 test / 101 training queries strict, 80/101 legacy. Strict builds 59 snapshot indexes over 89–8644 documents (mean 4123); legacy fits one index over all 9086 documents at every origin.
-
-**Latency**, strict method, per query at the full stop point: mean 33.2 ms, p50 32.6 ms, p95 37.3 ms.
+<!-- BEGIN GENERATED RESULTS -->
+<!-- END GENERATED RESULTS -->
 
 ### Reading the difference
 
-**The strict method scores higher, and that is not good news.** Recall@10 is
-+0.111 and nDCG@10 is +0.053 under the firewall; Precision@10 and MRR are within
-seed-to-seed noise of each other. The temptation is to report this as "the
-firewall cost nothing". It is not what happened.
+**The controlled pair is the comparison.** `strict_temporal` and
+`future_fitted_index_ablation` evaluate a byte-identical query set with an
+identical lexicon, identical ranker training data and identical widths. One
+thing differs: whether the index at each origin was fitted on the documents
+available then or on the whole corpus. The paired per-query table above is
+therefore attributable, and it is small -- future-fitting the index barely moves
+retrieval on this corpus.
 
-The most likely cause is in the run-shape line above: a snapshot index holds
-between 89 and 8,644 documents depending on how far into the test window its
-origin falls, a mean of 4,123, while the legacy index holds all 9,086 at every
-origin. Half as many documents means half as many distractors competing for the
-top-k slots, and Recall@10 goes up for a reason that has nothing to do with
-retrieval quality.
+**The historical reproduction is not a comparison.** It changes index scope,
+availability policy, origin placement and the relevant-document set at the same
+time, and evaluates a different query set as a result. Its numbers appear so the
+pre-firewall behaviour can be reproduced. Subtracting them from the strict
+numbers would produce a difference of two different quantities, which is exactly
+what the previous version of this README did: it reported a Recall@10 gap of
++0.111 between arms whose query sets did not match.
 
-That is the finding, stated plainly: **contamination did not make the old
-numbers optimistic, it made them a measurement of something else.** A leak is
-not a thumb on the scale in a known direction; it changes what is being
+**Contamination does not reliably inflate a metric.** It changes what is being
 measured, and the sign of the change is not predictable in advance. Anyone
-expecting a leakage fix to reveal a smaller number should not read this table as
-reassurance — the two columns are not two estimates of one quantity.
+expecting a leakage fix to reveal a smaller number should not read these tables
+as reassurance.
 
-Three things differ between the arms at once (index scope, availability rule,
-and origin placement), so this comparison establishes what the old numbers were
-worth without decomposing why. Isolating the three would need a third arm and is
-out of scope here.
-
-**Nothing on the strict side was tuned against these results.** The protocol
-fractions, the origin stride, the embargo, the cascade widths and the ranker
-hyper-parameters were fixed before the run and are unchanged since. The test
-window selected nothing.
+**Nothing on the strict side was tuned against these results.** The operating
+point was chosen on the selection window, the CI floors were measured on the
+regression window, and the locked test window selected nothing -- which is a
+property `TemporalProtocol.assert_selection_window` enforces rather than a
+promise the prose makes.
 
 ## Implementation status
 

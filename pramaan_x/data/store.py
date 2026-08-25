@@ -19,6 +19,7 @@ from pathlib import Path
 
 import polars as pl
 
+from ..timestamps import TimestampPolicy, TimestampPolicyError
 from ..types import Document, Modality
 
 DOC_SCHEMA: dict[str, pl.DataType] = {
@@ -76,12 +77,23 @@ class DocumentStore:
     reintroduced, so the convenient paths are the audited ones.
     """
 
-    def __init__(self, frame: pl.DataFrame | None = None, path: str | Path | None = None):
+    def __init__(self, frame: pl.DataFrame | None = None, path: str | Path | None = None,
+                 *, timestamp_policy: str | TimestampPolicy = TimestampPolicy.STRICT):
         if frame is None and path is None:
             raise ValueError("DocumentStore needs a frame or a path")
         self.path = Path(path) if path else None
+        self.timestamp_policy = TimestampPolicy.parse(timestamp_policy)
         self._frame = frame if frame is not None else pl.read_parquet(self.path)
         if self._frame.height and self._frame["published_at"].dtype.time_zone is None:
+            # A tz-naive column reaching the store is the same invention Stage 0
+            # is forbidden from making, one layer down. Under the strict policy
+            # it is refused rather than stamped.
+            if self.timestamp_policy is not TimestampPolicy.ASSUME_UTC:
+                raise TimestampPolicyError(
+                    "the corpus frame has a timezone-naive `published_at` column; "
+                    "the strict timestamp policy will not assume a zone for it. "
+                    "Re-ingest under a policy that says what the zone is."
+                )
             self._frame = self._frame.with_columns(
                 pl.col("published_at").dt.replace_time_zone("UTC"),
                 pl.col("retrieved_at").dt.replace_time_zone("UTC"),
@@ -117,8 +129,8 @@ class DocumentStore:
         before the cutoff but crawled after it is returned here and must not
         be: use `available_at()` for anything whose result is reported as a
         measurement. This view is retained for corpus inspection and for the
-        `contaminated_legacy_diagnostic` benchmark, whose entire purpose is to
-        quantify what this weaker rule buys.
+        `historical_legacy_reproduction_unpaired` arm, whose entire purpose is
+        to reproduce what this weaker rule used to do.
         """
         f = self._frame.filter(pl.col("published_at") < cutoff)
         if canonical_only:

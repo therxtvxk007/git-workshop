@@ -12,8 +12,10 @@ by a caller is decoration.
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Iterable, Sequence
 from datetime import datetime
+from typing import Any
 
 from ..types import Document
 from .availability import available_at, to_utc
@@ -181,9 +183,9 @@ def assert_future_append_invariance(
     if changed:
         q = changed[0]
         raise InvariantViolation(
-            f"{len(changed)}/{len(baseline)} rankings changed when {len(future_docs)} "
+            f"{len(changed)}/{len(baseline)} results changed when {len(future_docs)} "
             f"future documents were appended; first divergence on {q!r}: "
-            f"{baseline[q][:5]} -> {perturbed[q][:5]}"
+            + _describe_divergence(baseline[q], perturbed[q])
         )
     return baseline
 
@@ -224,6 +226,76 @@ def report_all(
         else:
             out[name] = "pass"
     return out
+
+
+def assert_cluster_growth_is_append_only(before, after, future_ids: set[str]) -> None:
+    """Deduplication may append post-origin members and nothing else.
+
+    This is what makes the origin-restricted cluster view safe to rely on. If a
+    later document could re-canonicalise a cluster, move an earlier document
+    between clusters, or remove a member, then restricting the view to an
+    origin would not be enough and every cluster decision would have to be
+    recomputed per origin.
+
+    `before` and `after` are `DedupReport`s from the same corpus with and
+    without the appended documents.
+    """
+    problems: list[str] = []
+    lost = before.canonical - after.canonical
+    if lost:
+        problems.append(
+            f"{len(lost)} canonical documents stopped being canonical: {sorted(lost)[:3]}"
+        )
+    for doc_id, canonical in before.cluster_of.items():
+        moved = after.cluster_of.get(doc_id)
+        if moved != canonical:
+            problems.append(f"{doc_id} moved from cluster {canonical} to {moved}")
+            if len(problems) > 5:
+                break
+    for canonical, members in before.cluster_members.items():
+        now = set(after.cluster_members.get(canonical, []))
+        missing = set(members) - now
+        if missing:
+            problems.append(f"cluster {canonical} lost members {sorted(missing)[:3]}")
+        added = now - set(members)
+        stray = added - future_ids
+        if stray:
+            problems.append(f"cluster {canonical} gained non-appended members {sorted(stray)[:3]}")
+        if len(problems) > 5:
+            break
+    if problems:
+        raise InvariantViolation(
+            "deduplication is not append-only under a future append: " + "; ".join(problems[:5])
+        )
+
+
+def _describe_divergence(before: Any, after: Any) -> str:
+    """Say *what* moved, not just that something did.
+
+    The probe returns a dict of intermediates per query, so naming the first
+    differing key is the difference between a usable failure and a wall of
+    output. Falls back to a truncated repr for probes that return a bare
+    ranking.
+    """
+    if isinstance(before, dict) and isinstance(after, dict):
+        keys = sorted(set(before) | set(after))
+        for key in keys:
+            b, a = before.get(key), after.get(key)
+            if b != a:
+                return f"field {key!r}: {_trim(b)} -> {_trim(a)}"
+        return "no differing field found (values compare unequal but no key differs)"
+    return f"{_trim(before)} -> {_trim(after)}"
+
+
+def _trim(value: Any, limit: int = 160) -> str:
+    if isinstance(value, list):
+        text = repr(value[:5]) + (" ..." if len(value) > 5 else "")
+    elif isinstance(value, dict):
+        head = dict(list(value.items())[:3])
+        text = repr(head) + (" ..." if len(value) > 3 else "")
+    else:
+        text = repr(value)
+    return text[:limit]
 
 
 def check_all(
@@ -283,3 +355,133 @@ def synthesise_future_documents(
             )
         )
     return out
+
+
+def _before(instant, origin) -> bool:
+    """True when `instant` is known and precedes `origin` (or exists at all,
+    when `origin` is None)."""
+    if instant is None:
+        return False
+    return True if origin is None else instant < origin
+
+
+def _digest(values) -> str:
+    """A short, order-sensitive digest so a large id list can be compared and
+    reported without printing thousands of ids."""
+    import hashlib
+
+    return hashlib.sha256("\x1f".join(values).encode()).hexdigest()[:16]
+
+
+def raw_pipeline_probe(
+    cfg,
+    protocol: TemporalProtocol,
+    window: str,
+    *,
+    contaminate_preprocessing: bool = False,
+    top_k: int = 50,
+    n_queries: int = 8,
+):
+    """A `build_and_rank` callable that starts from *raw* documents.
+
+    The earlier invariance probe began after Stage 0, so it could only see the
+    index. Everything before the index -- timestamp validation, cleaning,
+    deduplication, the canonical/cluster mapping, the lexicon, and the
+    ground-truth relevant sets -- was outside the property. A statistic fitted
+    over the whole corpus at any of those steps would have been invisible to
+    it.
+
+    This probe runs the whole thing. What it returns per query is not only the
+    ranking but every intermediate an appended future document could perturb,
+    so a change anywhere in the chain fails the comparison rather than only a
+    change in the final order.
+
+    `contaminate_preprocessing=True` is the negative control: it deduplicates
+    and fits the lexicon over the whole corpus rather than over the documents
+    available at each origin, which is exactly the class of mistake the
+    invariant exists to detect.
+    """
+    from ..stage0_ingest.pipeline import run_stage0
+    from ..stage1_scan.embed import build_embedder
+    from ..stage1_scan.lexical import LexicalIndicators
+    from ..stage2_retrieve.rerank import build_reranker
+    from .availability import available_at, available_documents, cluster_members_at
+    from .oracle_target_retrieval import SnapshotIndexProvider, build_oracle_target_queries
+
+    def build_and_rank(raw_docs: Sequence[Document]) -> dict[str, Any]:
+        import copy
+
+        from .harness import _fit_training_lexicon, _map_ground_truth_through_clusters
+
+        docs = copy.deepcopy(list(raw_docs))
+        ground_truth = build_and_rank.ground_truth
+        stage0 = run_stage0(docs, cfg.stage0)
+        corpus = stage0.documents
+        gt, _mapping = _map_ground_truth_through_clusters(copy.deepcopy(ground_truth), stage0)
+        lexicon, _record = _fit_training_lexicon(corpus, gt, protocol)
+        queries = build_oracle_target_queries(gt, lexicon, corpus, protocol, window)[:n_queries]
+
+        if contaminate_preprocessing:
+            # The control: build the query text from a lexicon fitted over the
+            # *entire* corpus with corpus-wide labels, and read its global term
+            # table rather than the per-event-type one. That table is a
+            # function of every document present, so appending documents moves
+            # it -- which is precisely the class of defect this invariant is
+            # supposed to catch and which the post-Stage-0 probe could not see.
+            #
+            # Fitting per-event-type would not contaminate anything here: the
+            # appended documents carry no event type, so they never enter those
+            # tables. A negative control that cannot fire is not a control.
+            event_types = [d.meta.get("synth_target", "none|none").split("|")[1] for d in corpus]
+            contaminated = LexicalIndicators().fit(
+                [d.full_text for d in corpus],
+                [1 if et != "none" else 0 for et in event_types],
+                event_types=event_types,
+            )
+            global_terms = " ".join(t for t, _ in contaminated.top_terms(20))
+            queries = [dataclasses.replace(q, text=f"{q.location} {global_terms}") for q in queries]
+
+        provider = SnapshotIndexProvider(
+            corpus,
+            cfg.stage2,
+            lambda: build_embedder(cfg.stage1.embedder, cfg.stage1.embed_dim),
+            lambda: build_reranker(cfg.stage2.reranker),
+        )
+        # Raw documents that survived validation and cleaning *and* were
+        # available before the origin. The whole admitted corpus is not the
+        # right comparison: appending future documents is supposed to grow it,
+        # and comparing the total would report that growth as a violation while
+        # saying nothing about whether anything earlier moved.
+        out: dict[str, Any] = {}
+        for q in queries:
+            visible = available_documents(corpus, q.origin)
+            evidence, _ = provider.for_origin(q.origin).retrieve(
+                q.text, as_of=q.origin, top_k=top_k
+            )
+            admitted_at_origin = [
+                d.doc_id for d in stage0.all_documents if _before(available_at(d), q.origin)
+            ]
+            out[q.query_id] = {
+                "n_admitted_raw_at_origin": len(admitted_at_origin),
+                "admitted_raw_at_origin": _digest(sorted(admitted_at_origin)),
+                "canonical_ids_at_origin": [d.doc_id for d in visible],
+                # The cluster view *restricted to the origin*. The stored
+                # member list grows as the corpus grows -- deduplication
+                # appends -- but nothing at this origin may consult a member
+                # that was not yet available, and this is the view that decides
+                # availability and provenance here.
+                "cluster_of_at_origin": {
+                    d.doc_id: sorted(m.doc_id for m in cluster_members_at(d, q.origin))
+                    for d in visible
+                },
+                "cluster_available_at": {
+                    d.doc_id: (available_at(d).isoformat() if available_at(d) is not None else None)
+                    for d in visible
+                },
+                "query_text": q.text,
+                "relevant": sorted(q.relevant),
+                "ranking": [e.doc_id for e in evidence],
+            }
+        return out
+
+    return build_and_rank

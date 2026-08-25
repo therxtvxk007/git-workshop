@@ -138,7 +138,11 @@ def test_every_reported_number_has_an_artefact_behind_it():
         assert path.exists(), f"README cites {rel}, which does not exist"
         payload = json.loads(path.read_text())
         assert payload["benchmark"] == "oracle_target_retrieval"
-        assert payload["method"] in {"strict_temporal", "contaminated_legacy_diagnostic"}
+        assert payload["method"] in {
+            "strict_temporal",
+            "future_fitted_index_ablation",
+            "historical_legacy_reproduction_unpaired",
+        }
 
 
 def test_committed_strict_artefacts_passed_every_invariant():
@@ -159,7 +163,7 @@ def test_committed_strict_artefacts_passed_every_invariant():
 
 def test_committed_legacy_artefacts_record_their_failures():
     """The diagnostic is only worth keeping if it says what is wrong with it."""
-    root = ROOT / "benchmark_results" / "contaminated_legacy_diagnostic"
+    root = ROOT / "benchmark_results" / "future_fitted_index_ablation"
     if not root.exists():
         pytest.skip("no legacy artefacts committed yet")
     for path in root.rglob("*.json"):
@@ -233,3 +237,56 @@ def test_gitignore_covers_what_it_needs_to():
     assert "benchmark_results" not in ignored.replace(
         "# benchmark_results/ is deliberately NOT ignored", ""
     ), "benchmark_results/ must stay tracked -- it is the evidence"
+
+
+# ------------------------------------------------------------- README drift ---
+
+
+def test_the_results_section_is_generated_not_typed():
+    """The guard that would have caught the latency drift.
+
+    An earlier revision of the README said "33.2 ms mean, 32.6 ms p50, 37.3 ms
+    p95" while the committed artefacts held different values. Latency is
+    wall-clock and moves between runs even when every metric is bit-identical,
+    so prose carried by hand from one run into a description of another cannot
+    stay true. This regenerates the section from the artefacts and fails on any
+    difference, exactly as `ruff format --check` does for code.
+    """
+    import subprocess
+    import sys
+
+    if not (ROOT / "benchmark_results" / "summary.json").exists():
+        pytest.skip("no benchmark summary committed yet")
+    result = subprocess.run(
+        [sys.executable, "tools/render_readme_results.py", "--check"],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
+    assert result.returncode == 0, (
+        "README results are out of date with benchmark_results/:\n" + result.stdout + result.stderr
+    )
+
+
+def test_the_readme_has_the_generation_markers():
+    assert "<!-- BEGIN GENERATED RESULTS -->" in README
+    assert "<!-- END GENERATED RESULTS -->" in README
+
+
+def test_no_benchmark_number_is_typed_outside_the_generated_section():
+    """NEGATIVE CONTROL: numbers that look like metrics must not appear in
+    hand-written prose, where nothing can check them."""
+    head, rest = README.split("<!-- BEGIN GENERATED RESULTS -->", 1)
+    _generated, tail = rest.split("<!-- END GENERATED RESULTS -->", 1)
+    handwritten = head + tail
+    offenders = []
+    for line in handwritten.splitlines():
+        if line.lstrip().startswith(("|", ">")) or "withdrawn" in line.lower():
+            continue
+        for match in re.finditer(r"\b(R@\d+|nDCG@\d+|MRR|Recall@\d+)\s*[:=]?\s*(\d+\.\d+)", line):
+            offenders.append(f"{match.group(0)!r} in: {line.strip()[:80]}")
+    assert offenders == [], (
+        "benchmark numbers appear in hand-written prose, where no test can "
+        "check them:\n" + "\n".join(offenders)
+    )

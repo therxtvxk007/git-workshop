@@ -108,14 +108,25 @@ def cmd_bench(args) -> int:
     """
     import json as _json
 
-    from .eval.artefact import aggregate
+    from .eval.artefact import aggregate, controlled_comparison
     from .eval.harness import prepare, run_method
-    from .eval.oracle_target_retrieval import LEGACY, STRICT, format_table
+    from .eval.oracle_target_retrieval import (
+        ABLATION,
+        CONTROLLED_METHODS,
+        HISTORICAL,
+        STRICT,
+        format_table,
+    )
     from .tracking import build_tracker
 
     cfg = _config(args)
-    methods = [{"strict": STRICT, "legacy": LEGACY}[m]
-               for m in args.methods.replace(",", " ").split()]
+    alias = {"strict": STRICT, "ablation": ABLATION, "historical": HISTORICAL}
+    methods = [alias[m] for m in args.methods.replace(",", " ").split()]
+    # Strict always runs first and always runs: the ablation is defined as a
+    # delta against it, and the ordering is what makes that delta available.
+    methods = [m for m in (STRICT, ABLATION, HISTORICAL) if m in methods] or [STRICT]
+    if ABLATION in methods and STRICT not in methods:
+        methods.insert(0, STRICT)
     seeds = _seeds(args.seeds, cfg.seed)
     stages = tuple(args.stages.replace(",", " ").split())
     tracker = build_tracker(cfg.tracking, uri=cfg.mlflow_uri,
@@ -129,6 +140,7 @@ def cmd_bench(args) -> int:
 
     collected: dict[str, list[dict]] = {m: [] for m in methods}
     for seed in seeds:
+        strict_result = None
         prep = prepare(cfg, days=args.days, seed=seed,
                        n_locations=args.locations, n_event_types=args.event_types,
                        embargo_days=cfg.eval.embargo_days,
@@ -148,7 +160,11 @@ def cmd_bench(args) -> int:
             try:
                 res = run_method(prep, cfg, method, stages=stages,
                                  use_fusion=not args.no_fusion,
-                                 results_dir=args.results_dir)
+                                 results_dir=args.results_dir,
+                                 reference=strict_result if method == ABLATION else None,
+                                 require_clean_source=not args.allow_dirty)
+                if method == STRICT:
+                    strict_result = res
                 tracker.log_params({
                     "seed": seed, "days": args.days, "method": method,
                     "protocol_fingerprint": proto.fingerprint(),
@@ -177,9 +193,16 @@ def cmd_bench(args) -> int:
             collected[method].append(res.payload)
         print()
 
-    summary: dict[str, object] = {"benchmark": "oracle_target_retrieval",
-                                  "stage": stages[-1], "seeds": seeds,
-                                  "methods": {}}
+    summary: dict[str, object] = {
+        "benchmark": "oracle_target_retrieval",
+        "stage": stages[-1],
+        "seeds": seeds,
+        "generated_by": "pramaan bench",
+        "methods": {},
+        "controlled_comparison": controlled_comparison(
+            [pl for payloads in collected.values() for pl in payloads], stage=stages[-1]
+        ),
+    }
     for method, payloads in collected.items():
         if not payloads:
             continue
@@ -192,6 +215,24 @@ def cmd_bench(args) -> int:
             if st:
                 print(f"  {k:<22}{st['mean']:>9.4f}{st['std']:>9.4f}"
                       f"{st['min']:>9.4f}{st['max']:>9.4f}")
+        paired = [
+            p["extra"]["paired_vs_strict"]
+            for p in payloads
+            if "paired_vs_strict" in p.get("extra", {})
+        ]
+        if paired:
+            print(f"  paired per-query delta vs {STRICT} "
+                  f"(n={sum(d['n_paired_queries'] for d in paired)} query-runs)")
+            for metric in ("recall@10", "recall@100", "precision@10", "ndcg@10", "mrr"):
+                means = [d["per_query_delta"][metric]["mean"] for d in paired]
+                better = sum(d["per_query_delta"][metric]["n_better"] for d in paired)
+                worse = sum(d["per_query_delta"][metric]["n_worse"] for d in paired)
+                equal = sum(d["per_query_delta"][metric]["n_equal"] for d in paired)
+                print(f"    {metric:<14} mean {sum(means) / len(means):+.4f}   "
+                      f"better/worse/equal {better}/{worse}/{equal}")
+        if method not in CONTROLLED_METHODS:
+            print("  UNPAIRED: this arm changes several factors at once; no delta "
+                  "against strict_temporal is computed or meaningful.")
         for row in agg["per_seed"]:
             m = row["metrics"]
             print(f"    seed {row['seed']:<12} R@10 {m.get('recall@10', float('nan')):.4f}"
@@ -247,15 +288,22 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--event-types", dest="event_types", type=int, default=6)
     p.add_argument("--seeds", default="",
                    help="comma or space separated; defaults to the config seed")
-    p.add_argument("--methods", default="legacy,strict",
-                   help="any of: legacy (contaminated_legacy_diagnostic), "
-                        "strict (strict_temporal)")
+    p.add_argument("--methods", default="strict,ablation,historical",
+                   help="any of: strict (strict_temporal), ablation "
+                        "(future_fitted_index_ablation, paired against strict), "
+                        "historical (historical_legacy_reproduction_unpaired, "
+                        "never paired with anything)")
     p.add_argument("--stages", default="sparse,dense,fusion,late,rerank")
     p.add_argument("--origin-stride", dest="origin_stride", type=int, default=7,
                    help="days between forecast origins in the snapshot grid")
     p.add_argument("--results-dir", dest="results_dir",
                    default=BENCHMARK_RESULTS_DIR)
     p.add_argument("--no-fusion", action="store_true")
+    p.add_argument("--allow-dirty-source", dest="allow_dirty", action="store_true",
+                   help="publish artefacts even though tracked source differs from "
+                        "HEAD. The artefact records the dirtiness either way; this "
+                        "only stops the refusal, and a result published this way "
+                        "cannot be traced to a commit.")
     p.set_defaults(fn=cmd_bench)
 
     p = sub.add_parser("serve", help="run the API and analyst console")

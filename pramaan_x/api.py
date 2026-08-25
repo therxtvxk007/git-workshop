@@ -103,6 +103,17 @@ class StatusResponse(BaseModel):
     documents_canonical: int
     built_at: datetime | None
     build_seconds: float
+    version: str
+    uv_lock_sha256: str | None = Field(
+        default=None,
+        description="SHA-256 of the uv.lock this environment was built from. "
+                    "Null when neither the image stamp nor a checked-out "
+                    "lockfile was available.",
+    )
+    timestamp_policy: str = Field(
+        description="'strict' rejects naive timestamps; 'assume_utc' reads them "
+                    "as UTC and is never usable by strict_temporal."
+    )
     stage0: dict[str, Any] | None
 
 

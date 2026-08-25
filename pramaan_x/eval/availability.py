@@ -26,6 +26,15 @@ delivery, a licensed historical dump).
 All comparisons happen in UTC. Timestamps carrying a non-UTC offset are
 converted, never truncated; a naive timestamp has no defined instant and is
 rejected rather than guessed at.
+
+**Clusters.** After deduplication a document stands for its whole
+near-duplicate cluster, and the cluster's availability is the availability of
+its *earliest-available member* -- not of its canonical. The canonical is the
+earliest-*published* member, which is a different thing: if it was crawled late
+or never, but a syndicated copy was in hand at the origin, then the story was
+in hand at the origin. Deciding otherwise would let a deduplication step, whose
+only job is to stop double-counting evidence, silently delete evidence instead.
+
 """
 
 from __future__ import annotations
@@ -38,6 +47,10 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..types import Document
+
+#: Meta key carrying a cluster's members and their own timestamps, written by
+#: `stage0_ingest.dedup.apply_dedup`.
+CLUSTER_MEMBERS_KEY = "cluster_members"
 
 #: Meta key asserting that a document with no `retrieved_at` came from a
 #: historical snapshot whose acquisition time is known not to postdate
@@ -95,45 +108,147 @@ def to_utc(ts: datetime) -> datetime:
 
 
 def is_trusted_snapshot(doc: Document) -> bool:
-    return bool(getattr(doc, "meta", {}).get(TRUSTED_SNAPSHOT_FLAG, False))
+    """Exactly the boolean `True`, nothing else.
+
+    `bool(meta.get(flag))` accepted the string "false" as trust, which is what
+    a YAML or JSON round trip of a boolean produces often enough to matter, and
+    also accepted 1, "yes" and any non-empty container. The flag admits a
+    document with no acquisition time at all, so it is the one place in this
+    package where a near-miss must not be read generously.
+    """
+    return getattr(doc, "meta", {}).get(TRUSTED_SNAPSHOT_FLAG, False) is True
+
+
+@dataclass(frozen=True)
+class Member:
+    """One member of a near-duplicate cluster, with its own timestamps."""
+
+    doc_id: str
+    published_at: datetime | None
+    retrieved_at: datetime | None
+    trusted: bool = False
+
+
+def cluster_members(doc: Document) -> list[Member]:
+    """The cluster this document stands for.
+
+    A document that never went through deduplication, or one whose cluster has
+    a single member, stands only for itself -- so the single-member case is the
+    same code path rather than a special case.
+    """
+    raw = getattr(doc, "meta", {}).get(CLUSTER_MEMBERS_KEY)
+    if not raw:
+        return [Member(doc.doc_id, doc.published_at, doc.retrieved_at, is_trusted_snapshot(doc))]
+    out: list[Member] = []
+    for m in raw:
+        out.append(
+            Member(
+                doc_id=str(m.get("doc_id", "")),
+                published_at=_parse(m.get("published_at")),
+                retrieved_at=_parse(m.get("retrieved_at")),
+                trusted=m.get(TRUSTED_SNAPSHOT_FLAG, False) is True,
+            )
+        )
+    return out or [Member(doc.doc_id, doc.published_at, doc.retrieved_at, is_trusted_snapshot(doc))]
+
+
+def _parse(value: str | datetime | None) -> datetime | None:
+    if value is None or isinstance(value, datetime):
+        return value
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def cluster_members_at(doc: Document, origin: datetime) -> list[Member]:
+    """The cluster's members that were usable at `origin`.
+
+    Deduplication is monotone in publication order: a later document may join
+    an existing cluster but never re-canonicalises it and never removes a
+    member. So the *stored* member list grows as the corpus grows, while the
+    list restricted to an origin does not -- and it is the restricted list that
+    any decision at that origin is entitled to use.
+    """
+    return [m for m in cluster_members(doc) if classify_member(m, origin) is None]
+
+
+def member_available_at(member: Member) -> datetime | None:
+    """`max(published_at, retrieved_at)` for one member, or None if undecidable."""
+    if member.published_at is None:
+        return None
+    try:
+        pub = to_utc(member.published_at)
+    except NaiveTimestampError:
+        return None
+    if member.retrieved_at is None:
+        return pub if member.trusted else None
+    try:
+        return max(pub, to_utc(member.retrieved_at))
+    except NaiveTimestampError:
+        return None
 
 
 def available_at(doc: Document) -> datetime | None:
-    """The instant this document first became usable, or None if undecidable.
+    """The instant this document -- or any copy of it -- first became usable.
 
-    Returns ``max(published_at, retrieved_at)``. When `retrieved_at` is absent,
-    the answer is `published_at` **only** for a trusted historical snapshot;
-    otherwise it is None, and callers must treat the document as unusable
-    rather than assume a value.
+    For a single document this is ``max(published_at, retrieved_at)``, with a
+    missing `retrieved_at` giving None unless the trusted-snapshot flag is set.
+    For a deduplicated cluster it is the *earliest* such instant across the
+    members, because the story was in hand as soon as any copy of it was.
     """
-    pub = to_utc(doc.published_at)
-    ret = doc.retrieved_at
-    if ret is None:
-        return pub if is_trusted_snapshot(doc) else None
-    return max(pub, to_utc(ret))
+    instants = [a for a in (member_available_at(m) for m in cluster_members(doc)) if a is not None]
+    return min(instants) if instants else None
 
 
-def classify(doc: Document, origin: datetime) -> Rejection | None:
-    """None when the document is usable at `origin`, else why it is not."""
+#: When no member of a cluster is usable, the reported reason is the one from
+#: the member that came closest to being usable. Ordered most-nearly-available
+#: first, so "we had it but crawled it late" outranks "we never crawled it",
+#: which outranks "it had not been published yet".
+_REASON_PRIORITY = (
+    Rejection.RETRIEVED_AFTER_ORIGIN,
+    Rejection.MISSING_ACQUISITION_TIME,
+    Rejection.NAIVE_TIMESTAMP,
+    Rejection.PUBLISHED_AFTER_ORIGIN,
+)
+
+
+def classify_member(member: Member, origin: datetime) -> Rejection | None:
+    """None when this individual member is usable at `origin`, else why not."""
     origin = to_utc(origin)
+    if member.published_at is None:
+        return Rejection.PUBLISHED_AFTER_ORIGIN
     try:
-        pub = to_utc(doc.published_at)
+        pub = to_utc(member.published_at)
     except NaiveTimestampError:
         return Rejection.NAIVE_TIMESTAMP
     if pub >= origin:
         return Rejection.PUBLISHED_AFTER_ORIGIN
-    ret = doc.retrieved_at
-    if ret is None:
-        if is_trusted_snapshot(doc):
-            return None
-        return Rejection.MISSING_ACQUISITION_TIME
+    if member.retrieved_at is None:
+        return None if member.trusted else Rejection.MISSING_ACQUISITION_TIME
     try:
-        ret_utc = to_utc(ret)
+        ret = to_utc(member.retrieved_at)
     except NaiveTimestampError:
         return Rejection.NAIVE_TIMESTAMP
-    if ret_utc >= origin:
-        return Rejection.RETRIEVED_AFTER_ORIGIN
-    return None
+    return Rejection.RETRIEVED_AFTER_ORIGIN if ret >= origin else None
+
+
+def classify(doc: Document, origin: datetime) -> Rejection | None:
+    """None when the document's cluster is usable at `origin`, else why not.
+
+    Usable means *some* member was usable. A cluster is rejected only when
+    every copy of the story was out of reach.
+    """
+    reasons: list[Rejection] = []
+    for member in cluster_members(doc):
+        reason = classify_member(member, origin)
+        if reason is None:
+            return None
+        reasons.append(reason)
+    for candidate in _REASON_PRIORITY:
+        if candidate in reasons:
+            return candidate
+    return Rejection.PUBLISHED_AFTER_ORIGIN
 
 
 def is_available(doc: Document, origin: datetime) -> bool:

@@ -17,6 +17,7 @@
     "min_tokens": 12,
     "require_timestamp": true,
     "max_future_skew_hours": 6,
+    "timestamp_policy": "strict",
     "cache_dir": ".cache/pramaan"
   },
   "stage1": {

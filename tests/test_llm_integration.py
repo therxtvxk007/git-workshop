@@ -81,7 +81,20 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 @pytest.fixture
-def server():
+def server(loopback_direct):
+    """A real HTTP server on loopback.
+
+    `loopback_direct` is a dependency of the *fixture*, not of each test, so
+    every test that takes a live server gets the bypass and none can forget it.
+    Without it these tests send their requests to whatever `HTTP_PROXY`,
+    `HTTPS_PROXY` or `ALL_PROXY` the environment exports. On a host with a SOCKS
+    proxy configured and `socksio` absent, httpx does not even reach the socket:
+    it fails at client construction, and every assertion here then reports the
+    proxy's absence as a fault in the code under test.
+
+    The bypass is additive -- loopback is added to `no_proxy`, every other proxy
+    setting is left as it was, and no TLS verification is disabled.
+    """
     _Handler.mode = "ok"
     _Handler.requests = []
     httpd = HTTPServer(("127.0.0.1", 0), _Handler)
@@ -90,6 +103,7 @@ def server():
     yield httpd, f"http://127.0.0.1:{httpd.server_address[1]}/v1"
     httpd.shutdown()
     httpd.server_close()
+    thread.join(timeout=5)
 
 
 def _backend(url: str) -> OpenAiCompatibleBackend:

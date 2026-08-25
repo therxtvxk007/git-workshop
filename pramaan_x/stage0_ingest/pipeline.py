@@ -45,6 +45,7 @@ def run_stage0(docs: list[Document], cfg: Stage0Config | None = None,
         docs,
         require_timestamp=cfg.require_timestamp,
         max_future_skew_hours=cfg.max_future_skew_hours,
+        policy=cfg.timestamp_policy,
     )
     docs, cleaning = clean_documents(
         docs,

@@ -10,5 +10,4 @@ tests
 *.parquet
 *.png
 benchmark_results
-uv.lock
 .venv

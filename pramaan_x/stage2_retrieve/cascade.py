@@ -88,6 +88,30 @@ class RetrievalCascade:
             self.engine.add(ids, vecs, [{"published_at": t} for t in self._published.values()])
         return self
 
+    def with_config(self, cfg: Stage2Config, *, fusion: LearnedFusion | None = None
+                    ) -> RetrievalCascade:
+        """A view of this cascade with different widths, sharing the fitted index.
+
+        Candidate widths and RRF constants do not change what BM25 or the
+        vector index contain, only how deep the cascade reads into them. The
+        operating-point search would otherwise refit an index per candidate,
+        which is both slow and an invitation to fit something different by
+        accident. Sharing the fitted objects makes "same index, different
+        widths" true by construction rather than by care.
+        """
+        other = RetrievalCascade.__new__(RetrievalCascade)
+        other.cfg = cfg
+        other.embedder = self.embedder
+        other.reranker = self.reranker
+        other.engine = self.engine
+        other.fusion = self.fusion if fusion is None else fusion
+        other.late = self.late
+        other.bm25 = self.bm25
+        other._docs = self._docs
+        other._published = self._published
+        other._family = self._family
+        return other
+
     # --------------------------------------------------------- retrieve ---
 
     def retrieve(

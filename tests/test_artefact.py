@@ -28,7 +28,7 @@ from pramaan_x.eval.artefact import (
 from pramaan_x.eval.availability import AvailabilityViolation, Rejection
 from pramaan_x.eval.harness import prepare, run_method
 from pramaan_x.eval.metrics import RetrievalReport
-from pramaan_x.eval.oracle_target_retrieval import LEGACY, STRICT
+from pramaan_x.eval.oracle_target_retrieval import ABLATION, STRICT
 from pramaan_x.eval.protocol import TemporalProtocol
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -62,15 +62,27 @@ def prep(cfg):
 @pytest.fixture(scope="module")
 def strict_payload(prep, cfg, tmp_path_factory):
     res = run_method(
-        prep, cfg, STRICT, stages=("rerank",), results_dir=tmp_path_factory.mktemp("art-strict")
+        prep,
+        cfg,
+        STRICT,
+        stages=("rerank",),
+        results_dir=tmp_path_factory.mktemp("art-strict"),
+        require_clean_source=False,
+        select=False,
     )
     return res.payload, res.path
 
 
 @pytest.fixture(scope="module")
-def legacy_payload(prep, cfg, tmp_path_factory):
+def ablation_payload(prep, cfg, tmp_path_factory):
     res = run_method(
-        prep, cfg, LEGACY, stages=("rerank",), results_dir=tmp_path_factory.mktemp("art-legacy")
+        prep,
+        cfg,
+        ABLATION,
+        stages=("rerank",),
+        results_dir=tmp_path_factory.mktemp("art-ablation"),
+        require_clean_source=False,
+        select=False,
     )
     return res.payload, res.path
 
@@ -142,16 +154,22 @@ def test_the_artefact_says_what_it_does_not_measure(strict_payload):
     assert "oracle" in payload["measures"]
 
 
-def test_strict_and_legacy_are_distinguishable_from_the_file_alone(strict_payload, legacy_payload):
+def test_the_two_controlled_arms_are_distinguishable_from_the_file_alone(
+    strict_payload, ablation_payload
+):
+    """A reader with only the JSON must be able to tell which arm is which and
+    what the difference between them was."""
     strict, _ = strict_payload
-    legacy, _ = legacy_payload
-    assert strict["method"] == STRICT and legacy["method"] == LEGACY
+    ablation, _ = ablation_payload
+    assert strict["method"] == STRICT and ablation["method"] == ABLATION
     assert set(strict["invariants"].values()) == {"pass"}
-    assert any(v.startswith("FAIL") for v in legacy["invariants"].values())
+    assert ablation["invariants"]["no_future_document_fitted"].startswith("FAIL")
+    # Both filter what they return; only the fitted statistics differ.
     assert strict["availability_violations"]["total"] == 0
-    assert legacy["availability_violations"]["total"] > 0
+    assert ablation["availability_violations"]["total"] == 0
     assert "available strictly before" in strict["extra"]["index_scope"]
-    assert "including documents from after" in legacy["extra"]["index_scope"]
+    assert "including documents from after" in ablation["extra"]["index_scope"]
+    assert strict["extra"]["controlled"]["varies"] == "index_scope"
 
 
 def test_artefact_is_written_and_reloadable(strict_payload):
@@ -184,7 +202,7 @@ def test_availability_violations_are_counted_by_reason(tmp_path):
         AvailabilityViolation("c", Rejection.MISSING_ACQUISITION_TIME, "2025-01-01"),
     ]
     payload = build_artefact(
-        method=LEGACY,
+        method=ABLATION,
         protocol=proto,
         dataset=DatasetIdentity("d", 1, "x" * 64, None, None, None, None, {}),
         backends=BackendIdentity("e", "r", "m", "ridge"),
@@ -205,7 +223,9 @@ def test_availability_violations_are_counted_by_reason(tmp_path):
     assert av["total"] == 3
     assert av["by_reason"] == {"retrieved_after_origin": 2, "missing_acquisition_time": 1}
     assert len(av["sample"]) == 3
-    path = write_artefact(payload, tmp_path)
+    # A throwaway artefact in tmp_path; the dirty-source refusal is exercised
+    # directly in tests/test_artefact_identity.py.
+    path = write_artefact(payload, tmp_path, require_clean_source=False)
     assert json.loads(path.read_text())["availability_violations"]["total"] == 3
 
 
@@ -268,8 +288,8 @@ def test_windows_do_not_overlap_in_the_artefact(strict_payload):
 
 def test_repeated_runs_of_the_same_protocol_agree_exactly(prep, cfg):
     """A recorded seed that does not determine the result is worse than none."""
-    a = run_method(prep, cfg, STRICT, stages=("rerank",), write=False)
-    b = run_method(prep, cfg, STRICT, stages=("rerank",), write=False)
+    a = run_method(prep, cfg, STRICT, stages=("rerank",), write=False, select=False)
+    b = run_method(prep, cfg, STRICT, stages=("rerank",), write=False, select=False)
     assert _stable(a.payload) == _stable(b.payload)
     assert a.fusion_weights == b.fusion_weights
 
@@ -297,7 +317,7 @@ def test_results_do_not_depend_on_the_python_hash_seed(tmp_path):
 
         cfg = Config().apply_profile()
         prep = prepare(cfg, days=170, seed=4, n_locations=4, n_event_types=3)
-        res = run_method(prep, cfg, STRICT, stages=("rerank",), write=False)
+        res = run_method(prep, cfg, STRICT, stages=("rerank",), write=False, select=False)
         m = res.payload["metrics"]["rerank"]
         print(json.dumps({
             "metrics": {k: v for k, v in m.items() if not k.startswith("latency")},
@@ -333,18 +353,25 @@ def _stable(payload):
     }
 
 
-def test_artefact_records_how_large_each_fitted_corpus_was(strict_payload, legacy_payload):
-    """The evidence behind the legacy-vs-strict comparison.
+def test_artefact_records_how_large_each_fitted_corpus_was(strict_payload, ablation_payload):
+    """The evidence behind the controlled comparison.
 
-    A snapshot index sees a growing prefix; the legacy index sees the whole
-    corpus at every origin. Without these numbers a reader has to take on trust
-    the explanation for why the two arms differ.
+    Split by phase, because both arms train the ranker from snapshot indexes
+    and only the *evaluation* index differs. An unsplit summary would make the
+    ablation look partially uncontaminated when the contamination is exactly
+    where the ablation puts it.
     """
     strict, _ = strict_payload
-    legacy, _ = legacy_payload
-    s = strict["extra"]["fitted_corpus_sizes"]
-    ll = legacy["extra"]["fitted_corpus_sizes"]
-    assert s["distinct"] > 1, "snapshot indexes must not all be the same size"
-    assert ll["distinct"] == 1, "the legacy index is the whole corpus every time"
-    assert s["max"] <= ll["max"]
-    assert s["mean"] < ll["mean"]
+    ablation, _ = ablation_payload
+    s_eval = strict["extra"]["fitted_corpus_sizes"]["by_phase"]["evaluation"]
+    a_eval = ablation["extra"]["fitted_corpus_sizes"]["by_phase"]["evaluation"]
+    assert s_eval["distinct"] > 1, "snapshot indexes must not all be the same size"
+    assert a_eval["distinct"] == 1, "the ablation evaluates on the whole corpus every time"
+    assert a_eval["min"] == a_eval["max"]
+    assert s_eval["mean"] < a_eval["mean"]
+
+    # The ranker-training phase is held fixed between the arms: same provider
+    # type, same origins, same sizes.
+    s_train = strict["extra"]["fitted_corpus_sizes"]["by_phase"]["ranker_training"]
+    a_train = ablation["extra"]["fitted_corpus_sizes"]["by_phase"]["ranker_training"]
+    assert s_train == a_train

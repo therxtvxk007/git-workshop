@@ -64,3 +64,27 @@ def tmp_cache(tmp_path):
     from pramaan_x.util.cache import ContentCache
 
     return ContentCache(tmp_path / "cache")
+
+
+@pytest.fixture
+def strict_timestamp_config():
+    """Config under the strict timestamp policy -- the default, made explicit."""
+    from pramaan_x.config import Config
+
+    cfg = Config().apply_profile()
+    cfg.stage0.timestamp_policy = "strict"
+    return cfg
+
+
+@pytest.fixture
+def utc_assuming_config():
+    """Config that opts in to assuming UTC for naive stamps.
+
+    This exists so the escape hatch can be tested, including the test that it
+    is unreachable from `strict_temporal`. It is never the default.
+    """
+    from pramaan_x.config import Config
+
+    cfg = Config().apply_profile()
+    cfg.stage0.timestamp_policy = "assume_utc"
+    return cfg

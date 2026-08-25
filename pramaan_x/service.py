@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from . import __version__
 from .config import Config
 from .data.store import DocumentStore
 from .data.synth import SynthConfig, SyntheticCorpus
@@ -26,6 +27,34 @@ from .types import Document
 from .util.logging import get_logger, timed
 
 log = get_logger("service")
+
+
+def lockfile_sha256() -> str | None:
+    """SHA-256 of the `uv.lock` this environment was built from, or None.
+
+    The container image writes the value at build time and points
+    `PRAMAAN_LOCKFILE_SHA256_FILE` at it. Outside a container the lockfile is
+    usually right there in the checkout, so it is hashed directly. None means
+    neither was available, which is itself worth reporting rather than
+    papering over with a guess.
+    """
+    import hashlib
+    import os
+    from pathlib import Path
+
+    stamped = os.environ.get("PRAMAAN_LOCKFILE_SHA256_FILE")
+    if stamped:
+        try:
+            value = Path(stamped).read_text().strip()
+            if value:
+                return value
+        except OSError:
+            pass
+    candidate = Path(__file__).resolve().parent.parent / "uv.lock"
+    try:
+        return hashlib.sha256(candidate.read_bytes()).hexdigest()
+    except OSError:
+        return None
 
 
 class NotReady(RuntimeError):
@@ -110,6 +139,12 @@ class PramaanService:
             "documents_canonical": len(s.documents),
             "built_at": s.built_at.isoformat() if s.built_at else None,
             "build_seconds": round(s.build_seconds, 2),
+            "version": __version__,
+            # Which dependency set this process is actually running. A build
+            # date says when an image was made; this says what is in it, and it
+            # is the same value the image carries as a label.
+            "uv_lock_sha256": lockfile_sha256(),
+            "timestamp_policy": str(self.config.stage0.timestamp_policy),
             "stage0": s.stage0.summary() if s.stage0 else None,
         }
 

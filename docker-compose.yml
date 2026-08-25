@@ -9,7 +9,7 @@
 services:
   api:
     build: .
-    image: pramaan-x:0.4.0
+    image: pramaan-x:0.5.0
     ports: ["8000:8000"]
     environment:
       PRAMAAN_CONFIG: /app/configs/cpu_only.json
@@ -57,7 +57,10 @@ services:
   # Requires an NVIDIA runtime. The served model is the one named in the
   # hardware profile; quantisation is chosen there, not here.
   vllm:
-    image: vllm/vllm-openai:latest
+    # Pinned. `:latest` means the container you debug today and the one that
+    # runs tomorrow are different software with the same name, and nothing
+    # records which was which.
+    image: vllm/vllm-openai:v0.11.2
     profiles: ["llm"]
     ports: ["8001:8000"]
     environment:

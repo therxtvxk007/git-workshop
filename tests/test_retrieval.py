@@ -4,8 +4,8 @@ The order is deliberate. A retrieval number from a contaminated pipeline is not
 a weaker result, it is a different quantity, so the firewall tests come first
 and the quality floors are only meaningful once they pass.
 
-Every invariant here is written so that the contaminated legacy method fails
-it. A check both methods satisfy would be testing nothing.
+Every invariant here is written so that a contaminated arm fails it. A check
+every method satisfies would be testing nothing.
 """
 
 from __future__ import annotations
@@ -27,13 +27,15 @@ from pramaan_x.eval.invariants import (
     synthesise_future_documents,
 )
 from pramaan_x.eval.oracle_target_retrieval import (
-    LEGACY,
+    ABLATION,
+    HISTORICAL,
     STRICT,
     FullCorpusIndexProvider,
     SnapshotIndexProvider,
     format_table,
     stage_width,
 )
+from pramaan_x.eval.protocol import ProtocolError
 from pramaan_x.stage1_scan.embed import HashingEmbedder
 from pramaan_x.stage2_retrieve.rerank import LexicalReranker
 
@@ -55,14 +57,38 @@ def prep(cfg):
 @pytest.fixture(scope="module")
 def strict_run(prep, cfg, tmp_path_factory):
     return run_method(
-        prep, cfg, STRICT, stages=STAGES, results_dir=tmp_path_factory.mktemp("strict")
+        prep,
+        cfg,
+        STRICT,
+        stages=STAGES,
+        results_dir=tmp_path_factory.mktemp("strict"),
+        require_clean_source=False,
     )
 
 
 @pytest.fixture(scope="module")
-def legacy_run(prep, cfg, tmp_path_factory):
+def ablation_run(prep, cfg, tmp_path_factory):
+    """The controlled arm: future-fitted index, everything else held fixed."""
     return run_method(
-        prep, cfg, LEGACY, stages=STAGES, results_dir=tmp_path_factory.mktemp("legacy")
+        prep,
+        cfg,
+        ABLATION,
+        stages=STAGES,
+        results_dir=tmp_path_factory.mktemp("ablation"),
+        require_clean_source=False,
+    )
+
+
+@pytest.fixture(scope="module")
+def historical_run(prep, cfg, tmp_path_factory):
+    """The unpaired arm: the pre-firewall behaviour reproduced in full."""
+    return run_method(
+        prep,
+        cfg,
+        HISTORICAL,
+        stages=STAGES,
+        results_dir=tmp_path_factory.mktemp("historical"),
+        require_clean_source=False,
     )
 
 
@@ -85,11 +111,12 @@ def test_no_fitted_index_saw_a_document_from_its_own_future(strict_run):
     assert_no_future_document_fitted(strict_run.outcome.fit_records)
 
 
-def test_legacy_method_fails_the_future_fitting_invariant(legacy_run):
-    """Proof the invariant has teeth. The legacy index is fitted on the whole
-    corpus, so every origin's statistics depend on documents from after it."""
+def test_the_ablation_arm_fails_the_future_fitting_invariant(ablation_run):
+    """Proof the invariant has teeth. The ablation's index is fitted on the
+    whole corpus, so every origin's statistics depend on documents from after
+    it -- and that is the single variable the controlled pair varies."""
     with pytest.raises(InvariantViolation, match="at or after their own forecast origin"):
-        assert_no_future_document_fitted(legacy_run.outcome.fit_records)
+        assert_no_future_document_fitted(ablation_run.outcome.fit_records)
 
 
 def test_no_post_origin_document_is_returned(strict_run):
@@ -97,12 +124,23 @@ def test_no_post_origin_document_is_returned(strict_run):
     assert_no_post_origin_results(strict_run.outcome)
 
 
-def test_legacy_method_returns_documents_it_could_not_have_had(legacy_run):
+def test_the_ablation_arm_returns_only_available_documents(ablation_run):
+    """The ablation contaminates fitting and nothing else.
+
+    If it also returned late-crawled documents it would differ from the strict
+    arm in two ways and the paired delta would stop being attributable.
+    """
+    assert ablation_run.outcome.availability_violations == []
+    assert_no_post_origin_results(ablation_run.outcome)
+
+
+def test_the_historical_arm_returns_documents_it_could_not_have_had(historical_run):
     """Publication-date filtering lets through everything crawled late. This is
-    the concrete cost of the weaker rule, measured rather than asserted."""
-    assert legacy_run.outcome.availability_violations
+    the concrete cost of the weaker rule, measured rather than asserted -- and
+    it is one of the reasons the historical arm cannot be paired."""
+    assert historical_run.outcome.availability_violations
     with pytest.raises(InvariantViolation, match="violate the availability rule"):
-        assert_no_post_origin_results(legacy_run.outcome)
+        assert_no_post_origin_results(historical_run.outcome)
 
 
 def test_returned_documents_satisfy_the_rule_independently(strict_run, prep):
@@ -212,7 +250,7 @@ def test_the_invariance_test_fails_on_the_contaminated_method(prep, cfg, strict_
             for q in queries
         }
 
-    with pytest.raises(InvariantViolation, match="rankings changed"):
+    with pytest.raises(InvariantViolation, match="results changed"):
         assert_future_append_invariance(build_and_rank, prep.corpus, future)
 
 
@@ -251,16 +289,31 @@ def test_queries_are_oracle_targets(strict_run):
     assert q.target_key == f"{q.location}|{q.event_type}"
 
 
-def test_recall_floor_at_100(strict_run):
-    """Recall@100 is the ceiling on everything downstream: an evidence document
-    the cascade never returns cannot be recovered by any later stage.
+def test_the_locked_test_window_reports_and_does_not_gate(strict_run, prep):
+    """What replaced `test_recall_floor_at_100`.
 
-    The floor is set well below the measured value; it catches a regression,
-    not run-to-run variation. It is a floor on the *strict* method, which is
-    the only one whose numbers mean anything.
+    That test asserted `strict_run.outcome.reports["rerank"].recall[100] > 0.45`
+    -- a hard-coded floor on the *locked test window*. It meant a build's fate
+    depended on test-window performance, which is selection by another name: a
+    change that lowered the number could not merge, so the number was choosing
+    implementations.
+
+    The floor still exists, because a retriever with no regression tripwire is
+    worse off. It moved to the regression window (`tests/test_selection.py`).
+    What is checked here is only that the locked window produced a valid,
+    reportable measurement -- shape and protocol validity, no threshold on the
+    value.
     """
     rep = strict_run.outcome.reports["rerank"]
-    assert rep.recall[100] > 0.45, f"R@100 fell to {rep.recall[100]:.3f}"
+    assert rep.n_queries > 0
+    assert rep.n_relevant > 0
+    for k, value in rep.recall.items():
+        assert 0.0 <= value <= 1.0, f"R@{k} is not a proportion: {value}"
+    assert 0.0 <= rep.mrr <= 1.0
+    assert prep.protocol.contains("test", strict_run.test_queries[0].event_time)
+    # The locked window is not selectable, and the protocol says so.
+    with pytest.raises(ProtocolError):
+        prep.protocol.assert_selection_window("test")
 
 
 def test_precision_is_reported_not_discarded(strict_run):
@@ -346,9 +399,9 @@ def test_the_lexicon_invariant_catches_a_post_training_label(prep):
         assert_lexicon_fitted_on_training_only(poisoned, prep.protocol)
 
 
-def test_both_methods_record_the_preprocessing_verdict(strict_run, legacy_run):
-    """Both arms share the lexicon, so both should pass this check. The legacy
-    method's contamination is in its indexes, not here -- and the artefact says
-    so rather than leaving the reader to infer which checks ran."""
-    for run in (strict_run, legacy_run):
+def test_both_controlled_arms_record_the_preprocessing_verdict(strict_run, ablation_run):
+    """Both arms share the lexicon, so both pass this check. The contamination
+    under test lives in the indexes, not here -- and the artefact says so
+    rather than leaving the reader to infer which checks ran."""
+    for run in (strict_run, ablation_run):
         assert run.payload["invariants"]["no_test_labels_in_preprocessing"] == "pass"

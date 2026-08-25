@@ -1,6 +1,6 @@
 [project]
 name = "pramaan-x"
-version = "0.4.0"
+version = "0.5.0"
 description = "Precursor-evidence retrieval cascade (stages 0-3); not a forecasting system"
 requires-python = ">=3.11"
 dependencies = [

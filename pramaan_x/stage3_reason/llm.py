@@ -63,6 +63,34 @@ class BudgetExceeded(RuntimeError):
 # ------------------------------------------------------------ backends ---
 
 
+#: Hosts that must never be reached through a proxy.
+LOOPBACK_HOSTS = frozenset({"localhost", "127.0.0.1", "::1", "[::1]", "0.0.0.0"})
+
+
+def is_loopback_url(url: str) -> bool:
+    """True when `url` points at this machine.
+
+    Deliberately conservative: an unparseable URL is treated as remote, so a
+    mistake here can only ever leave proxy handling as it was.
+    """
+    from urllib.parse import urlparse
+
+    try:
+        host = urlparse(url).hostname
+    except ValueError:
+        return False
+    if host is None:
+        return False
+    if host in LOOPBACK_HOSTS:
+        return True
+    try:
+        import ipaddress
+
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
 @dataclass
 class OpenAiCompatibleBackend:
     """vLLM, SGLang, and anything else speaking the OpenAI chat API.
@@ -86,6 +114,21 @@ class OpenAiCompatibleBackend:
             self._client = httpx.Client(
                 base_url=self.base_url, timeout=self.timeout_s,
                 headers={"Authorization": f"Bearer {self.api_key}"},
+                # A loopback endpoint is never reached through a proxy. This is
+                # not only a test concern: the default `base_url` is a vLLM or
+                # SGLang server on localhost, and sending that traffic to an
+                # organisation's egress proxy is wrong in production too.
+                #
+                # `no_proxy` cannot fix it. httpx builds a transport for every
+                # proxy mount when the client is constructed, so an `ALL_PROXY`
+                # pointing at SOCKS raises ImportError before any request is
+                # routed -- the bypass entry exists but is never consulted. The
+                # decision has to be made at construction.
+                #
+                # For any non-loopback host `trust_env` stays on and every proxy
+                # setting the environment provides is honoured unchanged. No TLS
+                # verification is disabled here or anywhere else.
+                trust_env=not is_loopback_url(self.base_url),
             )
         return self._client
 

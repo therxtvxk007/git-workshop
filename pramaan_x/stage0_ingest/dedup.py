@@ -132,9 +132,49 @@ class Deduplicator:
         rep.cluster_members.setdefault(canonical, []).append(doc_id)
 
 
+#: Meta key carrying each cluster member's own timestamps onto the canonical.
+CLUSTER_MEMBERS_KEY = "cluster_members"
+
+
 def apply_dedup(docs: list[Document], rep: DedupReport) -> list[Document]:
-    """Annotate documents in place and return the canonical stream."""
+    """Annotate documents in place and return the canonical stream.
+
+    The canonical carries its cluster's *provenance*, not just its id. Without
+    it, collapsing thirty copies of a wire story into one document also
+    collapses thirty acquisition times into one -- and if the canonical (the
+    earliest *published* member) happens to have been crawled late or not
+    crawled at all, the whole cluster reads as unavailable at an origin where a
+    syndicated copy was sitting in the index. That is real information thrown
+    away by a deduplication step whose only job was to avoid double-counting
+    it.
+
+    Availability is derived from the members in `eval.availability`; what
+    happens here is only that the members are preserved.
+    """
+    by_id = {d.doc_id: d for d in docs}
     for d in docs:
         d.cluster_id = rep.cluster_of.get(d.doc_id, d.doc_id)
         d.is_canonical = d.doc_id in rep.canonical
+    for canonical_id, member_ids in rep.cluster_members.items():
+        canonical = by_id.get(canonical_id)
+        if canonical is None:
+            continue
+        canonical.meta[CLUSTER_MEMBERS_KEY] = [
+            {
+                "doc_id": m,
+                "published_at": _iso(by_id[m].published_at),
+                "retrieved_at": _iso(by_id[m].retrieved_at),
+                "source_family": by_id[m].meta.get("source_family", ""),
+                "trusted_historical_snapshot": by_id[m].meta.get(
+                    "trusted_historical_snapshot", False
+                )
+                is True,
+            }
+            for m in sorted(member_ids)
+            if m in by_id
+        ]
     return [d for d in docs if d.is_canonical]
+
+
+def _iso(ts) -> str | None:
+    return ts.isoformat() if ts is not None else None

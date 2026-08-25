@@ -169,8 +169,19 @@ def test_no_permitted_fitting_operation_may_touch_the_test_window(proto):
     """The locked window selects nothing. Every entry in the permitted-fitting
     list names the training window or a fold origin, never the test window."""
     for entry in proto.permitted_fitting:
-        assert "test" not in entry.lower(), entry
-        assert any(w in entry for w in ("training-window", "before the fold origin")), entry
+        lowered = entry.lower()
+        if "test" in lowered:
+            # The only permitted mention of the test window is a prohibition.
+            assert "never the test window" in lowered, entry
+        assert any(
+            w in entry
+            for w in (
+                "training-window",
+                "before the fold origin",
+                "selection-window",
+                "regression-window",
+            )
+        ), entry
 
 
 def test_the_calibration_window_exists_to_absorb_selection(proto):

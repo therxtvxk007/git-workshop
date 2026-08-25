@@ -1,4 +1,4 @@
-"""The locked temporal evaluation protocol.
+r"""The locked temporal evaluation protocol.
 
 One object defines every temporal decision in the benchmark, so that a result
 can be attributed to a protocol rather than to whatever the caller happened to
@@ -7,15 +7,29 @@ or a fitting scope on its own.
 
 The layout is::
 
-    |<-- train -->|<- embargo ->|<-- calibration -->|<- embargo ->|<-- TEST -->|
-    t0            t1            t1+E                t2            t2+E     t3
+    |<-- train -->|<-E->|<- selection -><- regression ->|<-E->|<-- TEST -->|
+    t0            t1                                            t2         t3
+                        \________ calibration span ________/
 
   * **train**        the only window whose labels may be seen by anything fitted
   * **embargo**      a gap wide enough that a label computed with a forward
                      lookahead inside one window cannot reach across into the
                      next. It is `max(embargo_days, label_lookahead_days)`.
-  * **calibration**  where thresholds, widths and model variants are chosen
-  * **test**         locked. Read once, reported, never used to select anything
+  * **selection**    where thresholds, widths and model variants are chosen
+  * **regression**   where CI quality floors are measured. Separate from
+                     `selection` so a floor is not read off the very data the
+                     parameters were tuned on, and separate from `test` so a
+                     build never passes or fails on the locked window.
+  * **test**         locked. Reported, never used to select anything
+
+`selection` and `regression` tile the calibration span with no embargo between
+them: both are development windows, and the embargo exists to protect the test
+window from the training and development ones, not to protect development
+decisions from each other.
+
+No embargo would help with the thing that actually matters here, which is that
+nothing may *select* on `test`. That is enforced by `assert_selection_window`,
+not by a gap.
 
 Splits are temporal and contiguous. There is no random split anywhere in this
 module and there must never be one: shuffling documents across time makes the
@@ -53,6 +67,8 @@ PERMITTED_FITTING = (
     "vector_index: documents available strictly before the fold origin",
     "lexicon_log_odds: training-window documents with training-window labels only",
     "learned_fusion_lambdamart: training-window queries only",
+    "operating_point_selection: selection-window queries only, never the test window",
+    "ci_quality_floors: regression-window queries only, never the test window",
 )
 
 #: How a query's text is produced. This is the oracle assumption, stated once.
@@ -87,6 +103,9 @@ class TemporalProtocol:
     embargo_days: int
     label_lookahead_days: int
     origin_stride_days: int
+    #: Fraction of the calibration span given to selection; the rest is the
+    #: regression window. A protocol constant, fixed before any measurement.
+    selection_frac: float = 0.6
     version: str = PROTOCOL_VERSION
     availability_rule: str = AVAILABILITY_RULE
     query_generation_rule: str = QUERY_GENERATION_RULE
@@ -147,15 +166,41 @@ class TemporalProtocol:
         """
         return self.train_end - timedelta(days=self.label_lookahead_days)
 
+    @property
+    def selection_end(self) -> datetime:
+        """Boundary between the selection and regression sub-windows."""
+        span = self.calibration_end - self.calibration_start
+        return self.calibration_start + timedelta(days=max(1, int(span.days * self.selection_frac)))
+
     def window(self, name: str) -> tuple[datetime, datetime]:
         try:
             return {
                 "train": (self.train_start, self.train_end),
                 "calibration": (self.calibration_start, self.calibration_end),
+                "selection": (self.calibration_start, self.selection_end),
+                "regression": (self.selection_end, self.calibration_end),
                 "test": (self.test_start, self.test_end),
             }[name]
         except KeyError:
             raise ProtocolError(f"unknown window {name!r}") from None
+
+    #: Windows a parameter, threshold or CI floor may be chosen on. `test` is
+    #: deliberately absent and `assert_selection_window` enforces that.
+    SELECTABLE_WINDOWS = ("selection", "regression")
+
+    def assert_selection_window(self, name: str) -> None:
+        """Refuse to select anything on the locked test window.
+
+        This is the mechanism behind the claim that the test window selects
+        nothing. Without it the claim is prose, and prose does not stop a
+        future caller passing `"test"` to a selector.
+        """
+        if name not in self.SELECTABLE_WINDOWS:
+            raise ProtocolError(
+                f"{name!r} may not be used to select anything; the locked test "
+                f"window reports and does not choose. Selectable windows are "
+                f"{list(self.SELECTABLE_WINDOWS)}."
+            )
 
     def contains(self, name: str, ts: datetime) -> bool:
         start, end = self.window(name)
@@ -200,6 +245,10 @@ class TemporalProtocol:
                 raw[k] = list(v)
         raw["effective_embargo_days"] = self.effective_embargo_days
         raw["label_cutoff"] = to_utc(self.label_cutoff).isoformat()
+        raw["selection_end"] = to_utc(self.selection_end).isoformat()
+        raw["selectable_windows"] = list(self.SELECTABLE_WINDOWS)
+        for name in ("train", "selection", "regression", "test"):
+            raw[f"n_{name}_origins"] = len(self.origins(name))
         raw["n_test_origins"] = len(self.origins("test"))
         raw["n_train_origins"] = len(self.origins("train"))
         return raw

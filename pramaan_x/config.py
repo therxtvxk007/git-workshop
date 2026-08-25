@@ -84,6 +84,12 @@ class Stage0Config:
     min_tokens: int = 12
     require_timestamp: bool = True
     max_future_skew_hours: int = 6   # published_at later than this is rejected
+    # "strict" | "assume_utc". Strict rejects a naive timestamp rather than
+    # inventing a zone for it, and is the default because the alternative was
+    # silently contradicting `eval.availability`. `assume_utc` is an operator
+    # assertion about a feed and `timestamps.require_strict` keeps it out of
+    # anything whose numbers are reported.
+    timestamp_policy: str = "strict"
     cache_dir: str = ".cache/pramaan"
 
 
