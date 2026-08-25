@@ -161,15 +161,38 @@ def test_committed_strict_artefacts_passed_every_invariant():
     assert found > 0
 
 
-def test_committed_legacy_artefacts_record_their_failures():
-    """The diagnostic is only worth keeping if it says what is wrong with it."""
+def test_committed_ablation_artefacts_record_the_contamination_they_carry():
+    """The ablation is only worth running if it says what is wrong with it.
+
+    It fails the fitting invariant by construction -- that is the variable under
+    test -- and must pass the others, because contaminating anything else would
+    make it a second difference from the strict arm and break the pairing.
+    """
     root = ROOT / "benchmark_results" / "future_fitted_index_ablation"
     if not root.exists():
-        pytest.skip("no legacy artefacts committed yet")
+        pytest.skip("no ablation artefacts committed yet")
+    for path in root.rglob("*.json"):
+        payload = json.loads(path.read_text())
+        verdicts = payload["invariants"]
+        assert verdicts["no_future_document_fitted"].startswith("FAIL"), path
+        assert verdicts["no_post_origin_results"] == "pass", path
+        assert verdicts["no_test_labels_in_training"] == "pass", path
+        assert payload["availability_violations"]["total"] == 0, path
+        assert "paired_vs_strict" in payload["extra"], path
+
+
+def test_committed_historical_artefacts_record_their_failures_and_refuse_pairing():
+    """The unpaired reproduction carries several contaminations at once and
+    must say so, and must carry no delta."""
+    root = ROOT / "benchmark_results" / "historical_legacy_reproduction_unpaired"
+    if not root.exists():
+        pytest.skip("no historical artefacts committed yet")
     for path in root.rglob("*.json"):
         payload = json.loads(path.read_text())
         assert any(v.startswith("FAIL") for v in payload["invariants"].values()), path
         assert payload["availability_violations"]["total"] > 0, path
+        assert "paired_vs_strict" not in payload["extra"], path
+        assert payload["extra"]["comparability"]["paired"] is False, path
 
 
 # ------------------------------------------------------ repository hygiene ---

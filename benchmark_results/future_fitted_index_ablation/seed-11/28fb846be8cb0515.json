@@ -1,0 +1,1326 @@
+{
+  "availability_violations": {
+    "by_reason": {},
+    "sample": [],
+    "total": 0
+  },
+  "backends": {
+    "embedder": "hashing (1024d)",
+    "fusion_backend": "lambdarank",
+    "late_interaction": "MaxSim over hashed token vectors (pramaan_x.stage2_retrieve.late_interaction)",
+    "reranker": "lexical",
+    "sparse": "in-process Okapi BM25 (pramaan_x.stage1_scan.bm25)",
+    "vector_engine": "memory",
+    "versions": {
+      "duckdb": "1.5.5",
+      "lightgbm": "4.7.0",
+      "numpy": "2.4.6",
+      "polars": "1.44.0",
+      "pramaan-x": "1.0.0",
+      "pyarrow": "25.0.1",
+      "python": "3.11.15",
+      "scikit-learn": "1.9.0",
+      "scipy": "1.17.1"
+    }
+  },
+  "benchmark": "oracle_target_retrieval",
+  "config_fingerprint": "dba6f85247dc51c9",
+  "created_at": "2026-08-25T04:04:11.662630+00:00",
+  "dataset": {
+    "earliest": "2025-01-01 00:00:00+00:00",
+    "file_bytes": 1018111,
+    "file_hash": "a35093a8ed7a3e8a2ce276a9362a4922f48f210abc0076c45e74aec5339368d7",
+    "generator": {
+      "backfill_fraction": 0.12,
+      "days": 540,
+      "generator": "pramaan_x.data.synth.SyntheticCorpus",
+      "missing_retrieval_fraction": 0.04,
+      "n_event_types": 6,
+      "n_locations": 12,
+      "seed": 11,
+      "synthetic": true
+    },
+    "latest": "2026-06-25 12:00:00+00:00",
+    "logical_hash": "4ac10a281656d82b9c53583c9edaa4f99ebce688096362d0f1d093ad16f4ca80",
+    "n_documents": 12999,
+    "name": "synthetic_corpus"
+  },
+  "does_not_measure": "event forecasting; no metric here is a forecasting score and none may be reported as one",
+  "environment": {
+    "package_version": "0.5.0",
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "python": "3.11.15",
+    "uv_lock_sha256": "385e6cd90941a488ff72ca87afed37814d7d740c8ceb7d88321238742e8abd32"
+  },
+  "extra": {
+    "controlled": {
+      "candidate_widths": {
+        "bm25_top_k": 200,
+        "dense_top_k": 200,
+        "late_top_k": 60,
+        "rerank_top_k": 20,
+        "rrf_k": 60
+      },
+      "fusion_training_fingerprint": "a3db48e54102f0057a8560382b314cda45c2a16f6bc3332ccbf6dfcf5cdd9083",
+      "held_fixed": [
+        "query_ids",
+        "query_text",
+        "forecast_origins",
+        "relevant_sets",
+        "lexicon",
+        "fusion_training_data",
+        "ks",
+        "candidate_widths"
+      ],
+      "ks": [
+        10,
+        20,
+        50,
+        100
+      ],
+      "lexicon_fingerprint": "fb898fb705979aa3cd5d7a4e9ae608f69621aa0c5c334d423e9ab6a50d634f01",
+      "pair": [
+        "strict_temporal",
+        "future_fitted_index_ablation"
+      ],
+      "query_set_fingerprint": "19f52130c27f690971ed7627666d8a42ceb19a46219d88f4efbf0144f6d62747",
+      "train_query_set_fingerprint": "cd588e0f287f840bac35412530825fbcfe2e8ecdef32a8fe020a2f8ef79ed4f2",
+      "varies": "index_scope"
+    },
+    "corpus_logical_hash_recheck": "b5bd90629927e9833a9568158907a45adc5f935634c3a9bb1f90c23e148507ae",
+    "fitted_corpus_sizes": {
+      "by_phase": {
+        "evaluation": {
+          "distinct": 1,
+          "max": 9086,
+          "mean": 9086.0,
+          "min": 9086,
+          "n_fitted_indexes": 400
+        },
+        "ranker_training": {
+          "distinct": 37,
+          "max": 4286,
+          "mean": 2198.108108108108,
+          "min": 92,
+          "n_fitted_indexes": 37
+        }
+      },
+      "distinct": 38,
+      "max": 9086,
+      "mean": 8502.814645308925,
+      "min": 92,
+      "n_fitted_indexes": 437
+    },
+    "fusion_component_weights": {
+      "bm25": 0.1998888888888889,
+      "cross": 0.15022222222222223,
+      "dense": 0.176,
+      "late": 0.20833333333333334,
+      "long_history": 0.0,
+      "novelty": 0.0,
+      "recency": 0.13077777777777777,
+      "source_independence": 0.13477777777777777
+    },
+    "index_scope": "every document in the corpus, including documents from after every forecast origin",
+    "label_mapping": {
+      "collapsed_duplicate_members": 0,
+      "dropped_no_canonical": 0,
+      "note": "Ground-truth precursor ids are mapped through the dedup clusters before any query is built: a document absorbed into a cluster is counted as its canonical rather than lost, and syndicated copies of one story count once rather than as independent precursors.",
+      "precursor_ids_after": 890,
+      "precursor_ids_before": 890,
+      "remapped_to_cluster_canonical": 6
+    },
+    "lexicon_fit": {
+      "label_cutoff": "2025-09-10T00:00:00+00:00",
+      "max_event_used": "2025-09-19T00:00:00+00:00",
+      "max_published_at": "2025-09-09T22:00:00+00:00",
+      "n_documents": 4230,
+      "n_positive": 477,
+      "train_end": "2025-10-01T00:00:00+00:00"
+    },
+    "operating_point": {
+      "late_top_k": 100,
+      "rerank_top_k": 20,
+      "rrf_k": 60
+    },
+    "paired_vs_strict": {
+      "n_paired_queries": 80,
+      "per_query": [
+        {
+          "mrr": 0.6666666666666667,
+          "ndcg@10": 0.3065735963827292,
+          "precision@10": 0.0,
+          "query_id": "Bhopal|armed_clash@2026-05-22T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.033333333333333354,
+          "ndcg@10": 0.01879027595113203,
+          "precision@10": 0.0,
+          "query_id": "Bhopal|infrastructure_failure@2026-06-15T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.5,
+          "ndcg@10": 0.23463936301137822,
+          "precision@10": 0.0,
+          "query_id": "Chennai|armed_clash@2026-02-18T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Chennai|armed_clash@2026-06-17T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.12747540151973769,
+          "precision@10": -0.09999999999999998,
+          "query_id": "Chennai|infrastructure_failure@2026-02-17T00:00:00+00:00",
+          "recall@10": -0.33333333333333337,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.15199406637658464,
+          "precision@10": -0.10000000000000003,
+          "query_id": "Chennai|infrastructure_failure@2026-04-24T00:00:00+00:00",
+          "recall@10": -0.25,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Chennai|protest@2026-05-25T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Chennai|protest@2026-06-09T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Chennai|supply_disruption@2026-03-15T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0001290100627848968,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Chennai|supply_disruption@2026-04-29T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Chennai|supply_disruption@2026-05-16T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": -0.5,
+          "ndcg@10": -0.3144605450954818,
+          "precision@10": 0.0,
+          "query_id": "Coimbatore|infrastructure_failure@2026-02-27T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Coimbatore|infrastructure_failure@2026-03-11T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.04250547381013825,
+          "precision@10": 0.0,
+          "query_id": "Coimbatore|infrastructure_failure@2026-04-17T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.5,
+          "ndcg@10": 0.013950977920671181,
+          "precision@10": -0.1,
+          "query_id": "Coimbatore|infrastructure_failure@2026-04-19T00:00:00+00:00",
+          "recall@10": -0.25,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.16666666666666669,
+          "ndcg@10": 0.17001531001473275,
+          "precision@10": 0.10000000000000003,
+          "query_id": "Coimbatore|infrastructure_failure@2026-04-28T00:00:00+00:00",
+          "recall@10": 0.20000000000000007,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": -0.16666666666666669,
+          "ndcg@10": -0.1756039574614418,
+          "precision@10": -0.09999999999999998,
+          "query_id": "Coimbatore|infrastructure_failure@2026-05-07T00:00:00+00:00",
+          "recall@10": -0.25,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": -0.25,
+          "ndcg@10": 0.2104926330252005,
+          "precision@10": 0.19999999999999998,
+          "query_id": "Coimbatore|infrastructure_failure@2026-05-29T00:00:00+00:00",
+          "recall@10": 0.6666666666666667,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.06084037364071859,
+          "precision@10": 0.0,
+          "query_id": "Coimbatore|infrastructure_failure@2026-06-04T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.004895737244352161,
+          "precision@10": 0.0,
+          "query_id": "Coimbatore|infrastructure_failure@2026-06-06T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Coimbatore|infrastructure_failure@2026-06-09T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": -0.5,
+          "ndcg@10": -0.14066479854606062,
+          "precision@10": 0.0,
+          "query_id": "Coimbatore|supply_disruption@2026-03-09T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Coimbatore|supply_disruption@2026-05-01T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Coimbatore|supply_disruption@2026-05-23T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.1128451413489352,
+          "precision@10": -0.09999999999999998,
+          "query_id": "Guwahati|armed_clash@2026-02-11T00:00:00+00:00",
+          "recall@10": -0.25,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.10699313236726382,
+          "precision@10": 0.0,
+          "query_id": "Guwahati|cyber_incident@2026-04-07T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Guwahati|flood@2026-02-17T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Guwahati|flood@2026-04-13T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Guwahati|flood@2026-04-19T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.01911949948326963,
+          "precision@10": 0.0,
+          "query_id": "Guwahati|flood@2026-05-03T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Guwahati|flood@2026-05-30T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.11706259313796352,
+          "precision@10": 0.10000000000000003,
+          "query_id": "Guwahati|flood@2026-06-09T00:00:00+00:00",
+          "recall@10": 0.16666666666666663,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.027062488724933442,
+          "precision@10": 0.0,
+          "query_id": "Guwahati|infrastructure_failure@2026-05-27T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": -0.5,
+          "ndcg@10": -0.17319681505689122,
+          "precision@10": 0.0,
+          "query_id": "Jaipur|armed_clash@2026-06-04T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.5,
+          "ndcg@10": 0.36907024642854247,
+          "precision@10": 0.0,
+          "query_id": "Jaipur|cyber_incident@2026-05-07T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Jaipur|protest@2026-03-31T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.044406162097719415,
+          "precision@10": 0.0,
+          "query_id": "Jaipur|protest@2026-04-21T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": -0.16666666666666669,
+          "ndcg@10": -0.051112363744679146,
+          "precision@10": 0.0,
+          "query_id": "Jaipur|protest@2026-04-22T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Jaipur|supply_disruption@2026-05-22T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Kochi|flood@2026-02-26T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.1769917959707804,
+          "precision@10": -0.09999999999999998,
+          "query_id": "Kochi|flood@2026-02-28T00:00:00+00:00",
+          "recall@10": -0.33333333333333337,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Kochi|flood@2026-05-17T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Kochi|supply_disruption@2026-03-22T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Kochi|supply_disruption@2026-04-07T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.0511123637446792,
+          "precision@10": 0.0,
+          "query_id": "Kochi|supply_disruption@2026-05-26T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Nagpur|flood@2026-02-07T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.02706248872493333,
+          "precision@10": 0.0,
+          "query_id": "Nagpur|infrastructure_failure@2026-05-02T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Nagpur|protest@2026-03-29T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Patna|armed_clash@2026-02-06T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Patna|armed_clash@2026-06-07T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Patna|flood@2026-03-02T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Patna|flood@2026-04-19T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.06821653057759058,
+          "precision@10": 0.0,
+          "query_id": "Patna|flood@2026-05-04T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.04999999999999999,
+          "ndcg@10": 0.017107918043312215,
+          "precision@10": 0.0,
+          "query_id": "Patna|flood@2026-06-09T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.027062488724933442,
+          "precision@10": 0.0,
+          "query_id": "Patna|flood@2026-06-17T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.08027921085181244,
+          "precision@10": 0.0,
+          "query_id": "Patna|infrastructure_failure@2026-05-21T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.16666666666666669,
+          "ndcg@10": 0.051112363744679146,
+          "precision@10": 0.0,
+          "query_id": "Patna|protest@2026-04-11T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.5,
+          "ndcg@10": 0.17319681505689122,
+          "precision@10": 0.0,
+          "query_id": "Patna|protest@2026-04-12T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.04351205222489579,
+          "precision@10": 0.0,
+          "query_id": "Patna|protest@2026-05-27T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Patna|supply_disruption@2026-04-26T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Patna|supply_disruption@2026-06-19T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Pune|cyber_incident@2026-01-29T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Pune|infrastructure_failure@2026-06-23T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.014025039229678016,
+          "precision@10": 0.0,
+          "query_id": "Pune|protest@2026-04-24T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": -0.16666666666666669,
+          "ndcg@10": -0.09397456446531766,
+          "precision@10": 0.0,
+          "query_id": "Ranchi|cyber_incident@2026-04-10T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": -0.5,
+          "ndcg@10": -0.1526312610936963,
+          "precision@10": 0.0,
+          "query_id": "Surat|flood@2026-03-17T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.5,
+          "ndcg@10": 0.16497059614847642,
+          "precision@10": 0.0,
+          "query_id": "Surat|flood@2026-03-20T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Surat|flood@2026-03-24T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Surat|flood@2026-03-25T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Surat|flood@2026-05-01T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.11751610475642715,
+          "precision@10": 0.10000000000000003,
+          "query_id": "Surat|infrastructure_failure@2026-03-09T00:00:00+00:00",
+          "recall@10": 0.25,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.02429149797570851,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Surat|protest@2026-02-07T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.020892934897104642,
+          "precision@10": 0.0,
+          "query_id": "Surat|protest@2026-02-11T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.02160216004849619,
+          "precision@10": 0.0,
+          "query_id": "Surat|protest@2026-04-03T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.5,
+          "ndcg@10": 0.36907024642854247,
+          "precision@10": 0.0,
+          "query_id": "Surat|protest@2026-05-16T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.025970189914505504,
+          "precision@10": 0.0,
+          "query_id": "Surat|protest@2026-05-17T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Surat|supply_disruption@2026-06-10T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": -0.0511123637446792,
+          "precision@10": 0.0,
+          "query_id": "Visakhapatnam|infrastructure_failure@2026-05-05T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Visakhapatnam|protest@2026-02-17T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        },
+        {
+          "mrr": 0.0,
+          "ndcg@10": 0.0,
+          "precision@10": 0.0,
+          "query_id": "Visakhapatnam|protest@2026-03-06T00:00:00+00:00",
+          "recall@10": 0.0,
+          "recall@100": 0.0
+        }
+      ],
+      "per_query_delta": {
+        "mrr": {
+          "max": 0.6666666666666667,
+          "mean": 0.016971923017147835,
+          "median": 0.0,
+          "min": -0.5,
+          "n_better": 13,
+          "n_equal": 59,
+          "n_worse": 8,
+          "sd": 0.1989526641840935
+        },
+        "ndcg@10": {
+          "max": 0.36907024642854247,
+          "mean": 0.008196915992850667,
+          "median": 0.0,
+          "min": -0.3144605450954818,
+          "n_better": 24,
+          "n_equal": 37,
+          "n_worse": 19,
+          "sd": 0.10771788313421968
+        },
+        "precision@10": {
+          "max": 0.19999999999999998,
+          "mean": -0.0012499999999999983,
+          "median": 0.0,
+          "min": -0.10000000000000003,
+          "n_better": 4,
+          "n_equal": 70,
+          "n_worse": 6,
+          "sd": 0.04054611376904268
+        },
+        "recall@10": {
+          "max": 0.6666666666666667,
+          "mean": -0.004791666666666666,
+          "median": 0.0,
+          "min": -0.33333333333333337,
+          "n_better": 4,
+          "n_equal": 70,
+          "n_worse": 6,
+          "sd": 0.1150183055815321
+        },
+        "recall@100": {
+          "max": 0.0,
+          "mean": 0.0,
+          "median": 0.0,
+          "min": 0.0,
+          "n_better": 0,
+          "n_equal": 80,
+          "n_worse": 0,
+          "sd": 0.0
+        }
+      },
+      "reference_method": "strict_temporal",
+      "stage": "rerank"
+    },
+    "regression_floors": {
+      "floor": {
+        "mrr": 0.8075,
+        "ndcg@10": 0.589560464545668,
+        "recall@100": 0.6658333333333333
+      },
+      "margin": 0.15,
+      "measured": {
+        "mrr": 0.95,
+        "ndcg@10": 0.6936005465243154,
+        "recall@100": 0.7833333333333333
+      },
+      "n_queries": 10,
+      "note": "Floors are tripwires measured on the regression window, which is distinct from the selection window the parameters were tuned on and from the locked test window. No CI decision reads a test-window metric.",
+      "window": "regression"
+    },
+    "selection": {
+      "baseline": {
+        "late_top_k": 60,
+        "rerank_top_k": 20,
+        "rrf_k": 60
+      },
+      "candidates": [
+        {
+          "metrics": {
+            "mrr": 0.8065217391304348,
+            "ndcg@10": 0.6127902975846837,
+            "ndcg@100": 0.6567419580622457,
+            "ndcg@20": 0.6485422194292564,
+            "ndcg@50": 0.6567419580622457,
+            "recall@10": 0.6565217391304348,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7594202898550726,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 60,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.6127902975846837
+        },
+        {
+          "metrics": {
+            "mrr": 0.8066361556064073,
+            "ndcg@10": 0.6166479085127606,
+            "ndcg@100": 0.6598726936587515,
+            "ndcg@20": 0.6554226195594878,
+            "ndcg@50": 0.6598726936587515,
+            "recall@10": 0.6623188405797101,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7702898550724638,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 40,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.6166479085127606
+        },
+        {
+          "metrics": {
+            "mrr": 0.8065217391304348,
+            "ndcg@10": 0.6127902975846837,
+            "ndcg@100": 0.6567419580622457,
+            "ndcg@20": 0.6485422194292564,
+            "ndcg@50": 0.6567419580622457,
+            "recall@10": 0.6565217391304348,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7594202898550726,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 60,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.6127902975846837
+        },
+        {
+          "metrics": {
+            "mrr": 0.8065217391304348,
+            "ndcg@10": 0.6217400139540564,
+            "ndcg@100": 0.6651083171024439,
+            "ndcg@20": 0.6573085467698688,
+            "ndcg@50": 0.6651083171024439,
+            "recall@10": 0.6565217391304348,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7594202898550726,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.6217400139540564
+        },
+        {
+          "metrics": {
+            "mrr": 0.7647342995169082,
+            "ndcg@10": 0.596087965345295,
+            "ndcg@100": 0.645357970268164,
+            "ndcg@20": 0.6374463791392565,
+            "ndcg@50": 0.645357970268164,
+            "recall@10": 0.6456521739130434,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7594202898550726,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 10,
+            "rrf_k": 60
+          },
+          "score": 0.596087965345295
+        },
+        {
+          "metrics": {
+            "mrr": 0.8027009222661396,
+            "ndcg@10": 0.6100639309763377,
+            "ndcg@100": 0.6666636250910407,
+            "ndcg@20": 0.647452308463038,
+            "ndcg@50": 0.6666636250910407,
+            "recall@10": 0.622463768115942,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7159420289855073,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 40,
+            "rrf_k": 60
+          },
+          "score": 0.6100639309763377
+        },
+        {
+          "metrics": {
+            "mrr": 0.8065217391304348,
+            "ndcg@10": 0.6217400139540564,
+            "ndcg@100": 0.6651083171024439,
+            "ndcg@20": 0.6573085467698688,
+            "ndcg@50": 0.6651083171024439,
+            "recall@10": 0.6565217391304348,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7594202898550726,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 20,
+            "rrf_k": 30
+          },
+          "score": 0.6217400139540564
+        },
+        {
+          "metrics": {
+            "mrr": 0.8065217391304348,
+            "ndcg@10": 0.6217400139540564,
+            "ndcg@100": 0.6651083171024439,
+            "ndcg@20": 0.6573085467698688,
+            "ndcg@50": 0.6651083171024439,
+            "recall@10": 0.6565217391304348,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7594202898550726,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 20,
+            "rrf_k": 120
+          },
+          "score": 0.6217400139540564
+        }
+      ],
+      "fingerprint": "434dd89407105848",
+      "grid": {
+        "late_top_k": [
+          40,
+          60,
+          100
+        ],
+        "rerank_top_k": [
+          10,
+          20,
+          40
+        ],
+        "rrf_k": [
+          30,
+          60,
+          120
+        ]
+      },
+      "improvement": 0.008949716369372696,
+      "n_candidates_evaluated": 8,
+      "n_selection_queries": 23,
+      "objective": "ndcg@10",
+      "selected": {
+        "late_top_k": 100,
+        "rerank_top_k": 20,
+        "rrf_k": 60
+      },
+      "strategy": "coordinate sweep over CANDIDATE_GRID from the config defaults, one parameter at a time in declaration order, keeping each improvement. Not a full cross product and not a global optimum.",
+      "window": "selection"
+    },
+    "stage0": {
+      "cleaning": {
+        "chars_removed": 42375,
+        "input": 12999,
+        "languages": {
+          "en": 12999
+        },
+        "stripped": 2825,
+        "too_short": 0
+      },
+      "dedup": {
+        "clusters": 9086,
+        "exact": 3295,
+        "input": 12999,
+        "near": 119,
+        "reduction": 0.301,
+        "removed": 3913,
+        "simhash": 499
+      },
+      "elapsed_s": 13.79,
+      "surviving": 9086,
+      "validation": {
+        "assumed_utc": 0,
+        "future": 0,
+        "input": 12999,
+        "missing_retrieval": 507,
+        "missing_timestamp": 0,
+        "naive_timestamp": 0,
+        "ok": 12999,
+        "rejected": 0,
+        "retrieved_before_published": 0
+      },
+      "work_avoided": 0.301
+    },
+    "timestamp_policy": "strict"
+  },
+  "forecast_origins": [
+    "2026-01-25T00:00:00+00:00",
+    "2026-02-01T00:00:00+00:00",
+    "2026-02-08T00:00:00+00:00",
+    "2026-02-15T00:00:00+00:00",
+    "2026-02-22T00:00:00+00:00",
+    "2026-03-01T00:00:00+00:00",
+    "2026-03-08T00:00:00+00:00",
+    "2026-03-15T00:00:00+00:00",
+    "2026-03-22T00:00:00+00:00",
+    "2026-03-29T00:00:00+00:00",
+    "2026-04-05T00:00:00+00:00",
+    "2026-04-12T00:00:00+00:00",
+    "2026-04-19T00:00:00+00:00",
+    "2026-04-26T00:00:00+00:00",
+    "2026-05-03T00:00:00+00:00",
+    "2026-05-10T00:00:00+00:00",
+    "2026-05-17T00:00:00+00:00",
+    "2026-05-24T00:00:00+00:00",
+    "2026-05-31T00:00:00+00:00",
+    "2026-06-07T00:00:00+00:00",
+    "2026-06-14T00:00:00+00:00",
+    "2026-06-21T00:00:00+00:00"
+  ],
+  "git": {
+    "branch": "claude/pramaan-firewall-v2",
+    "commit": "d0e8855094ebc8c3e20c5e2735729035fb2801a0",
+    "dirty": true,
+    "dirty_files": [
+      "benchmark_results/"
+    ],
+    "source_dirty": false,
+    "source_dirty_files": [],
+    "source_tree_hash": "9cf15536258e29de6ecb10da940f6fdd320ba2cca961d91a9d60d67a83abb31b"
+  },
+  "identity": {
+    "backends": {
+      "embedder": "hashing (1024d)",
+      "fusion_backend": "lambdarank",
+      "reranker": "lexical",
+      "vector_engine": "memory",
+      "versions": {
+        "duckdb": "1.5.5",
+        "lightgbm": "4.7.0",
+        "numpy": "2.4.6",
+        "polars": "1.44.0",
+        "pramaan-x": "1.0.0",
+        "pyarrow": "25.0.1",
+        "python": "3.11.15",
+        "scikit-learn": "1.9.0",
+        "scipy": "1.17.1"
+      }
+    },
+    "config_fingerprint": "dba6f85247dc51c9",
+    "dataset_file_hash": "a35093a8ed7a3e8a2ce276a9362a4922f48f210abc0076c45e74aec5339368d7",
+    "dataset_logical_hash": "4ac10a281656d82b9c53583c9edaa4f99ebce688096362d0f1d093ad16f4ca80",
+    "git_commit": "d0e8855094ebc8c3e20c5e2735729035fb2801a0",
+    "method": "future_fitted_index_ablation",
+    "package_version": "0.5.0",
+    "protocol_fingerprint": "6401c4826637fdbe",
+    "seed": 11,
+    "source_tree_hash": "9cf15536258e29de6ecb10da940f6fdd320ba2cca961d91a9d60d67a83abb31b",
+    "uv_lock_sha256": "385e6cd90941a488ff72ca87afed37814d7d740c8ceb7d88321238742e8abd32"
+  },
+  "identity_digest": "28fb846be8cb051537eeda8fb1cd2d328d1d1ee5bfaa02538aee76db8f11da91",
+  "invariants": {
+    "no_future_document_fitted": "FAIL: 400 fitted corpora contain documents from at or after their own forecast origin [origin 2026-05-17T00:00:00+00:00 fitted on 9086 docs up to 2026-07-20T01:00:00+00:00; origin 2026-06-14T00:00:00+00:00 fitted on 9086 docs up to 2026-07-20T01:00:00+00:00; origin 2026-02-15T00:00:00+00:00 fitted on 9086 docs up to 2026-07-20T01:00:00+00:00; origin 2026-06-14T00:00:00+00:00 fitted on 9086 docs up",
+    "no_post_origin_results": "pass",
+    "no_test_labels_in_preprocessing": "pass",
+    "no_test_labels_in_training": "pass"
+  },
+  "measures": "precursor-evidence retrieval for a GIVEN target (location and event type supplied by an oracle)",
+  "method": "future_fitted_index_ablation",
+  "metrics": {
+    "dense": {
+      "empty": 0,
+      "latency_ms.max": 20.107,
+      "latency_ms.mean": 8.276,
+      "latency_ms.p50": 7.912,
+      "latency_ms.p95": 11.645,
+      "latency_ms.total": 662.07,
+      "mrr": 0.2124,
+      "ndcg@10": 0.1297,
+      "ndcg@100": 0.2479,
+      "ndcg@20": 0.1622,
+      "ndcg@50": 0.2168,
+      "precision@10": 0.05,
+      "precision@100": 0.0181,
+      "precision@20": 0.0381,
+      "precision@50": 0.0278,
+      "queries": 80,
+      "recall@10": 0.16,
+      "recall@100": 0.594,
+      "recall@20": 0.2588,
+      "recall@50": 0.4588,
+      "relevant_documents": 254
+    },
+    "fusion": {
+      "empty": 0,
+      "latency_ms.max": 14.909,
+      "latency_ms.mean": 8.967,
+      "latency_ms.p50": 8.647,
+      "latency_ms.p95": 11.093,
+      "latency_ms.total": 717.376,
+      "mrr": 0.1986,
+      "ndcg@10": 0.1235,
+      "ndcg@100": 0.2443,
+      "ndcg@20": 0.1619,
+      "ndcg@50": 0.2199,
+      "precision@10": 0.0462,
+      "precision@100": 0.0179,
+      "precision@20": 0.0387,
+      "precision@50": 0.0293,
+      "queries": 80,
+      "recall@10": 0.161,
+      "recall@100": 0.5873,
+      "recall@20": 0.2748,
+      "recall@50": 0.481,
+      "relevant_documents": 254
+    },
+    "late": {
+      "empty": 0,
+      "latency_ms.max": 80.223,
+      "latency_ms.mean": 25.333,
+      "latency_ms.p50": 24.068,
+      "latency_ms.p95": 29.656,
+      "latency_ms.total": 2026.677,
+      "mrr": 0.1586,
+      "ndcg@10": 0.117,
+      "ndcg@100": 0.2085,
+      "ndcg@20": 0.1386,
+      "ndcg@50": 0.1902,
+      "precision@10": 0.06,
+      "precision@100": 0.0271,
+      "precision@20": 0.0381,
+      "precision@50": 0.0275,
+      "queries": 80,
+      "recall@10": 0.1946,
+      "recall@100": 0.531,
+      "recall@20": 0.2673,
+      "recall@50": 0.4588,
+      "relevant_documents": 254
+    },
+    "rerank": {
+      "empty": 0,
+      "latency_ms.max": 47.189,
+      "latency_ms.mean": 37.687,
+      "latency_ms.p50": 37.658,
+      "latency_ms.p95": 42.103,
+      "latency_ms.total": 3014.941,
+      "mrr": 0.7392,
+      "ndcg@10": 0.5941,
+      "ndcg@100": 0.6519,
+      "ndcg@20": 0.634,
+      "ndcg@50": 0.651,
+      "precision@10": 0.1938,
+      "precision@100": 0.025,
+      "precision@20": 0.1131,
+      "precision@50": 0.0498,
+      "queries": 80,
+      "recall@10": 0.6337,
+      "recall@100": 0.8023,
+      "recall@20": 0.7494,
+      "recall@50": 0.7992,
+      "relevant_documents": 254
+    },
+    "sparse": {
+      "empty": 0,
+      "latency_ms.max": 8.438,
+      "latency_ms.mean": 4.283,
+      "latency_ms.p50": 4.172,
+      "latency_ms.p95": 5.211,
+      "latency_ms.total": 342.655,
+      "mrr": 0.1773,
+      "ndcg@10": 0.1206,
+      "ndcg@100": 0.2434,
+      "ndcg@20": 0.1581,
+      "ndcg@50": 0.2174,
+      "precision@10": 0.0462,
+      "precision@100": 0.0184,
+      "precision@20": 0.0394,
+      "precision@50": 0.03,
+      "queries": 80,
+      "recall@10": 0.1721,
+      "recall@100": 0.6102,
+      "recall@20": 0.2823,
+      "recall@50": 0.4908,
+      "relevant_documents": 254
+    }
+  },
+  "n_forecast_origins": 22,
+  "n_index_builds": 37,
+  "protocol": {
+    "availability_rule": "available_at = max(published_at, retrieved_at); usable at origin T only if published_at < T and retrieved_at < T; missing retrieved_at is rejected unless the document carries an explicit trusted_historical_snapshot flag",
+    "calibration_end": "2026-01-04T00:00:00+00:00",
+    "calibration_start": "2025-10-22T00:00:00+00:00",
+    "effective_embargo_days": 21,
+    "embargo_days": 7,
+    "label_cutoff": "2025-09-10T00:00:00+00:00",
+    "label_lookahead_days": 21,
+    "n_regression_origins": 5,
+    "n_selection_origins": 7,
+    "n_test_origins": 22,
+    "n_train_origins": 39,
+    "notes": [
+      "synthetic corpus; no real-world validity is claimed"
+    ],
+    "origin_stride_days": 7,
+    "permitted_fitting": [
+      "bm25_corpus_statistics: documents available strictly before the fold origin",
+      "hashing_idf: documents available strictly before the fold origin",
+      "vector_index: documents available strictly before the fold origin",
+      "lexicon_log_odds: training-window documents with training-window labels only",
+      "learned_fusion_lambdamart: training-window queries only",
+      "operating_point_selection: selection-window queries only, never the test window",
+      "ci_quality_floors: regression-window queries only, never the test window"
+    ],
+    "query_generation_rule": "oracle_target: the query text is the target location verbatim plus the top-n terms of the training-fitted lexicon for the target's event type. The target location and event type are GIVEN, not inferred. This is an evidence-retrieval protocol, not an event-forecasting protocol.",
+    "selectable_windows": [
+      "selection",
+      "regression"
+    ],
+    "selection_end": "2025-12-05T00:00:00+00:00",
+    "selection_frac": 0.6,
+    "test_end": "2026-06-24T23:00:01+00:00",
+    "test_start": "2026-01-25T00:00:00+00:00",
+    "train_end": "2025-10-01T00:00:00+00:00",
+    "train_start": "2025-01-01T00:00:00+00:00",
+    "version": "oracle-target-retrieval/1"
+  },
+  "protocol_fingerprint": "6401c4826637fdbe",
+  "queries": {
+    "evaluated": 80,
+    "relevant_documents": 254,
+    "test": 80,
+    "train": 101
+  },
+  "schema_version": 3,
+  "seed": 11
+}

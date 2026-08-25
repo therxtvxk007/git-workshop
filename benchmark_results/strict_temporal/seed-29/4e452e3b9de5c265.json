@@ -1,0 +1,608 @@
+{
+  "availability_violations": {
+    "by_reason": {},
+    "sample": [],
+    "total": 0
+  },
+  "backends": {
+    "embedder": "hashing (1024d)",
+    "fusion_backend": "lambdarank",
+    "late_interaction": "MaxSim over hashed token vectors (pramaan_x.stage2_retrieve.late_interaction)",
+    "reranker": "lexical",
+    "sparse": "in-process Okapi BM25 (pramaan_x.stage1_scan.bm25)",
+    "vector_engine": "memory",
+    "versions": {
+      "duckdb": "1.5.5",
+      "lightgbm": "4.7.0",
+      "numpy": "2.4.6",
+      "polars": "1.44.0",
+      "pramaan-x": "1.0.0",
+      "pyarrow": "25.0.1",
+      "python": "3.11.15",
+      "scikit-learn": "1.9.0",
+      "scipy": "1.17.1"
+    }
+  },
+  "benchmark": "oracle_target_retrieval",
+  "config_fingerprint": "dba6f85247dc51c9",
+  "created_at": "2026-08-25T04:07:12.639088+00:00",
+  "dataset": {
+    "earliest": "2025-01-01 00:00:00+00:00",
+    "file_bytes": 1105516,
+    "file_hash": "360348acf1f0e8c1366a594f073804536d8b69735ac63a7f427ba8dd3132b671",
+    "generator": {
+      "backfill_fraction": 0.12,
+      "days": 540,
+      "generator": "pramaan_x.data.synth.SyntheticCorpus",
+      "missing_retrieval_fraction": 0.04,
+      "n_event_types": 6,
+      "n_locations": 12,
+      "seed": 29,
+      "synthetic": true
+    },
+    "latest": "2026-06-25 20:00:00+00:00",
+    "logical_hash": "6fc07952234361178c3785c7801c0af6d26df2c388edfd07d6909d9fdb96e24b",
+    "n_documents": 14013,
+    "name": "synthetic_corpus"
+  },
+  "does_not_measure": "event forecasting; no metric here is a forecasting score and none may be reported as one",
+  "environment": {
+    "package_version": "0.5.0",
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "python": "3.11.15",
+    "uv_lock_sha256": "385e6cd90941a488ff72ca87afed37814d7d740c8ceb7d88321238742e8abd32"
+  },
+  "extra": {
+    "controlled": {
+      "candidate_widths": {
+        "bm25_top_k": 200,
+        "dense_top_k": 200,
+        "late_top_k": 60,
+        "rerank_top_k": 20,
+        "rrf_k": 60
+      },
+      "fusion_training_fingerprint": "07a1ecfcf1ab514f4de011b3c349f2d104222e1abf4fe521aacea1a25b2250ed",
+      "held_fixed": [
+        "query_ids",
+        "query_text",
+        "forecast_origins",
+        "relevant_sets",
+        "lexicon",
+        "fusion_training_data",
+        "ks",
+        "candidate_widths"
+      ],
+      "ks": [
+        10,
+        20,
+        50,
+        100
+      ],
+      "lexicon_fingerprint": "047cc0e947ab38864aee173e7ad7c6056864ecf9659a83e707df86662c0541d7",
+      "pair": [
+        "strict_temporal",
+        "future_fitted_index_ablation"
+      ],
+      "query_set_fingerprint": "cd8fdbc4f94074a52804dd01702f938fa7b149f90ce090a43434c2b2479e678d",
+      "train_query_set_fingerprint": "fbbf069ee03069a48a910cd926782787a88116618776a00e575e17e5fdacd247",
+      "varies": "index_scope"
+    },
+    "corpus_logical_hash_recheck": "b66105dc1245962a6c9ffed57398417de3af7f33b7dc37a62cc3cac57826dabe",
+    "fitted_corpus_sizes": {
+      "by_phase": {
+        "evaluation": {
+          "distinct": 22,
+          "max": 9505,
+          "mean": 8150.772727272727,
+          "min": 6820,
+          "n_fitted_indexes": 22
+        },
+        "ranker_training": {
+          "distinct": 35,
+          "max": 4448,
+          "mean": 2289.114285714286,
+          "min": 102,
+          "n_fitted_indexes": 35
+        }
+      },
+      "distinct": 57,
+      "max": 9505,
+      "mean": 4551.508771929824,
+      "min": 102,
+      "n_fitted_indexes": 57
+    },
+    "fusion_component_weights": {
+      "bm25": 0.19233333333333333,
+      "cross": 0.12933333333333333,
+      "dense": 0.1837777777777778,
+      "late": 0.225,
+      "long_history": 0.0,
+      "novelty": 0.0,
+      "recency": 0.12155555555555556,
+      "source_independence": 0.148
+    },
+    "index_scope": "documents available strictly before each forecast origin",
+    "label_mapping": {
+      "collapsed_duplicate_members": 0,
+      "dropped_no_canonical": 0,
+      "note": "Ground-truth precursor ids are mapped through the dedup clusters before any query is built: a document absorbed into a cluster is counted as its canonical rather than lost, and syndicated copies of one story count once rather than as independent precursors.",
+      "precursor_ids_after": 1358,
+      "precursor_ids_before": 1358,
+      "remapped_to_cluster_canonical": 17
+    },
+    "lexicon_fit": {
+      "label_cutoff": "2025-09-10T00:00:00+00:00",
+      "max_event_used": "2025-09-28T00:00:00+00:00",
+      "max_published_at": "2025-09-09T23:00:00+00:00",
+      "n_documents": 4501,
+      "n_positive": 663,
+      "train_end": "2025-10-01T00:00:00+00:00"
+    },
+    "operating_point": {
+      "late_top_k": 100,
+      "rerank_top_k": 20,
+      "rrf_k": 60
+    },
+    "regression_floors": {
+      "floor": {
+        "mrr": 0.5809372532229674,
+        "ndcg@10": 0.4349897239192169,
+        "recall@100": 0.6682619047619047
+      },
+      "margin": 0.15,
+      "measured": {
+        "mrr": 0.6834555920270206,
+        "ndcg@10": 0.5117526163755494,
+        "recall@100": 0.7861904761904762
+      },
+      "n_queries": 35,
+      "note": "Floors are tripwires measured on the regression window, which is distinct from the selection window the parameters were tuned on and from the locked test window. No CI decision reads a test-window metric.",
+      "window": "regression"
+    },
+    "selection": {
+      "baseline": {
+        "late_top_k": 60,
+        "rerank_top_k": 20,
+        "rrf_k": 60
+      },
+      "candidates": [
+        {
+          "metrics": {
+            "mrr": 0.6798616863013149,
+            "ndcg@10": 0.5242410431014249,
+            "ndcg@100": 0.5829646062838285,
+            "ndcg@20": 0.546864561560235,
+            "ndcg@50": 0.5592879108436299,
+            "recall@10": 0.615,
+            "recall@100": 0.8333333333333333,
+            "recall@20": 0.6708333333333333,
+            "recall@50": 0.7125
+          },
+          "params": {
+            "late_top_k": 60,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.5242410431014249
+        },
+        {
+          "metrics": {
+            "mrr": 0.6842068713450293,
+            "ndcg@10": 0.5190683238361224,
+            "ndcg@100": 0.5868464569332418,
+            "ndcg@20": 0.5447368420099303,
+            "ndcg@50": 0.5719482639835497,
+            "recall@10": 0.5774999999999999,
+            "recall@100": 0.8333333333333333,
+            "recall@20": 0.6458333333333333,
+            "recall@50": 0.7625
+          },
+          "params": {
+            "late_top_k": 40,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.5190683238361224
+        },
+        {
+          "metrics": {
+            "mrr": 0.8015901455767077,
+            "ndcg@10": 0.5922358575297957,
+            "ndcg@100": 0.6488155744096599,
+            "ndcg@20": 0.6153539065279114,
+            "ndcg@50": 0.6365081046257609,
+            "recall@10": 0.6233333333333333,
+            "recall@100": 0.8333333333333333,
+            "recall@20": 0.6791666666666666,
+            "recall@50": 0.7708333333333333
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.5922358575297957
+        },
+        {
+          "metrics": {
+            "mrr": 0.7241626794258373,
+            "ndcg@10": 0.5624108065499941,
+            "ndcg@100": 0.6225934958214118,
+            "ndcg@20": 0.5888779445919351,
+            "ndcg@50": 0.6102860260375127,
+            "recall@10": 0.6174999999999999,
+            "recall@100": 0.8333333333333333,
+            "recall@20": 0.6791666666666666,
+            "recall@50": 0.7708333333333333
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 10,
+            "rrf_k": 60
+          },
+          "score": 0.5624108065499941
+        },
+        {
+          "metrics": {
+            "mrr": 0.7661472197574682,
+            "ndcg@10": 0.5772275328921284,
+            "ndcg@100": 0.6415055224993172,
+            "ndcg@20": 0.6043575215098409,
+            "ndcg@50": 0.629125837366725,
+            "recall@10": 0.5983333333333334,
+            "recall@100": 0.8333333333333333,
+            "recall@20": 0.6691666666666667,
+            "recall@50": 0.7708333333333333
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 40,
+            "rrf_k": 60
+          },
+          "score": 0.5772275328921284
+        },
+        {
+          "metrics": {
+            "mrr": 0.8015901455767077,
+            "ndcg@10": 0.5922358575297957,
+            "ndcg@100": 0.6488155744096599,
+            "ndcg@20": 0.6153539065279114,
+            "ndcg@50": 0.6365081046257609,
+            "recall@10": 0.6233333333333333,
+            "recall@100": 0.8333333333333333,
+            "recall@20": 0.6791666666666666,
+            "recall@50": 0.7708333333333333
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 20,
+            "rrf_k": 30
+          },
+          "score": 0.5922358575297957
+        },
+        {
+          "metrics": {
+            "mrr": 0.8015901455767077,
+            "ndcg@10": 0.5922358575297957,
+            "ndcg@100": 0.6488155744096599,
+            "ndcg@20": 0.6153539065279114,
+            "ndcg@50": 0.6365081046257609,
+            "recall@10": 0.6233333333333333,
+            "recall@100": 0.8333333333333333,
+            "recall@20": 0.6791666666666666,
+            "recall@50": 0.7708333333333333
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 20,
+            "rrf_k": 120
+          },
+          "score": 0.5922358575297957
+        }
+      ],
+      "fingerprint": "434dd89407105848",
+      "grid": {
+        "late_top_k": [
+          40,
+          60,
+          100
+        ],
+        "rerank_top_k": [
+          10,
+          20,
+          40
+        ],
+        "rrf_k": [
+          30,
+          60,
+          120
+        ]
+      },
+      "improvement": 0.06799481442837074,
+      "n_candidates_evaluated": 7,
+      "n_selection_queries": 20,
+      "objective": "ndcg@10",
+      "selected": {
+        "late_top_k": 100,
+        "rerank_top_k": 20,
+        "rrf_k": 60
+      },
+      "strategy": "coordinate sweep over CANDIDATE_GRID from the config defaults, one parameter at a time in declaration order, keeping each improvement. Not a full cross product and not a global optimum.",
+      "window": "selection"
+    },
+    "stage0": {
+      "cleaning": {
+        "chars_removed": 45045,
+        "input": 14013,
+        "languages": {
+          "en": 14013
+        },
+        "stripped": 3003,
+        "too_short": 0
+      },
+      "dedup": {
+        "clusters": 9928,
+        "exact": 3433,
+        "input": 14013,
+        "near": 139,
+        "reduction": 0.2915,
+        "removed": 4085,
+        "simhash": 513
+      },
+      "elapsed_s": 15.34,
+      "surviving": 9928,
+      "validation": {
+        "assumed_utc": 0,
+        "future": 0,
+        "input": 14013,
+        "missing_retrieval": 594,
+        "missing_timestamp": 0,
+        "naive_timestamp": 0,
+        "ok": 14013,
+        "rejected": 0,
+        "retrieved_before_published": 0
+      },
+      "work_avoided": 0.2915
+    },
+    "timestamp_policy": "strict"
+  },
+  "forecast_origins": [
+    "2026-01-25T00:00:00+00:00",
+    "2026-02-01T00:00:00+00:00",
+    "2026-02-08T00:00:00+00:00",
+    "2026-02-15T00:00:00+00:00",
+    "2026-02-22T00:00:00+00:00",
+    "2026-03-01T00:00:00+00:00",
+    "2026-03-08T00:00:00+00:00",
+    "2026-03-15T00:00:00+00:00",
+    "2026-03-22T00:00:00+00:00",
+    "2026-03-29T00:00:00+00:00",
+    "2026-04-05T00:00:00+00:00",
+    "2026-04-12T00:00:00+00:00",
+    "2026-04-19T00:00:00+00:00",
+    "2026-04-26T00:00:00+00:00",
+    "2026-05-03T00:00:00+00:00",
+    "2026-05-10T00:00:00+00:00",
+    "2026-05-17T00:00:00+00:00",
+    "2026-05-24T00:00:00+00:00",
+    "2026-05-31T00:00:00+00:00",
+    "2026-06-07T00:00:00+00:00",
+    "2026-06-14T00:00:00+00:00",
+    "2026-06-21T00:00:00+00:00"
+  ],
+  "git": {
+    "branch": "claude/pramaan-firewall-v2",
+    "commit": "d0e8855094ebc8c3e20c5e2735729035fb2801a0",
+    "dirty": true,
+    "dirty_files": [
+      "benchmark_results/"
+    ],
+    "source_dirty": false,
+    "source_dirty_files": [],
+    "source_tree_hash": "9cf15536258e29de6ecb10da940f6fdd320ba2cca961d91a9d60d67a83abb31b"
+  },
+  "identity": {
+    "backends": {
+      "embedder": "hashing (1024d)",
+      "fusion_backend": "lambdarank",
+      "reranker": "lexical",
+      "vector_engine": "memory",
+      "versions": {
+        "duckdb": "1.5.5",
+        "lightgbm": "4.7.0",
+        "numpy": "2.4.6",
+        "polars": "1.44.0",
+        "pramaan-x": "1.0.0",
+        "pyarrow": "25.0.1",
+        "python": "3.11.15",
+        "scikit-learn": "1.9.0",
+        "scipy": "1.17.1"
+      }
+    },
+    "config_fingerprint": "dba6f85247dc51c9",
+    "dataset_file_hash": "360348acf1f0e8c1366a594f073804536d8b69735ac63a7f427ba8dd3132b671",
+    "dataset_logical_hash": "6fc07952234361178c3785c7801c0af6d26df2c388edfd07d6909d9fdb96e24b",
+    "git_commit": "d0e8855094ebc8c3e20c5e2735729035fb2801a0",
+    "method": "strict_temporal",
+    "package_version": "0.5.0",
+    "protocol_fingerprint": "6401c4826637fdbe",
+    "seed": 29,
+    "source_tree_hash": "9cf15536258e29de6ecb10da940f6fdd320ba2cca961d91a9d60d67a83abb31b",
+    "uv_lock_sha256": "385e6cd90941a488ff72ca87afed37814d7d740c8ceb7d88321238742e8abd32"
+  },
+  "identity_digest": "4e452e3b9de5c26537fc2807a88860d4603e7400a5aaa0002adf862d7102cd41",
+  "invariants": {
+    "no_future_document_fitted": "pass",
+    "no_post_origin_results": "pass",
+    "no_test_labels_in_preprocessing": "pass",
+    "no_test_labels_in_training": "pass"
+  },
+  "measures": "precursor-evidence retrieval for a GIVEN target (location and event type supplied by an oracle)",
+  "method": "strict_temporal",
+  "metrics": {
+    "dense": {
+      "empty": 0,
+      "latency_ms.max": 11.023,
+      "latency_ms.mean": 6.184,
+      "latency_ms.p50": 5.956,
+      "latency_ms.p95": 8.089,
+      "latency_ms.total": 735.924,
+      "mrr": 0.143,
+      "ndcg@10": 0.0779,
+      "ndcg@100": 0.2046,
+      "ndcg@20": 0.1076,
+      "ndcg@50": 0.1597,
+      "precision@10": 0.0336,
+      "precision@100": 0.0175,
+      "precision@20": 0.0294,
+      "precision@50": 0.023,
+      "queries": 119,
+      "recall@10": 0.1073,
+      "recall@100": 0.5962,
+      "recall@20": 0.1941,
+      "recall@50": 0.3916,
+      "relevant_documents": 362
+    },
+    "fusion": {
+      "empty": 0,
+      "latency_ms.max": 8.524,
+      "latency_ms.mean": 6.205,
+      "latency_ms.p50": 6.175,
+      "latency_ms.p95": 7.061,
+      "latency_ms.total": 738.341,
+      "mrr": 0.1441,
+      "ndcg@10": 0.0801,
+      "ndcg@100": 0.204,
+      "ndcg@20": 0.099,
+      "ndcg@50": 0.1545,
+      "precision@10": 0.0336,
+      "precision@100": 0.0175,
+      "precision@20": 0.0256,
+      "precision@50": 0.022,
+      "queries": 119,
+      "recall@10": 0.1108,
+      "recall@100": 0.598,
+      "recall@20": 0.1637,
+      "recall@50": 0.372,
+      "relevant_documents": 362
+    },
+    "late": {
+      "empty": 0,
+      "latency_ms.max": 26.709,
+      "latency_ms.mean": 18.93,
+      "latency_ms.p50": 19.187,
+      "latency_ms.p95": 21.675,
+      "latency_ms.total": 2252.703,
+      "mrr": 0.1728,
+      "ndcg@10": 0.1055,
+      "ndcg@100": 0.1872,
+      "ndcg@20": 0.1254,
+      "ndcg@50": 0.1763,
+      "precision@10": 0.0378,
+      "precision@100": 0.021,
+      "precision@20": 0.0282,
+      "precision@50": 0.0225,
+      "queries": 119,
+      "recall@10": 0.1333,
+      "recall@100": 0.4244,
+      "recall@20": 0.1863,
+      "recall@50": 0.3791,
+      "relevant_documents": 362
+    },
+    "rerank": {
+      "empty": 0,
+      "latency_ms.max": 39.048,
+      "latency_ms.mean": 30.774,
+      "latency_ms.p50": 30.984,
+      "latency_ms.p95": 33.744,
+      "latency_ms.total": 3662.085,
+      "mrr": 0.6091,
+      "ndcg@10": 0.4636,
+      "ndcg@100": 0.5225,
+      "ndcg@20": 0.4934,
+      "ndcg@50": 0.516,
+      "precision@10": 0.1563,
+      "precision@100": 0.0213,
+      "precision@20": 0.0895,
+      "precision@50": 0.0407,
+      "queries": 119,
+      "recall@10": 0.5224,
+      "recall@100": 0.72,
+      "recall@20": 0.6118,
+      "recall@50": 0.6923,
+      "relevant_documents": 362
+    },
+    "sparse": {
+      "empty": 0,
+      "latency_ms.max": 4.378,
+      "latency_ms.mean": 2.868,
+      "latency_ms.p50": 2.609,
+      "latency_ms.p95": 4.029,
+      "latency_ms.total": 341.289,
+      "mrr": 0.142,
+      "ndcg@10": 0.0776,
+      "ndcg@100": 0.1991,
+      "ndcg@20": 0.0959,
+      "ndcg@50": 0.1462,
+      "precision@10": 0.0328,
+      "precision@100": 0.0172,
+      "precision@20": 0.0248,
+      "precision@50": 0.0208,
+      "queries": 119,
+      "recall@10": 0.1041,
+      "recall@100": 0.5908,
+      "recall@20": 0.157,
+      "recall@50": 0.3504,
+      "relevant_documents": 362
+    }
+  },
+  "n_forecast_origins": 22,
+  "n_index_builds": 57,
+  "protocol": {
+    "availability_rule": "available_at = max(published_at, retrieved_at); usable at origin T only if published_at < T and retrieved_at < T; missing retrieved_at is rejected unless the document carries an explicit trusted_historical_snapshot flag",
+    "calibration_end": "2026-01-04T00:00:00+00:00",
+    "calibration_start": "2025-10-22T00:00:00+00:00",
+    "effective_embargo_days": 21,
+    "embargo_days": 7,
+    "label_cutoff": "2025-09-10T00:00:00+00:00",
+    "label_lookahead_days": 21,
+    "n_regression_origins": 5,
+    "n_selection_origins": 7,
+    "n_test_origins": 22,
+    "n_train_origins": 39,
+    "notes": [
+      "synthetic corpus; no real-world validity is claimed"
+    ],
+    "origin_stride_days": 7,
+    "permitted_fitting": [
+      "bm25_corpus_statistics: documents available strictly before the fold origin",
+      "hashing_idf: documents available strictly before the fold origin",
+      "vector_index: documents available strictly before the fold origin",
+      "lexicon_log_odds: training-window documents with training-window labels only",
+      "learned_fusion_lambdamart: training-window queries only",
+      "operating_point_selection: selection-window queries only, never the test window",
+      "ci_quality_floors: regression-window queries only, never the test window"
+    ],
+    "query_generation_rule": "oracle_target: the query text is the target location verbatim plus the top-n terms of the training-fitted lexicon for the target's event type. The target location and event type are GIVEN, not inferred. This is an evidence-retrieval protocol, not an event-forecasting protocol.",
+    "selectable_windows": [
+      "selection",
+      "regression"
+    ],
+    "selection_end": "2025-12-05T00:00:00+00:00",
+    "selection_frac": 0.6,
+    "test_end": "2026-06-24T23:00:01+00:00",
+    "test_start": "2026-01-25T00:00:00+00:00",
+    "train_end": "2025-10-01T00:00:00+00:00",
+    "train_start": "2025-01-01T00:00:00+00:00",
+    "version": "oracle-target-retrieval/1"
+  },
+  "protocol_fingerprint": "6401c4826637fdbe",
+  "queries": {
+    "evaluated": 119,
+    "relevant_documents": 362,
+    "test": 119,
+    "train": 138
+  },
+  "schema_version": 3,
+  "seed": 29
+}

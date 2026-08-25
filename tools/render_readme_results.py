@@ -83,8 +83,8 @@ def render() -> str:
         w(f"| {metric} | {_stat(s_vals)} | {_stat(a_vals)} | {delta:+.4f} |")
     w("")
     w(
-        "**Paired per-query differences** (ablation minus strict, over the shared query set). "
-        "is the number that means something: a difference of means over two query sets is not a "
+        "**Paired per-query differences** (ablation minus strict, over the shared query "
+        "set). This is the number that means something: a difference of means over two query sets is not a "
         "difference of anything."
     )
     w("")

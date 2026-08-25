@@ -241,36 +241,97 @@ runs even when every metric is bit-identical, and a human carrying numbers from
 one run into prose describing another has no way to notice.
 
 <!-- BEGIN GENERATED RESULTS -->
+
+Seeds 11, 29, 20260824; one synthetic corpus per seed; stop point `rerank`. `mean ± sd` is over 3 seeds — a spread from that few runs is itself noisy, so read it as a spread and not as a confidence interval.
+
+### The controlled pair
+
+Identical query ids, text, origins, relevant sets, lexicon, ranker training data, K values and candidate widths. One variable: whether the index at each origin was fitted on documents available then, or on the whole corpus.
+
+| Metric | `strict_temporal` | `future_fitted_index_ablation` | Δ of means |
+| --- | --- | --- | --- |
+| recall@10 | 0.560 ± 0.068 | 0.556 ± 0.068 | -0.0042 |
+| recall@20 | 0.654 ± 0.092 | 0.651 ± 0.085 | -0.0026 |
+| recall@50 | 0.732 ± 0.057 | 0.737 ± 0.054 | +0.0047 |
+| recall@100 | 0.747 ± 0.048 | 0.752 ± 0.044 | +0.0048 |
+| precision@10 | 0.172 ± 0.020 | 0.170 ± 0.021 | -0.0020 |
+| ndcg@10 | 0.507 ± 0.068 | 0.503 ± 0.080 | -0.0045 |
+| mrr | 0.646 ± 0.066 | 0.642 ± 0.086 | -0.0039 |
+
+**Paired per-query differences** (ablation minus strict, over the shared query set). This is the number that means something: a difference of means over two query sets is not a difference of anything.
+
+| Metric | mean Δ | sd | queries better | worse | unchanged |
+| --- | --- | --- | --- | --- | --- |
+| recall@10 | -0.0042 | 0.1017 | 11 | 18 | 270 |
+| recall@100 | +0.0048 | 0.0345 | 3 | 0 | 296 |
+| precision@10 | -0.0020 | 0.0362 | 11 | 18 | 270 |
+| ndcg@10 | -0.0044 | 0.0877 | 57 | 79 | 163 |
+| mrr | -0.0039 | 0.1664 | 41 | 45 | 213 |
+
+### Per seed
+
+| Seed | Method | R@10 | R@100 | P@10 | nDCG@10 | MRR | Availability violations | Invariants | Artefact |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 11 | `strict_temporal` | 0.638 | 0.802 | 0.195 | 0.586 | 0.722 | 0 | all pass | [`9a8ade5a0b6be341.json`](benchmark_results/strict_temporal/seed-11/9a8ade5a0b6be341.json) |
+| 11 | `future_fitted_index_ablation` | 0.634 | 0.802 | 0.194 | 0.594 | 0.739 | 0 | 1/4 fail | [`28fb846be8cb0515.json`](benchmark_results/future_fitted_index_ablation/seed-11/28fb846be8cb0515.json) |
+| 11 | `historical_legacy_reproduction_unpaired` | 0.616 | 0.789 | 0.233 | 0.561 | 0.714 | 2174 | 3/4 fail | [`8dcd51a11d4e75d2.json`](benchmark_results/historical_legacy_reproduction_unpaired/seed-11/8dcd51a11d4e75d2.json) |
+| 29 | `strict_temporal` | 0.522 | 0.720 | 0.156 | 0.464 | 0.609 | 0 | all pass | [`4e452e3b9de5c265.json`](benchmark_results/strict_temporal/seed-29/4e452e3b9de5c265.json) |
+| 29 | `future_fitted_index_ablation` | 0.524 | 0.734 | 0.155 | 0.446 | 0.576 | 0 | 1/4 fail | [`24a848c71b2b811a.json`](benchmark_results/future_fitted_index_ablation/seed-29/24a848c71b2b811a.json) |
+| 29 | `historical_legacy_reproduction_unpaired` | 0.505 | 0.736 | 0.184 | 0.488 | 0.697 | 3370 | 3/4 fail | [`694e44e9d3b247ac.json`](benchmark_results/historical_legacy_reproduction_unpaired/seed-29/694e44e9d3b247ac.json) |
+| 20260824 | `strict_temporal` | 0.519 | 0.720 | 0.166 | 0.473 | 0.607 | 0 | all pass | [`873aaf328bdf7769.json`](benchmark_results/strict_temporal/seed-20260824/873aaf328bdf7769.json) |
+| 20260824 | `future_fitted_index_ablation` | 0.510 | 0.720 | 0.163 | 0.469 | 0.612 | 0 | 1/4 fail | [`fb398b808627e3e5.json`](benchmark_results/future_fitted_index_ablation/seed-20260824/fb398b808627e3e5.json) |
+| 20260824 | `historical_legacy_reproduction_unpaired` | 0.433 | 0.704 | 0.171 | 0.443 | 0.649 | 2806 | 3/4 fail | [`d78296ea1bd98d7e.json`](benchmark_results/historical_legacy_reproduction_unpaired/seed-20260824/d78296ea1bd98d7e.json) |
+
+### The unpaired reproduction
+
+`historical_legacy_reproduction_unpaired` reproduces the pre-firewall behaviour. It changes `index_scope`, `availability_policy`, `forecast_origin_placement`, `relevant_document_set` simultaneously and therefore evaluates a different query set. Its numbers are in the per-seed table above so the old behaviour can be reproduced; **no delta is computed against it and none would have a referent.**
+
+### Run shape and latency
+
+Seed 11: 22 locked forecast origins; 80 test / 101 training queries; 254 relevant documents. The strict arm fits 22 evaluation indexes over 6256 to 8716 documents (mean 7459); the ablation fits one over all 9086 at every origin.
+
+Operating point chosen on the selection window (23 queries, 8 candidates, objective `ndcg@10`): `late_top_k=100`, `rerank_top_k=20`, `rrf_k=60`.
+
+Latency, strict arm, per query at `rerank`: mean 32.51 ms, p50 32.36 ms, p95 34.66 ms (seed 11; single process, CPU only).
+
 <!-- END GENERATED RESULTS -->
 
 ### Reading the difference
 
-**The controlled pair is the comparison.** `strict_temporal` and
-`future_fitted_index_ablation` evaluate a byte-identical query set with an
-identical lexicon, identical ranker training data and identical widths. One
-thing differs: whether the index at each origin was fitted on the documents
-available then or on the whole corpus. The paired per-query table above is
-therefore attributable, and it is small -- future-fitting the index barely moves
-retrieval on this corpus.
+**The controlled pair is the comparison, and the effect is small.** With the
+query set, lexicon, ranker training data and widths held byte-identical, fitting
+the index on the whole corpus instead of on what was available moved Recall@10
+by −0.004 on average over 299 paired query-runs: 11 queries improved, 18 got
+worse, 270 did not move at all. nDCG@10 and MRR moved by about the same amount
+in the same direction. On this corpus, with these backends, future-fitting the
+index is close to a no-op.
 
-**The historical reproduction is not a comparison.** It changes index scope,
-availability policy, origin placement and the relevant-document set at the same
-time, and evaluates a different query set as a result. Its numbers appear so the
-pre-firewall behaviour can be reproduced. Subtracting them from the strict
-numbers would produce a difference of two different quantities, which is exactly
-what the previous version of this README did: it reported a Recall@10 gap of
-+0.111 between arms whose query sets did not match.
+**That is a much smaller number than the previous README reported, and the
+previous number was not measuring this.** It quoted a Recall@10 gap of +0.111
+between arms whose query sets did not match — different origins on every shared
+query id, different relevant sets on most of them. Almost all of that +0.111 was
+the query sets differing, not contamination. Isolating one variable turned a
+large apparent effect into a small real one, which is the ordinary outcome of
+controlling a comparison and the reason for doing it.
+
+**The historical reproduction is in the per-seed table and nowhere else.** It
+changes index scope, availability policy, origin placement and the relevant
+set at once, so it evaluates a different query set and no delta against it has a
+referent. `run_method` raises if one is requested. Note its Precision@10 and MRR
+sit *above* the strict arm's while its Recall@10 sits below: that is what
+comparing different quantities looks like.
 
 **Contamination does not reliably inflate a metric.** It changes what is being
-measured, and the sign of the change is not predictable in advance. Anyone
-expecting a leakage fix to reveal a smaller number should not read these tables
-as reassurance.
+measured, and the sign of the change is not predictable in advance. The
+ablation's Recall@100 is very slightly *higher* than the strict arm's. Nobody
+should read any of these tables as reassurance that a leak would have been
+visible in the numbers.
 
 **Nothing on the strict side was tuned against these results.** The operating
 point was chosen on the selection window, the CI floors were measured on the
-regression window, and the locked test window selected nothing -- which is a
-property `TemporalProtocol.assert_selection_window` enforces rather than a
-promise the prose makes.
+regression window, and the locked test window selected nothing — a property
+`TemporalProtocol.assert_selection_window` enforces rather than one the prose
+asserts.
 
 ## Implementation status
 
