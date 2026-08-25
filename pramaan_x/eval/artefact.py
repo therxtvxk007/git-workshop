@@ -210,12 +210,19 @@ def backend_versions() -> dict[str, str]:
         "pyarrow",
         "duckdb",
         "lightgbm",
-        "pramaan-x",
     ):
         try:
             out[package] = version(package)
         except PackageNotFoundError:
             out[package] = "absent"
+    # This package's version comes from the module being executed, not from
+    # installed distribution metadata. An editable install keeps reporting the
+    # version recorded when it was created, so a stale `pip install -e` makes an
+    # artefact claim two different versions of itself -- which is exactly the
+    # inconsistency the identity is supposed to make impossible. It happened
+    # here: artefacts were published recording pramaan-x 1.0.0 while the code
+    # producing them was 0.5.0.
+    out["pramaan-x"] = _package_version()
     return out
 
 

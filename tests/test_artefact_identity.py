@@ -272,3 +272,59 @@ def test_committed_artefacts_match_the_committed_summary():
                     f"{method} seed {row['seed']} {metric}: summary {value} != "
                     f"artefact {payload['metrics'][stage][metric]}"
                 )
+
+
+def test_an_artefact_never_claims_two_versions_of_itself():
+    """Regression guard for a defect the required verification caught.
+
+    `backend_versions` read this package's version from installed distribution
+    metadata. An editable install keeps reporting the version recorded when it
+    was created, so after the version was bumped the artefacts recorded
+    `environment.package_version = 0.5.0` alongside
+    `backends.versions["pramaan-x"] = 1.0.0` -- an identity that disagreed with
+    itself, published without anything noticing.
+    """
+    from pramaan_x import __version__
+
+    assert backend_versions()["pramaan-x"] == __version__
+
+
+def test_committed_artefacts_agree_with_themselves_about_the_version():
+    paths = _committed("strict_temporal")
+    if not paths:
+        pytest.skip("no strict artefacts committed yet")
+    for path in paths:
+        payload = json.loads(path.read_text())
+        assert (
+            payload["backends"]["versions"]["pramaan-x"]
+            == payload["environment"]["package_version"]
+        ), f"{path.name} records two different versions of pramaan-x"
+
+
+def test_the_artefact_commit_is_the_commit_that_held_the_code():
+    """Why the committed artefacts name a commit that is not the tip.
+
+    An artefact records the commit whose source produced it. Committing the
+    artefact necessarily advances HEAD, so the artefact can never name the
+    commit that contains it -- that would require the file to contain its own
+    hash. The two properties that *are* checkable are asserted elsewhere: the
+    commit exists and is reachable, and the artefact sits at the path its own
+    identity digest names.
+    """
+    paths = _committed("strict_temporal")
+    if not paths:
+        pytest.skip("no strict artefacts committed yet")
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=str(ROOT), capture_output=True, text=True, timeout=30
+    ).stdout.strip()
+    for path in paths:
+        commit = json.loads(path.read_text())["git"]["commit"]
+        ancestor = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", commit, head],
+            cwd=str(ROOT),
+            capture_output=True,
+            timeout=30,
+        )
+        assert ancestor.returncode == 0, (
+            f"{path.name} names commit {commit}, which is not an ancestor of HEAD"
+        )

@@ -1,0 +1,762 @@
+{
+  "availability_violations": {
+    "by_reason": {
+      "missing_acquisition_time": 1820,
+      "retrieved_after_origin": 354
+    },
+    "sample": [
+      {
+        "doc_id": "d0000835",
+        "origin": "2026-05-22T00:00:00+00:00",
+        "published_at": "2026-01-19T22:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000548c3259",
+        "origin": "2026-05-22T00:00:00+00:00",
+        "published_at": "2025-04-22T09:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0007604",
+        "origin": "2026-05-22T00:00:00+00:00",
+        "published_at": "2026-03-17T14:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0006933",
+        "origin": "2026-05-22T00:00:00+00:00",
+        "published_at": "2026-01-28T17:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000706",
+        "origin": "2026-06-15T00:00:00+00:00",
+        "published_at": "2025-08-13T18:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000844",
+        "origin": "2026-06-15T00:00:00+00:00",
+        "published_at": "2026-05-16T11:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000561",
+        "origin": "2026-06-15T00:00:00+00:00",
+        "published_at": "2025-08-25T00:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000664",
+        "origin": "2026-06-15T00:00:00+00:00",
+        "published_at": "2025-12-13T17:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000761",
+        "origin": "2026-06-15T00:00:00+00:00",
+        "published_at": "2026-06-06T00:00:00+00:00",
+        "reason": "retrieved_after_origin",
+        "retrieved_at": "2026-06-27T13:00:00+00:00"
+      },
+      {
+        "doc_id": "d0000423",
+        "origin": "2026-06-15T00:00:00+00:00",
+        "published_at": "2026-05-31T15:00:00+00:00",
+        "reason": "retrieved_after_origin",
+        "retrieved_at": "2026-06-23T13:00:00+00:00"
+      },
+      {
+        "doc_id": "d0000713",
+        "origin": "2026-06-15T00:00:00+00:00",
+        "published_at": "2025-10-14T13:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000051",
+        "origin": "2026-06-15T00:00:00+00:00",
+        "published_at": "2026-03-05T04:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000835",
+        "origin": "2026-02-18T00:00:00+00:00",
+        "published_at": "2026-01-19T22:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000837",
+        "origin": "2026-02-18T00:00:00+00:00",
+        "published_at": "2026-02-01T19:00:00+00:00",
+        "reason": "retrieved_after_origin",
+        "retrieved_at": "2026-03-02T17:00:00+00:00"
+      },
+      {
+        "doc_id": "d0000548c3259",
+        "origin": "2026-02-18T00:00:00+00:00",
+        "published_at": "2025-04-22T09:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000917",
+        "origin": "2026-02-18T00:00:00+00:00",
+        "published_at": "2026-02-17T12:00:00+00:00",
+        "reason": "retrieved_after_origin",
+        "retrieved_at": "2026-03-16T00:00:00+00:00"
+      },
+      {
+        "doc_id": "d0000929",
+        "origin": "2026-02-18T00:00:00+00:00",
+        "published_at": "2025-08-24T11:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0004529",
+        "origin": "2026-02-18T00:00:00+00:00",
+        "published_at": "2025-08-09T03:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0003981",
+        "origin": "2026-02-18T00:00:00+00:00",
+        "published_at": "2025-07-01T02:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      },
+      {
+        "doc_id": "d0000914",
+        "origin": "2026-02-18T00:00:00+00:00",
+        "published_at": "2025-05-04T08:00:00+00:00",
+        "reason": "missing_acquisition_time",
+        "retrieved_at": null
+      }
+    ],
+    "total": 2174
+  },
+  "backends": {
+    "embedder": "hashing (1024d)",
+    "fusion_backend": "lambdarank",
+    "late_interaction": "MaxSim over hashed token vectors (pramaan_x.stage2_retrieve.late_interaction)",
+    "reranker": "lexical",
+    "sparse": "in-process Okapi BM25 (pramaan_x.stage1_scan.bm25)",
+    "vector_engine": "memory",
+    "versions": {
+      "duckdb": "1.5.5",
+      "lightgbm": "4.7.0",
+      "numpy": "2.4.6",
+      "polars": "1.44.0",
+      "pramaan-x": "0.5.0",
+      "pyarrow": "25.0.1",
+      "python": "3.11.15",
+      "scikit-learn": "1.9.0",
+      "scipy": "1.17.1"
+    }
+  },
+  "benchmark": "oracle_target_retrieval",
+  "config_fingerprint": "dba6f85247dc51c9",
+  "created_at": "2026-08-25T05:24:22.999460+00:00",
+  "dataset": {
+    "earliest": "2025-01-01 00:00:00+00:00",
+    "file_bytes": 1018111,
+    "file_hash": "a35093a8ed7a3e8a2ce276a9362a4922f48f210abc0076c45e74aec5339368d7",
+    "generator": {
+      "backfill_fraction": 0.12,
+      "days": 540,
+      "generator": "pramaan_x.data.synth.SyntheticCorpus",
+      "missing_retrieval_fraction": 0.04,
+      "n_event_types": 6,
+      "n_locations": 12,
+      "seed": 11,
+      "synthetic": true
+    },
+    "latest": "2026-06-25 12:00:00+00:00",
+    "logical_hash": "4ac10a281656d82b9c53583c9edaa4f99ebce688096362d0f1d093ad16f4ca80",
+    "n_documents": 12999,
+    "name": "synthetic_corpus"
+  },
+  "does_not_measure": "event forecasting; no metric here is a forecasting score and none may be reported as one",
+  "environment": {
+    "package_version": "0.5.0",
+    "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+    "python": "3.11.15",
+    "uv_lock_sha256": "385e6cd90941a488ff72ca87afed37814d7d740c8ceb7d88321238742e8abd32"
+  },
+  "extra": {
+    "comparability": {
+      "candidate_widths": {
+        "bm25_top_k": 200,
+        "dense_top_k": 200,
+        "late_top_k": 60,
+        "rerank_top_k": 20,
+        "rrf_k": 60
+      },
+      "factors_changed": [
+        "index_scope",
+        "availability_policy",
+        "forecast_origin_placement",
+        "relevant_document_set"
+      ],
+      "ks": [
+        10,
+        20,
+        50,
+        100
+      ],
+      "note": "This arm changes several factors at once and evaluates a different query set, so no delta is computed against it and none should be. Use future_fitted_index_ablation for a controlled comparison against strict_temporal.",
+      "paired": false,
+      "query_set_fingerprint": "6fb62c58dc1bb39f53fca1ed5e2cb1394fe19f9d7d7247df823a96dc38a38c14"
+    },
+    "corpus_logical_hash_recheck": "b5bd90629927e9833a9568158907a45adc5f935634c3a9bb1f90c23e148507ae",
+    "fitted_corpus_sizes": {
+      "by_phase": {
+        "evaluation": {
+          "distinct": 1,
+          "max": 9086,
+          "mean": 9086.0,
+          "min": 9086,
+          "n_fitted_indexes": 400
+        },
+        "ranker_training": {
+          "distinct": 1,
+          "max": 9086,
+          "mean": 9086.0,
+          "min": 9086,
+          "n_fitted_indexes": 101
+        }
+      },
+      "distinct": 1,
+      "max": 9086,
+      "mean": 9086.0,
+      "min": 9086,
+      "n_fitted_indexes": 501
+    },
+    "fusion_component_weights": {
+      "bm25": 0.19466666666666665,
+      "cross": 0.12944444444444445,
+      "dense": 0.15133333333333332,
+      "late": 0.22977777777777778,
+      "long_history": 0.0,
+      "novelty": 0.0,
+      "recency": 0.1511111111111111,
+      "source_independence": 0.14366666666666666
+    },
+    "index_scope": "every document in the corpus, including documents from after every forecast origin",
+    "label_mapping": {
+      "collapsed_duplicate_members": 0,
+      "dropped_no_canonical": 0,
+      "note": "Ground-truth precursor ids are mapped through the dedup clusters before any query is built: a document absorbed into a cluster is counted as its canonical rather than lost, and syndicated copies of one story count once rather than as independent precursors.",
+      "precursor_ids_after": 890,
+      "precursor_ids_before": 890,
+      "remapped_to_cluster_canonical": 6
+    },
+    "lexicon_fit": {
+      "label_cutoff": "2025-09-10T00:00:00+00:00",
+      "max_event_used": "2025-09-19T00:00:00+00:00",
+      "max_published_at": "2025-09-09T22:00:00+00:00",
+      "n_documents": 4230,
+      "n_positive": 477,
+      "train_end": "2025-10-01T00:00:00+00:00"
+    },
+    "operating_point": {
+      "late_top_k": 100,
+      "rerank_top_k": 10,
+      "rrf_k": 60
+    },
+    "regression_floors": {
+      "floor": {
+        "mrr": 0.7394999999999999,
+        "ndcg@10": 0.572054972092113,
+        "recall@100": 0.6658333333333333
+      },
+      "margin": 0.15,
+      "measured": {
+        "mrr": 0.8699999999999999,
+        "ndcg@10": 0.673005849520133,
+        "recall@100": 0.7833333333333333
+      },
+      "n_queries": 10,
+      "note": "Floors are tripwires measured on the regression window, which is distinct from the selection window the parameters were tuned on and from the locked test window. No CI decision reads a test-window metric.",
+      "window": "regression"
+    },
+    "selection": {
+      "baseline": {
+        "late_top_k": 60,
+        "rerank_top_k": 20,
+        "rrf_k": 60
+      },
+      "candidates": [
+        {
+          "metrics": {
+            "mrr": 0.7262479871175522,
+            "ndcg@10": 0.5926785785687061,
+            "ndcg@100": 0.6253249812222809,
+            "ndcg@20": 0.6053239908013615,
+            "ndcg@50": 0.6253249812222809,
+            "recall@10": 0.6753623188405797,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7072463768115942,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 60,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.5926785785687061
+        },
+        {
+          "metrics": {
+            "mrr": 0.7263099219620959,
+            "ndcg@10": 0.5921726630129183,
+            "ndcg@100": 0.6250022563525657,
+            "ndcg@20": 0.6052715854393512,
+            "ndcg@50": 0.6250022563525657,
+            "recall@10": 0.6753623188405797,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7094202898550724,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 40,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.5921726630129183
+        },
+        {
+          "metrics": {
+            "mrr": 0.726449275362319,
+            "ndcg@10": 0.6055834242528537,
+            "ndcg@100": 0.6386011381078447,
+            "ndcg@20": 0.6182288364855092,
+            "ndcg@50": 0.6386011381078447,
+            "recall@10": 0.6753623188405797,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7072463768115942,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.6055834242528537
+        },
+        {
+          "metrics": {
+            "mrr": 0.7698550724637682,
+            "ndcg@10": 0.6198415057944483,
+            "ndcg@100": 0.6489218788743919,
+            "ndcg@20": 0.6327947574446736,
+            "ndcg@50": 0.6489218788743919,
+            "recall@10": 0.6876811594202898,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7217391304347827,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 10,
+            "rrf_k": 60
+          },
+          "score": 0.6198415057944483
+        },
+        {
+          "metrics": {
+            "mrr": 0.726449275362319,
+            "ndcg@10": 0.6055834242528537,
+            "ndcg@100": 0.6386011381078447,
+            "ndcg@20": 0.6182288364855092,
+            "ndcg@50": 0.6386011381078447,
+            "recall@10": 0.6753623188405797,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7072463768115942,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 20,
+            "rrf_k": 60
+          },
+          "score": 0.6055834242528537
+        },
+        {
+          "metrics": {
+            "mrr": 0.7593167701863355,
+            "ndcg@10": 0.6192007179004527,
+            "ndcg@100": 0.6511529131652866,
+            "ndcg@20": 0.6313211392857534,
+            "ndcg@50": 0.6511529131652866,
+            "recall@10": 0.6753623188405797,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7072463768115942,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 40,
+            "rrf_k": 60
+          },
+          "score": 0.6192007179004527
+        },
+        {
+          "metrics": {
+            "mrr": 0.7698550724637682,
+            "ndcg@10": 0.6198415057944483,
+            "ndcg@100": 0.6489218788743919,
+            "ndcg@20": 0.6327947574446736,
+            "ndcg@50": 0.6489218788743919,
+            "recall@10": 0.6876811594202898,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7217391304347827,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 10,
+            "rrf_k": 30
+          },
+          "score": 0.6198415057944483
+        },
+        {
+          "metrics": {
+            "mrr": 0.7698550724637682,
+            "ndcg@10": 0.6198415057944483,
+            "ndcg@100": 0.6489218788743919,
+            "ndcg@20": 0.6327947574446736,
+            "ndcg@50": 0.6489218788743919,
+            "recall@10": 0.6876811594202898,
+            "recall@100": 0.7847826086956522,
+            "recall@20": 0.7217391304347827,
+            "recall@50": 0.7847826086956522
+          },
+          "params": {
+            "late_top_k": 100,
+            "rerank_top_k": 10,
+            "rrf_k": 120
+          },
+          "score": 0.6198415057944483
+        }
+      ],
+      "fingerprint": "beb65b9cd55c5f69",
+      "grid": {
+        "late_top_k": [
+          40,
+          60,
+          100
+        ],
+        "rerank_top_k": [
+          10,
+          20,
+          40
+        ],
+        "rrf_k": [
+          30,
+          60,
+          120
+        ]
+      },
+      "improvement": 0.027162927225742206,
+      "n_candidates_evaluated": 8,
+      "n_selection_queries": 23,
+      "objective": "ndcg@10",
+      "selected": {
+        "late_top_k": 100,
+        "rerank_top_k": 10,
+        "rrf_k": 60
+      },
+      "strategy": "coordinate sweep over CANDIDATE_GRID from the config defaults, one parameter at a time in declaration order, keeping each improvement. Not a full cross product and not a global optimum.",
+      "window": "selection"
+    },
+    "stage0": {
+      "cleaning": {
+        "chars_removed": 42375,
+        "input": 12999,
+        "languages": {
+          "en": 12999
+        },
+        "stripped": 2825,
+        "too_short": 0
+      },
+      "dedup": {
+        "clusters": 9086,
+        "exact": 3295,
+        "input": 12999,
+        "near": 119,
+        "reduction": 0.301,
+        "removed": 3913,
+        "simhash": 499
+      },
+      "elapsed_s": 14.05,
+      "surviving": 9086,
+      "validation": {
+        "assumed_utc": 0,
+        "future": 0,
+        "input": 12999,
+        "missing_retrieval": 507,
+        "missing_timestamp": 0,
+        "naive_timestamp": 0,
+        "ok": 12999,
+        "rejected": 0,
+        "retrieved_before_published": 0
+      },
+      "work_avoided": 0.301
+    },
+    "timestamp_policy": "strict"
+  },
+  "forecast_origins": [
+    "2026-01-25T00:00:00+00:00",
+    "2026-02-01T00:00:00+00:00",
+    "2026-02-08T00:00:00+00:00",
+    "2026-02-15T00:00:00+00:00",
+    "2026-02-22T00:00:00+00:00",
+    "2026-03-01T00:00:00+00:00",
+    "2026-03-08T00:00:00+00:00",
+    "2026-03-15T00:00:00+00:00",
+    "2026-03-22T00:00:00+00:00",
+    "2026-03-29T00:00:00+00:00",
+    "2026-04-05T00:00:00+00:00",
+    "2026-04-12T00:00:00+00:00",
+    "2026-04-19T00:00:00+00:00",
+    "2026-04-26T00:00:00+00:00",
+    "2026-05-03T00:00:00+00:00",
+    "2026-05-10T00:00:00+00:00",
+    "2026-05-17T00:00:00+00:00",
+    "2026-05-24T00:00:00+00:00",
+    "2026-05-31T00:00:00+00:00",
+    "2026-06-07T00:00:00+00:00",
+    "2026-06-14T00:00:00+00:00",
+    "2026-06-21T00:00:00+00:00"
+  ],
+  "git": {
+    "branch": "claude/pramaan-firewall-v2",
+    "commit": "97a55f989e0eb06414d413ca31c1ad920b51a5f4",
+    "dirty": true,
+    "dirty_files": [
+      "ramaan_x/eval/artefact.py",
+      "tests/test_artefact_identity.py"
+    ],
+    "source_dirty": false,
+    "source_dirty_files": [],
+    "source_tree_hash": "99b2781780d75d20b5afc63114a3b118cb8ae3abe24ba04ee35c610aee51f2e1"
+  },
+  "identity": {
+    "backends": {
+      "embedder": "hashing (1024d)",
+      "fusion_backend": "lambdarank",
+      "reranker": "lexical",
+      "vector_engine": "memory",
+      "versions": {
+        "duckdb": "1.5.5",
+        "lightgbm": "4.7.0",
+        "numpy": "2.4.6",
+        "polars": "1.44.0",
+        "pramaan-x": "0.5.0",
+        "pyarrow": "25.0.1",
+        "python": "3.11.15",
+        "scikit-learn": "1.9.0",
+        "scipy": "1.17.1"
+      }
+    },
+    "config_fingerprint": "dba6f85247dc51c9",
+    "dataset_file_hash": "a35093a8ed7a3e8a2ce276a9362a4922f48f210abc0076c45e74aec5339368d7",
+    "dataset_logical_hash": "4ac10a281656d82b9c53583c9edaa4f99ebce688096362d0f1d093ad16f4ca80",
+    "git_commit": "97a55f989e0eb06414d413ca31c1ad920b51a5f4",
+    "method": "historical_legacy_reproduction_unpaired",
+    "package_version": "0.5.0",
+    "protocol_fingerprint": "6401c4826637fdbe",
+    "seed": 11,
+    "source_tree_hash": "99b2781780d75d20b5afc63114a3b118cb8ae3abe24ba04ee35c610aee51f2e1",
+    "uv_lock_sha256": "385e6cd90941a488ff72ca87afed37814d7d740c8ceb7d88321238742e8abd32"
+  },
+  "identity_digest": "8cc2cc2eb5b09236cf69f145c1f7708aa0aa2bced090a14e8e85ad2382d50d0f",
+  "invariants": {
+    "no_future_document_fitted": "FAIL: 501 fitted corpora contain documents from at or after their own forecast origin [origin 2025-02-26T00:00:00+00:00 fitted on 9086 docs up to 2026-07-20T01:00:00+00:00; origin 2025-07-27T00:00:00+00:00 fitted on 9086 docs up to 2026-07-20T01:00:00+00:00; origin 2025-09-07T00:00:00+00:00 fitted on 9086 docs up to 2026-07-20T01:00:00+00:00; origin 2025-08-01T00:00:00+00:00 fitted on 9086 docs up",
+    "no_post_origin_results": "FAIL: 2174 returned documents violate the availability rule [d0000835 (missing_acquisition_time) at origin 2026-05-22T00:00:00+00:00; d0000548c3259 (missing_acquisition_time) at origin 2026-05-22T00:00:00+00:00; d0007604 (missing_acquisition_time) at origin 2026-05-22T00:00:00+00:00; d0006933 (missing_acquisition_time) at origin 2026-05-22T00:00:00+00:00; d0000706 (missing_acquisition_time) at ori",
+    "no_test_labels_in_preprocessing": "pass",
+    "no_test_labels_in_training": "FAIL: 6 test-label leakage problems: train query Coimbatore|infrastructure_failure@2025-08-28T00:00:00+00:00 labels d0000706, available never, at or after train_end; train query Guwahati|protest@2025-06-16T00:00:00+00:00 labels d0000253, available never, at or after train_end; train query Kochi|flood@2025-05-01T00:00:00+00:00 labels d0000108, available never, at or after train_end; train query Ran"
+  },
+  "measures": "precursor-evidence retrieval for a GIVEN target (location and event type supplied by an oracle)",
+  "method": "historical_legacy_reproduction_unpaired",
+  "metrics": {
+    "dense": {
+      "empty": 0,
+      "latency_ms.max": 80.225,
+      "latency_ms.mean": 9.209,
+      "latency_ms.p50": 7.684,
+      "latency_ms.p95": 14.723,
+      "latency_ms.total": 736.756,
+      "mrr": 0.2239,
+      "ndcg@10": 0.127,
+      "ndcg@100": 0.2527,
+      "ndcg@20": 0.1592,
+      "ndcg@50": 0.2187,
+      "precision@10": 0.0575,
+      "precision@100": 0.022,
+      "precision@20": 0.0444,
+      "precision@50": 0.0333,
+      "queries": 80,
+      "recall@10": 0.1521,
+      "recall@100": 0.5713,
+      "recall@20": 0.2373,
+      "recall@50": 0.4373,
+      "relevant_documents": 312
+    },
+    "fusion": {
+      "empty": 0,
+      "latency_ms.max": 12.297,
+      "latency_ms.mean": 7.616,
+      "latency_ms.p50": 7.406,
+      "latency_ms.p95": 9.518,
+      "latency_ms.total": 609.294,
+      "mrr": 0.2124,
+      "ndcg@10": 0.1189,
+      "ndcg@100": 0.2494,
+      "ndcg@20": 0.161,
+      "ndcg@50": 0.2194,
+      "precision@10": 0.0537,
+      "precision@100": 0.0219,
+      "precision@20": 0.0475,
+      "precision@50": 0.0345,
+      "queries": 80,
+      "recall@10": 0.1442,
+      "recall@100": 0.5692,
+      "recall@20": 0.2571,
+      "recall@50": 0.4506,
+      "relevant_documents": 312
+    },
+    "late": {
+      "empty": 0,
+      "latency_ms.max": 47.836,
+      "latency_ms.mean": 24.405,
+      "latency_ms.p50": 23.958,
+      "latency_ms.p95": 28.345,
+      "latency_ms.total": 1952.396,
+      "mrr": 0.1706,
+      "ndcg@10": 0.1192,
+      "ndcg@100": 0.2162,
+      "ndcg@20": 0.1328,
+      "ndcg@50": 0.1965,
+      "precision@10": 0.0688,
+      "precision@100": 0.0325,
+      "precision@20": 0.0412,
+      "precision@50": 0.0333,
+      "queries": 80,
+      "recall@10": 0.1731,
+      "recall@100": 0.505,
+      "recall@20": 0.211,
+      "recall@50": 0.4302,
+      "relevant_documents": 312
+    },
+    "rerank": {
+      "empty": 0,
+      "latency_ms.max": 42.833,
+      "latency_ms.mean": 35.544,
+      "latency_ms.p50": 35.298,
+      "latency_ms.p95": 38.677,
+      "latency_ms.total": 2843.542,
+      "mrr": 0.7136,
+      "ndcg@10": 0.561,
+      "ndcg@100": 0.6274,
+      "ndcg@20": 0.6059,
+      "ndcg@50": 0.6274,
+      "precision@10": 0.2325,
+      "precision@100": 0.0307,
+      "precision@20": 0.1394,
+      "precision@50": 0.0615,
+      "queries": 80,
+      "recall@10": 0.616,
+      "recall@100": 0.7892,
+      "recall@20": 0.7275,
+      "recall@50": 0.7892,
+      "relevant_documents": 312
+    },
+    "sparse": {
+      "empty": 0,
+      "latency_ms.max": 6.18,
+      "latency_ms.mean": 3.733,
+      "latency_ms.p50": 3.586,
+      "latency_ms.p95": 4.515,
+      "latency_ms.total": 298.616,
+      "mrr": 0.1844,
+      "ndcg@10": 0.1142,
+      "ndcg@100": 0.2449,
+      "ndcg@20": 0.1506,
+      "ndcg@50": 0.2175,
+      "precision@10": 0.0537,
+      "precision@100": 0.0221,
+      "precision@20": 0.0456,
+      "precision@50": 0.0358,
+      "queries": 80,
+      "recall@10": 0.1473,
+      "recall@100": 0.5754,
+      "recall@20": 0.2437,
+      "recall@50": 0.4656,
+      "relevant_documents": 312
+    }
+  },
+  "n_forecast_origins": 22,
+  "n_index_builds": 0,
+  "protocol": {
+    "availability_rule": "available_at = max(published_at, retrieved_at); usable at origin T only if published_at < T and retrieved_at < T; missing retrieved_at is rejected unless the document carries an explicit trusted_historical_snapshot flag",
+    "calibration_end": "2026-01-04T00:00:00+00:00",
+    "calibration_start": "2025-10-22T00:00:00+00:00",
+    "effective_embargo_days": 21,
+    "embargo_days": 7,
+    "label_cutoff": "2025-09-10T00:00:00+00:00",
+    "label_lookahead_days": 21,
+    "n_regression_origins": 5,
+    "n_selection_origins": 7,
+    "n_test_origins": 22,
+    "n_train_origins": 39,
+    "notes": [
+      "synthetic corpus; no real-world validity is claimed"
+    ],
+    "origin_stride_days": 7,
+    "permitted_fitting": [
+      "bm25_corpus_statistics: documents available strictly before the fold origin",
+      "hashing_idf: documents available strictly before the fold origin",
+      "vector_index: documents available strictly before the fold origin",
+      "lexicon_log_odds: training-window documents with training-window labels only",
+      "learned_fusion_lambdamart: training-window queries only",
+      "operating_point_selection: selection-window queries only, never the test window",
+      "ci_quality_floors: regression-window queries only, never the test window"
+    ],
+    "query_generation_rule": "oracle_target: the query text is the target location verbatim plus the top-n terms of the training-fitted lexicon for the target's event type. The target location and event type are GIVEN, not inferred. This is an evidence-retrieval protocol, not an event-forecasting protocol.",
+    "selectable_windows": [
+      "selection",
+      "regression"
+    ],
+    "selection_end": "2025-12-05T00:00:00+00:00",
+    "selection_frac": 0.6,
+    "test_end": "2026-06-24T23:00:01+00:00",
+    "test_start": "2026-01-25T00:00:00+00:00",
+    "train_end": "2025-10-01T00:00:00+00:00",
+    "train_start": "2025-01-01T00:00:00+00:00",
+    "version": "oracle-target-retrieval/1"
+  },
+  "protocol_fingerprint": "6401c4826637fdbe",
+  "queries": {
+    "evaluated": 80,
+    "relevant_documents": 312,
+    "test": 80,
+    "train": 101
+  },
+  "schema_version": 3,
+  "seed": 11
+}
