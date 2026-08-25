@@ -272,15 +272,15 @@ Identical query ids, text, origins, relevant sets, lexicon, ranker training data
 
 | Seed | Method | R@10 | R@100 | P@10 | nDCG@10 | MRR | Availability violations | Invariants | Artefact |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 11 | `strict_temporal` | 0.638 | 0.802 | 0.195 | 0.586 | 0.722 | 0 | all pass | [`9a8ade5a0b6be341.json`](benchmark_results/strict_temporal/seed-11/9a8ade5a0b6be341.json) |
-| 11 | `future_fitted_index_ablation` | 0.634 | 0.802 | 0.194 | 0.594 | 0.739 | 0 | 1/4 fail | [`28fb846be8cb0515.json`](benchmark_results/future_fitted_index_ablation/seed-11/28fb846be8cb0515.json) |
-| 11 | `historical_legacy_reproduction_unpaired` | 0.616 | 0.789 | 0.233 | 0.561 | 0.714 | 2174 | 3/4 fail | [`8dcd51a11d4e75d2.json`](benchmark_results/historical_legacy_reproduction_unpaired/seed-11/8dcd51a11d4e75d2.json) |
-| 29 | `strict_temporal` | 0.522 | 0.720 | 0.156 | 0.464 | 0.609 | 0 | all pass | [`4e452e3b9de5c265.json`](benchmark_results/strict_temporal/seed-29/4e452e3b9de5c265.json) |
-| 29 | `future_fitted_index_ablation` | 0.524 | 0.734 | 0.155 | 0.446 | 0.576 | 0 | 1/4 fail | [`24a848c71b2b811a.json`](benchmark_results/future_fitted_index_ablation/seed-29/24a848c71b2b811a.json) |
-| 29 | `historical_legacy_reproduction_unpaired` | 0.505 | 0.736 | 0.184 | 0.488 | 0.697 | 3370 | 3/4 fail | [`694e44e9d3b247ac.json`](benchmark_results/historical_legacy_reproduction_unpaired/seed-29/694e44e9d3b247ac.json) |
-| 20260824 | `strict_temporal` | 0.519 | 0.720 | 0.166 | 0.473 | 0.607 | 0 | all pass | [`873aaf328bdf7769.json`](benchmark_results/strict_temporal/seed-20260824/873aaf328bdf7769.json) |
-| 20260824 | `future_fitted_index_ablation` | 0.510 | 0.720 | 0.163 | 0.469 | 0.612 | 0 | 1/4 fail | [`fb398b808627e3e5.json`](benchmark_results/future_fitted_index_ablation/seed-20260824/fb398b808627e3e5.json) |
-| 20260824 | `historical_legacy_reproduction_unpaired` | 0.433 | 0.704 | 0.171 | 0.443 | 0.649 | 2806 | 3/4 fail | [`d78296ea1bd98d7e.json`](benchmark_results/historical_legacy_reproduction_unpaired/seed-20260824/d78296ea1bd98d7e.json) |
+| 11 | `strict_temporal` | 0.638 | 0.802 | 0.195 | 0.586 | 0.722 | 0 | all pass | [`136ccec9639f91f8.json`](benchmark_results/strict_temporal/seed-11/136ccec9639f91f8.json) |
+| 11 | `future_fitted_index_ablation` | 0.634 | 0.802 | 0.194 | 0.594 | 0.739 | 0 | 1/4 fail | [`3f30d50e766a1f8e.json`](benchmark_results/future_fitted_index_ablation/seed-11/3f30d50e766a1f8e.json) |
+| 11 | `historical_legacy_reproduction_unpaired` | 0.616 | 0.789 | 0.233 | 0.561 | 0.714 | 2174 | 3/4 fail | [`bfb992076bdfa343.json`](benchmark_results/historical_legacy_reproduction_unpaired/seed-11/bfb992076bdfa343.json) |
+| 29 | `strict_temporal` | 0.522 | 0.720 | 0.156 | 0.464 | 0.609 | 0 | all pass | [`48e2af74790a2b9c.json`](benchmark_results/strict_temporal/seed-29/48e2af74790a2b9c.json) |
+| 29 | `future_fitted_index_ablation` | 0.524 | 0.734 | 0.155 | 0.446 | 0.576 | 0 | 1/4 fail | [`7abb701b128aafd6.json`](benchmark_results/future_fitted_index_ablation/seed-29/7abb701b128aafd6.json) |
+| 29 | `historical_legacy_reproduction_unpaired` | 0.505 | 0.736 | 0.184 | 0.488 | 0.697 | 3370 | 3/4 fail | [`d82b0c5fef1c9c01.json`](benchmark_results/historical_legacy_reproduction_unpaired/seed-29/d82b0c5fef1c9c01.json) |
+| 20260824 | `strict_temporal` | 0.519 | 0.720 | 0.166 | 0.473 | 0.607 | 0 | all pass | [`29c0ccd6f546b40a.json`](benchmark_results/strict_temporal/seed-20260824/29c0ccd6f546b40a.json) |
+| 20260824 | `future_fitted_index_ablation` | 0.510 | 0.720 | 0.163 | 0.469 | 0.612 | 0 | 1/4 fail | [`be20138602738eb6.json`](benchmark_results/future_fitted_index_ablation/seed-20260824/be20138602738eb6.json) |
+| 20260824 | `historical_legacy_reproduction_unpaired` | 0.433 | 0.704 | 0.171 | 0.443 | 0.649 | 2806 | 3/4 fail | [`e14712cfb2e32f0c.json`](benchmark_results/historical_legacy_reproduction_unpaired/seed-20260824/e14712cfb2e32f0c.json) |
 
 ### The unpaired reproduction
 
@@ -292,7 +292,7 @@ Seed 11: 22 locked forecast origins; 80 test / 101 training queries; 254 relevan
 
 Operating point chosen on the selection window (23 queries, 8 candidates, objective `ndcg@10`): `late_top_k=100`, `rerank_top_k=20`, `rrf_k=60`.
 
-Latency, strict arm, per query at `rerank`: mean 32.51 ms, p50 32.36 ms, p95 34.66 ms (seed 11; single process, CPU only).
+Latency, strict arm, per query at `rerank`: mean 33.89 ms, p50 32.99 ms, p95 39.06 ms (seed 11; single process, CPU only).
 
 <!-- END GENERATED RESULTS -->
 

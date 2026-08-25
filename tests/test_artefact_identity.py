@@ -328,3 +328,40 @@ def test_the_artefact_commit_is_the_commit_that_held_the_code():
         assert ancestor.returncode == 0, (
             f"{path.name} names commit {commit}, which is not an ancestor of HEAD"
         )
+
+
+def test_exactly_one_artefact_per_method_and_seed():
+    """Regression guard for a stale artefact that got committed.
+
+    An interrupted run left a file behind at an identity path a later run no
+    longer produced, so `benchmark_results/` carried two artefacts for one
+    (method, seed) pair. Both were internally consistent, so every other check
+    passed; only counting catches it. A directory holding two answers to the
+    same question is a directory somebody will read the wrong answer from.
+    """
+    if not RESULTS.exists():
+        pytest.skip("no artefacts committed yet")
+    for method_dir in sorted(p for p in RESULTS.iterdir() if p.is_dir()):
+        for seed_dir in sorted(p for p in method_dir.iterdir() if p.is_dir()):
+            files = sorted(seed_dir.glob("*.json"))
+            assert len(files) == 1, (
+                f"{method_dir.name}/{seed_dir.name} holds {len(files)} artefacts: "
+                f"{[f.name for f in files]}"
+            )
+
+
+def test_every_method_covers_every_seed():
+    """A missing artefact is as misleading as a duplicate: the summary would
+    still average whatever it found."""
+    summary_path = RESULTS / "summary.json"
+    if not summary_path.exists():
+        pytest.skip("no summary committed yet")
+    summary = json.loads(summary_path.read_text())
+    expected = set(summary["seeds"])
+    for method in summary["methods"]:
+        seeds = {
+            int(p.name.removeprefix("seed-")) for p in (RESULTS / method).iterdir() if p.is_dir()
+        }
+        assert seeds == expected, (
+            f"{method} has artefacts for {sorted(seeds)}, expected {sorted(expected)}"
+        )
