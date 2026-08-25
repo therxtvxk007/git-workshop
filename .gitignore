@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Secrets
+.env
+
+# Evidence lake: contents are reproducible or licence-bound, never committed.
+data/bronze/**
+data/silver/**
+data/gold/**
+data/snapshots/**
+!data/**/.gitkeep
+
+# Run outputs
+runs/
+mlruns/
+outputs/

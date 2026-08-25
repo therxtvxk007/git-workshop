@@ -1,0 +1,41 @@
+# Every experiment that produced a number anyone looked at.
+#
+# An entry is added when a run is used to inform a decision, not when it
+# happens to succeed. Runs that failed or embarrassed a hypothesis stay in the
+# registry: a registry that only records wins is a marketing document.
+version: 1
+
+required_fields:
+  - run_id            # deterministic, from the report content fingerprint
+  - report_hash
+  - git_commit
+  - config_hash
+  - code_hash
+  - snapshot_ids
+  - dependency_lock_hash
+  - random_seed
+  - hardware
+  - metrics
+  - interpretation_limits
+
+experiments:
+  - id: e2e_v1
+    status: demo
+    config: configs/experiments/e2e_v1.yaml
+    purpose: >
+      Demonstrate that the M0 temporal foundation holds end to end and that a
+      base-rate generator produces scoreable forecasts.
+    evidence: synthetic world only
+    claims_supported: []
+    interpretation_limits:
+      - Synthetic evidence; no real-world forecasting skill is demonstrated.
+      - Probabilities are uncalibrated generator output.
+      - Statuses come from placeholder thresholds with no miss-rate guarantee.
+      - The outcome registry is machine-derived and unadjudicated.
+
+  - id: smoke
+    status: test-fixture
+    config: configs/experiments/smoke.yaml
+    purpose: Two cutoffs; used by the integration suite.
+    evidence: synthetic world only
+    claims_supported: []

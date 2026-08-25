@@ -1,0 +1,79 @@
+# Base configuration. Every run records the hash of the fully resolved config,
+# so changing anything here changes the identity of the experiment.
+version: 1
+random_seed: 20260825
+horizon_days: 90
+log_level: INFO
+log_format: console
+
+storage:
+  data_root: ./data
+  run_root: ./runs
+  parquet_compression: zstd
+  payload_shard_depth: 2
+
+timeguard:
+  # Strict means a cutoff violation raises rather than being dropped quietly.
+  # Dropping quietly makes a leak look like a thin news day.
+  strict: true
+  reject_updated_bodies: true
+  max_future_skew_seconds: 0
+  retrospective_markers:
+    - "after the attack"
+    - "in the aftermath"
+    - "following the blast"
+    - "died in the attack"
+    - "the incident occurred"
+    - "was later confirmed"
+    - "in hindsight"
+    - "as it turned out"
+    - "the death toll rose"
+    - "has since been"
+
+generators:
+  enabled: ["base_rate"]
+  proposal_budget: 500
+  budget_shares:
+    base_rate: 1.0
+  min_generator_score: 0.0
+  lookback_days: 365
+  recent_activity_days: 30
+
+# PLACEHOLDER. Phase 8 replaces this with recall-first conformal risk control.
+# These constants encode a miss-versus-false-alert trade-off that nobody has
+# chosen yet, so no operational decision may rest on them.
+alerting:
+  alert_threshold: 0.60
+  watch_threshold: 0.25
+  monitor_threshold: 0.05
+  min_evidence_items: 1
+  novelty_monitor_threshold: 0.7
+
+evaluation:
+  time_buckets: ["0-1d", "2-3d", "4-7d", "8-14d", "15-30d", "31-90d"]
+  match_time_tolerance_days: 3.0
+  match_min_score: 0.6
+  proposal_budgets: [50, 100, 250, 500]
+  alerts_per_region_day: 5.0
+  reliability_bins: 10
+  step_days: 7
+
+sources:
+  synthetic:
+    seed: 20260825
+    world_start: "2025-01-01T00:00:00Z"
+    world_end: "2026-07-01T00:00:00Z"
+    noise_per_day: 5
+  gdelt:
+    base_url: "http://data.gdeltproject.org/gdeltv2"
+    # GDELT publishes a file per 15-minute slot; the lag is how long after the
+    # slot the file is treated as observable. Conservative on purpose.
+    publication_lag_minutes: 15
+    cache: true
+    max_attempts: 4
+    backoff_seconds: 2.0
+    # Unfiltered ingestion is roughly 2000 rows per file. Narrow before running
+    # anything longer than a day.
+    max_rows_per_file: 0
+    country_filter: []
+    event_root_codes: []

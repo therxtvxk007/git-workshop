@@ -1,0 +1,262 @@
+"""Configuration loading.
+
+Configuration is data, not code: every run records the hash of the fully
+resolved configuration so an experiment can be replayed exactly. Layering is
+``base.yaml`` -> included files -> environment variables -> explicit overrides,
+with later layers winning.
+"""
+
+from __future__ import annotations
+
+import os
+from collections.abc import Iterable, Mapping
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from pramaanx.hashing import hash_object
+
+ENV_PREFIX = "PRAMAANX_"
+DEFAULT_CONFIG_PATH = Path("configs/base.yaml")
+
+
+class StorageConfig(BaseModel):
+    data_root: Path = Path("data")
+    run_root: Path = Path("runs")
+    parquet_compression: str = "zstd"
+    payload_shard_depth: int = Field(default=2, ge=1, le=4)
+
+    @property
+    def bronze(self) -> Path:
+        return self.data_root / "bronze"
+
+    @property
+    def silver(self) -> Path:
+        return self.data_root / "silver"
+
+    @property
+    def gold(self) -> Path:
+        return self.data_root / "gold"
+
+    @property
+    def snapshots(self) -> Path:
+        return self.data_root / "snapshots"
+
+
+class TimeguardConfig(BaseModel):
+    """Cutoff safety is a model feature, not merely an evaluation option."""
+
+    strict: bool = True
+    # A body edited after the cutoff cannot be used at the cutoff, even when the
+    # URL is old. Connectors record retrieved_at so this stays checkable.
+    reject_updated_bodies: bool = True
+    retrospective_markers: list[str] = Field(
+        default_factory=lambda: [
+            "after the attack",
+            "in the aftermath",
+            "following the blast",
+            "died in the attack",
+            "the incident occurred",
+            "was later confirmed",
+            "in hindsight",
+            "as it turned out",
+            "the death toll rose",
+            "has since been",
+        ]
+    )
+    max_future_skew_seconds: int = 0
+
+
+class GeneratorConfig(BaseModel):
+    """Which candidate generators run, and with what proposal budget.
+
+    M0 ships one generator (``base_rate``). The list exists so that adding G1-G7
+    later is a config change plus a registration, not a rewrite.
+    """
+
+    enabled: list[str] = Field(default_factory=lambda: ["base_rate"])
+    proposal_budget: int = Field(default=500, gt=0)
+    # Shares are normalised over the generators actually enabled, so disabling a
+    # branch in an ablation does not silently shrink the total budget.
+    budget_shares: dict[str, float] = Field(default_factory=lambda: {"base_rate": 1.0})
+    min_generator_score: float = 0.0
+    lookback_days: int = Field(default=365, gt=0)
+    recent_activity_days: int = Field(default=30, gt=0)
+
+
+class AlertPolicyConfig(BaseModel):
+    """Placeholder thresholds for the backtest skeleton.
+
+    These are NOT the risk controller. Phase 8 replaces this with recall-first
+    conformal risk control, where thresholds are fitted on calibration data and
+    locked before test evaluation. Until then these are fixed constants, and no
+    operational claim may be based on them. The miss-versus-false-alert
+    trade-off is a human decision, not a default.
+    """
+
+    alert_threshold: float = Field(default=0.60, ge=0.0, le=1.0)
+    watch_threshold: float = Field(default=0.25, ge=0.0, le=1.0)
+    monitor_threshold: float = Field(default=0.05, ge=0.0, le=1.0)
+    min_evidence_items: int = Field(default=1, ge=0)
+    #: Above this novelty score a candidate is held at MONITOR whatever its
+    #: probability: a threshold fitted on familiar streams says nothing about
+    #: one with no history.
+    novelty_monitor_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def _check_ordering(self) -> AlertPolicyConfig:
+        if not self.alert_threshold >= self.watch_threshold >= self.monitor_threshold:
+            raise ValueError("thresholds must satisfy alert >= watch >= monitor")
+        return self
+
+
+class EvaluationConfig(BaseModel):
+    time_buckets: list[str] = Field(
+        default_factory=lambda: ["0-1d", "2-3d", "4-7d", "8-14d", "15-30d", "31-90d"]
+    )
+    match_time_tolerance_days: float = 3.0
+    match_min_score: float = Field(default=0.6, ge=0.0, le=1.0)
+    proposal_budgets: list[int] = Field(default_factory=lambda: [50, 100, 250, 500])
+    alerts_per_region_day: float = Field(default=5.0, gt=0.0)
+    reliability_bins: int = Field(default=10, gt=1)
+    step_days: int = Field(default=7, gt=0)
+
+
+class Settings(BaseModel):
+    """Fully resolved run configuration."""
+
+    version: int = 1
+    random_seed: int = 20260825
+    horizon_days: int = 90
+    log_level: str = "INFO"
+    log_format: str = "console"
+    storage: StorageConfig = Field(default_factory=StorageConfig)
+    timeguard: TimeguardConfig = Field(default_factory=TimeguardConfig)
+    generators: GeneratorConfig = Field(default_factory=GeneratorConfig)
+    alerting: AlertPolicyConfig = Field(default_factory=AlertPolicyConfig)
+    evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
+    sources: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    extras: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("log_format")
+    @classmethod
+    def _check_log_format(cls, value: str) -> str:
+        if value not in {"console", "json"}:
+            raise ValueError("log_format must be 'console' or 'json'")
+        return value
+
+    @property
+    def config_hash(self) -> str:
+        """Hash of the resolved configuration, recorded in every manifest."""
+        return hash_object(self.model_dump(mode="json"))
+
+
+def _deep_merge(base: Mapping[str, Any], overlay: Mapping[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in overlay.items():
+        current = merged.get(key)
+        if isinstance(current, Mapping) and isinstance(value, Mapping):
+            merged[key] = _deep_merge(current, value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _coerce_env_value(raw: str) -> Any:
+    try:
+        return yaml.safe_load(raw)
+    except yaml.YAMLError:
+        return raw
+
+
+def _env_overrides(environ: Mapping[str, str]) -> dict[str, Any]:
+    """Map ``PRAMAANX_STORAGE__DATA_ROOT`` style variables onto nested keys.
+
+    A handful of single-word aliases are kept for the variables people type by
+    hand (``PRAMAANX_DATA_ROOT``, ``PRAMAANX_LOG_LEVEL``).
+    """
+    aliases = {
+        "DATA_ROOT": ("storage", "data_root"),
+        "RUN_ROOT": ("storage", "run_root"),
+        "LOG_LEVEL": ("log_level",),
+        "LOG_FORMAT": ("log_format",),
+        "RANDOM_SEED": ("random_seed",),
+    }
+    overrides: dict[str, Any] = {}
+    for raw_key, raw_value in environ.items():
+        if not raw_key.startswith(ENV_PREFIX):
+            continue
+        suffix = raw_key.removeprefix(ENV_PREFIX)
+        if suffix in aliases:
+            path = aliases[suffix]
+        elif "__" in suffix:
+            path = tuple(part.lower() for part in suffix.split("__"))
+        else:
+            continue  # source credentials are read by connectors, not by Settings
+        cursor = overrides
+        for part in path[:-1]:
+            cursor = cursor.setdefault(part, {})
+        cursor[path[-1]] = _coerce_env_value(raw_value)
+    return overrides
+
+
+def _load_yaml(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        raise FileNotFoundError(f"config file not found: {path}")
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"config file must contain a mapping: {path}")
+    return data
+
+
+def _resolve_includes(data: dict[str, Any], base_dir: Path, seen: set[Path]) -> dict[str, Any]:
+    includes = data.pop("include", []) or []
+    if isinstance(includes, str):
+        includes = [includes]
+    resolved: dict[str, Any] = {}
+    for entry in includes:
+        path = (base_dir / entry).resolve()
+        if path in seen:
+            raise ValueError(f"circular config include: {path}")
+        seen.add(path)
+        child = _resolve_includes(_load_yaml(path), path.parent, seen)
+        resolved = _deep_merge(resolved, child)
+    return _deep_merge(resolved, data)
+
+
+def load_settings(
+    path: Path | str | None = None,
+    *,
+    overrides: Mapping[str, Any] | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> Settings:
+    """Load, layer and validate configuration into :class:`Settings`."""
+    config_path = Path(path) if path is not None else DEFAULT_CONFIG_PATH
+    data: dict[str, Any] = {}
+    if config_path.exists():
+        data = _resolve_includes(
+            _load_yaml(config_path), config_path.parent, {config_path.resolve()}
+        )
+    data = _deep_merge(data, _env_overrides(os.environ if environ is None else environ))
+    if overrides:
+        data = _deep_merge(data, overrides)
+    return Settings.model_validate(data)
+
+
+def dotted_overrides(pairs: Iterable[str]) -> dict[str, Any]:
+    """Turn ``risk.target_recall=0.95`` strings into a nested override mapping."""
+    overrides: dict[str, Any] = {}
+    for pair in pairs:
+        if "=" not in pair:
+            raise ValueError(f"override must look like key.path=value, got {pair!r}")
+        key, _, raw = pair.partition("=")
+        cursor = overrides
+        parts = key.strip().split(".")
+        for part in parts[:-1]:
+            cursor = cursor.setdefault(part, {})
+        cursor[parts[-1]] = _coerce_env_value(raw.strip())
+    return overrides
