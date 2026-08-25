@@ -166,3 +166,70 @@ def test_committed_legacy_artefacts_record_their_failures():
         payload = json.loads(path.read_text())
         assert any(v.startswith("FAIL") for v in payload["invariants"].values()), path
         assert payload["availability_violations"]["total"] > 0, path
+
+
+# ------------------------------------------------------ repository hygiene ---
+
+
+def _tracked_files() -> list[str]:
+    import subprocess
+
+    out = subprocess.run(
+        ["git", "ls-files"], cwd=str(ROOT), capture_output=True, text=True, timeout=30
+    )
+    if out.returncode != 0:
+        pytest.skip("not a git checkout")
+    return out.stdout.splitlines()
+
+
+def test_no_bytecode_is_tracked():
+    """Regression guard for a mistake made while writing this phase.
+
+    The `__pycache__` files were removed from the index, then a `git reset`
+    put them back -- and because pytest had regenerated them on disk in the
+    meantime, `git add -A` re-added them as modifications rather than staging
+    the deletions. `.gitignore` does not help here: it is ignored for files
+    that are already tracked. Only a check like this one notices.
+    """
+    offenders = [f for f in _tracked_files() if "__pycache__" in f or f.endswith((".pyc", ".pyo"))]
+    assert offenders == [], f"{len(offenders)} bytecode files are tracked: {offenders[:5]}"
+
+
+def test_no_generated_or_environment_files_are_tracked():
+    """Caches, virtualenvs, env files and generated corpora are build products.
+    `benchmark_results/` is deliberately exempt: those artefacts are evidence."""
+    banned_prefixes = (
+        ".venv/",
+        "venv/",
+        "artifacts/",
+        ".pytest_cache/",
+        ".ruff_cache/",
+        ".cache/",
+        "build/",
+        "dist/",
+    )
+    offenders = [
+        f
+        for f in _tracked_files()
+        if f.startswith(banned_prefixes)
+        or f.endswith((".parquet", ".egg-info"))
+        or (f == ".env" or f.startswith(".env."))
+    ]
+    assert offenders == [], f"generated files are tracked: {offenders[:5]}"
+
+
+def test_gitignore_covers_what_it_needs_to():
+    ignored = (ROOT / ".gitignore").read_text()
+    for pattern in (
+        "__pycache__/",
+        "*.py[cod]",
+        ".venv/",
+        "artifacts/",
+        ".pytest_cache/",
+        ".ruff_cache/",
+        ".env",
+    ):
+        assert pattern in ignored, f".gitignore is missing {pattern!r}"
+    assert "benchmark_results" not in ignored.replace(
+        "# benchmark_results/ is deliberately NOT ignored", ""
+    ), "benchmark_results/ must stay tracked -- it is the evidence"
