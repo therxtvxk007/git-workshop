@@ -2,7 +2,12 @@
 
 ## What is supported
 
-`requires-python = ">=3.13"`.
+`requires-python = ">=3.13,<3.14"`.
+
+The upper bound is not caution, it is a fact: the package does not import on
+3.14 (below). Without the bound `uv sync` picks the newest interpreter installed
+on the machine, so a fresh clone on a box that happens to have 3.14 fails before
+the first test runs — which is exactly how this was found.
 
 ## What CI actually tests
 
@@ -29,13 +34,20 @@ release candidate, not the 3.14 release, so this is evidence about that specific
 build and not a general claim about 3.14. A newer pydantic may well have fixed
 it already.
 
-## Adding 3.14 (or later) to the matrix
+No published pydantic fixes it today: 2.13.4, the newest available, fails the
+same way.
+
+## Adding 3.14 (or later)
 
 1. `uv lock --upgrade-package pydantic`
 2. `uv run --python 3.14 python -c "import pramaanx.config"`
-3. If it imports, add `"3.14"` to `matrix.python-version` in the CI workflow and
-   run the full suite on it.
+3. If it imports, raise the `requires-python` upper bound in `pyproject.toml`,
+   add `"3.14"` to `matrix.python-version` in the CI workflow, and run the full
+   suite on it.
 4. Update this file with what was actually tested.
+
+The bound and the matrix must move together —
+`tests/contracts/test_packaging.py` fails if they disagree.
 
 Do not add a version to the matrix before step 2 passes locally. A matrix entry
 is a claim, and an untested claim in CI is worse than no entry: it turns red on

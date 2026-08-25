@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "Cutoff-safe, open-world future-event forecasting: candidate discovery -> adjudication -> calibration -> risk-controlled alerting."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.13"
+# Upper-bounded on purpose. The package does not import on 3.14 with any
+# pydantic currently published: pydantic calls typing._eval_type() with a
+# keyword CPython 3.14 removed, and it fails at class-construction time. Without
+# the bound, `uv sync` picks the newest interpreter present and a fresh clone
+# fails before the first test. See docs/python_versions.md.
+requires-python = ">=3.13,<3.14"
 authors = [{ name = "PRAMAAN-X" }]
 keywords = ["forecasting", "osint", "temporal-knowledge-graph", "conformal-risk-control", "calibration"]
 classifiers = [

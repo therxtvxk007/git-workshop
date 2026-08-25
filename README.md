@@ -63,8 +63,9 @@ worse than a missing one, because it makes a skipped requirement look finished.
 ## Quickstart
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.13. `requires-python` is
-`>=3.13`, but 3.13 is the only version CI tests and the only one known to work
-with the current lock file — see **[docs/python_versions.md](docs/python_versions.md)**.
+`>=3.13,<3.14`: the upper bound is deliberate, because the package does not
+import on 3.14 with any currently published pydantic — see
+**[docs/python_versions.md](docs/python_versions.md)**.
 
 ```bash
 uv sync --frozen --extra dev           # install exactly what CI installs
