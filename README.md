@@ -62,10 +62,8 @@ worse than a missing one, because it makes a skipped requirement look finished.
 
 ## Quickstart
 
-Requires [uv](https://docs.astral.sh/uv/) and Python 3.13. `requires-python` is
-`>=3.13,<3.14`: the upper bound is deliberate, because the package does not
-import on 3.14 with any currently published pydantic — see
-**[docs/python_versions.md](docs/python_versions.md)**.
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.13 or 3.14. CI runs the
+full suite on both — see **[docs/python_versions.md](docs/python_versions.md)**.
 
 ```bash
 uv sync --frozen --extra dev           # install exactly what CI installs
@@ -223,6 +221,11 @@ tests/              unit / contracts / leakage / metamorphic / integration
 
 `data/` contents are git-ignored: bronze is reproducible from connectors, and
 licensed evidence must never be committed.
+
+Configuration is strict throughout, including per-source options: an unknown
+source name or a misspelled connector option (`publication_lag_minuts`) raises
+when settings load, rather than being ignored in favour of a default nobody
+chose.
 
 ## Next milestone
 

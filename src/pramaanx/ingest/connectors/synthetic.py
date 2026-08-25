@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from pramaanx.config import SyntheticSourceConfig
 from pramaanx.hashing import canonical_bytes, hash_object, short_hash, stable_id
 from pramaanx.ingest.base import (
     Connector,
@@ -187,20 +188,27 @@ class SyntheticConnector(Connector):
 
     # -- world parameters -------------------------------------------------
     @property
+    def _options(self) -> SyntheticSourceConfig:
+        assert isinstance(self.options, SyntheticSourceConfig)
+        return self.options
+
+    @property
     def _seed(self) -> int:
-        return int(self.options.get("seed", self.settings.random_seed))
+        # Falls back to the global seed so one setting makes a whole run
+        # reproducible.
+        return self._options.seed if self._options.seed is not None else self.settings.random_seed
 
     @property
     def _world_start(self) -> datetime:
-        return self._as_datetime(self.options.get("world_start"), self.DEFAULT_WORLD_START)
+        return self._as_datetime(self._options.world_start, self.DEFAULT_WORLD_START)
 
     @property
     def _world_end(self) -> datetime:
-        return self._as_datetime(self.options.get("world_end"), self.DEFAULT_WORLD_END)
+        return self._as_datetime(self._options.world_end, self.DEFAULT_WORLD_END)
 
     @property
     def _noise_per_day(self) -> float:
-        return float(self.options.get("noise_per_day", 3.0))
+        return self._options.noise_per_day
 
     @staticmethod
     def _as_datetime(value: Any, default: datetime) -> datetime:

@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from pramaanx.config import Settings
+from pramaanx.config import Settings, SourceOptions, SyntheticSourceConfig
 from pramaanx.ingest.base import (
     Connector,
     ConnectorError,
@@ -16,6 +16,7 @@ from pramaanx.ingest.base import (
     available_connectors,
     build_connector,
     get_connector_class,
+    register_connector,
 )
 from pramaanx.schemas.observation import SourceRecord
 
@@ -28,6 +29,8 @@ class StrayConnector(Connector):
 
     source_id = "stray"
     tier = 0
+    # Not registered, so register_connector never assigned one.
+    options_model = SourceOptions
 
     @property
     def source_record(self) -> SourceRecord:
@@ -80,6 +83,24 @@ class TestRegistry:
         with pytest.raises(KeyError, match="registered: gdelt, synthetic"):
             get_connector_class("acled")
 
-    def test_build_connector_passes_source_options(self) -> None:
+    def test_build_connector_passes_validated_source_options(self) -> None:
         settings = Settings(sources={"synthetic": {"seed": 7}})
-        assert build_connector("synthetic", settings).options["seed"] == 7
+        options = build_connector("synthetic", settings).options
+        assert isinstance(options, SyntheticSourceConfig)
+        assert options.seed == 7
+
+    def test_registration_requires_an_options_model(self) -> None:
+        # A connector whose options nothing validates would reintroduce the
+        # silent-typo failure one source at a time.
+        class Unregistered(Connector):
+            source_id = "not_in_the_registry"
+
+            @property
+            def source_record(self) -> SourceRecord:  # pragma: no cover - never reached
+                raise NotImplementedError
+
+            def fetch(self, window: FetchWindow) -> Iterator[RawItem]:  # pragma: no cover
+                raise NotImplementedError
+
+        with pytest.raises(ConnectorError, match="no options model registered"):
+            register_connector(Unregistered)

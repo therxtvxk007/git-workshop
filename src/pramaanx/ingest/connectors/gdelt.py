@@ -20,11 +20,11 @@ from __future__ import annotations
 
 import io
 import zipfile
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from pramaanx.config import Settings
+from pramaanx.config import GdeltSourceConfig, Settings
 from pramaanx.hashing import canonical_bytes
 from pramaanx.ingest.base import (
     Connector,
@@ -157,37 +157,38 @@ class GdeltConnector(Connector):
     def __init__(
         self,
         settings: Settings,
-        options: dict[str, Any] | None = None,
+        options: GdeltSourceConfig | Mapping[str, Any] | None = None,
         fetcher: Fetcher | None = None,
     ) -> None:
         super().__init__(settings, options)
-        self.base_url = str(self.options.get("base_url", DEFAULT_BASE_URL)).rstrip("/")
-        self.publication_lag_minutes = int(
-            self.options.get("publication_lag_minutes", SLOT_MINUTES)
-        )
-        self.max_rows_per_file = int(self.options.get("max_rows_per_file", 0))
-        self.country_filter = {
-            str(code).upper() for code in self.options.get("country_filter", []) if code
-        }
-        self.event_root_codes = {
-            str(code) for code in self.options.get("event_root_codes", []) if code
-        }
-        self.skip_missing_files = bool(self.options.get("skip_missing_files", True))
+        config = self._options
+        self.base_url = config.base_url.rstrip("/")
+        self.publication_lag_minutes = config.publication_lag_minutes
+        self.max_rows_per_file = config.max_rows_per_file
+        self.country_filter = {code.upper() for code in config.country_filter if code}
+        self.event_root_codes = {code for code in config.event_root_codes if code}
+        self.skip_missing_files = config.skip_missing_files
         self._fetcher = fetcher or self._default_fetcher()
 
+    @property
+    def _options(self) -> GdeltSourceConfig:
+        assert isinstance(self.options, GdeltSourceConfig)
+        return self.options
+
     def _default_fetcher(self) -> Fetcher:
+        config = self._options
         cache_dir = self.settings.storage.data_root / "http_cache" / self.source_id
         client = HttpClient(
-            cache_dir=cache_dir if self.options.get("cache", True) else None,
-            timeout_seconds=float(self.options.get("timeout_seconds", 60.0)),
-            max_attempts=int(self.options.get("max_attempts", 4)),
-            backoff_seconds=float(self.options.get("backoff_seconds", 2.0)),
+            cache_dir=cache_dir if config.cache else None,
+            timeout_seconds=config.timeout_seconds,
+            max_attempts=config.max_attempts,
+            backoff_seconds=config.backoff_seconds,
             # Proxy behaviour is configurable per source and otherwise follows
             # the standard environment. See pramaanx.ingest.http.
-            proxy=self.options.get("proxy"),
-            trust_env=bool(self.options.get("trust_env", True)),
-            ca_bundle=self.options.get("ca_bundle"),
-            verify=bool(self.options.get("verify", True)),
+            proxy=config.proxy,
+            trust_env=config.trust_env,
+            ca_bundle=config.ca_bundle,
+            verify=config.verify,
         )
         return client.get
 
@@ -221,8 +222,8 @@ class GdeltConnector(Connector):
             {
                 "base_url": self.base_url,
                 "publication_lag_minutes": self.publication_lag_minutes,
-                "proxy": self.options.get("proxy")
-                or ("<environment>" if self.options.get("trust_env", True) else "<none>"),
+                "proxy": self._options.proxy
+                or ("<environment>" if self._options.trust_env else "<none>"),
                 "files": len(slots),
                 "first_file": self.file_url(slots[0]) if slots else None,
                 "last_file": self.file_url(slots[-1]) if slots else None,

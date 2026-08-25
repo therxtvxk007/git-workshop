@@ -2,53 +2,71 @@
 
 ## What is supported
 
-`requires-python = ">=3.13,<3.14"`.
+`requires-python = ">=3.13,<3.15"` — CPython 3.13 and 3.14.
 
-The upper bound is not caution, it is a fact: the package does not import on
-3.14 (below). Without the bound `uv sync` picks the newest interpreter installed
-on the machine, so a fresh clone on a box that happens to have 3.14 fails before
-the first test runs — which is exactly how this was found.
+## What CI tests
 
-## What CI actually tests
+Both of them. `.github/workflows/ci.yaml` runs the full suite on 3.13 and 3.14,
+and `tests/contracts/test_packaging.py` fails if the matrix and the metadata
+ever drift apart — in either direction. A supported version that CI never runs
+is an untested claim; a CI version the metadata forbids is a contradiction.
 
-**Python 3.13, and only 3.13.** The matrix in `.github/workflows/ci.yaml` has
-one entry. Nothing else is exercised, so nothing else is claimed to work.
+## Why the bound has an upper end at all
 
-## Why 3.14 is not in the matrix
+Not caution about 3.15 specifically. An unbounded `>=3.13` lets `uv sync` select
+the newest interpreter installed on the machine, which is not necessarily one
+anybody has run this code on. That is not hypothetical: it is how an earlier
+fresh-clone check ended up installing against a 3.14 release candidate and
+failing before the first test.
 
-The package does not import on 3.14 with the current `uv.lock`. It is a
-dependency problem, not a problem in this code:
+Raising the bound is a two-line change once a version has actually been tested —
+see below.
+
+## The 3.14 story, corrected
+
+An earlier revision of this file claimed that no published pydantic worked on
+Python 3.14 and pinned the project to `<3.14`. **That was wrong**, and the error
+is worth recording because of how it happened.
+
+The failure observed was real:
 
 ```
 TypeError: _eval_type() got an unexpected keyword argument 'prefer_fwd_module'
-Unable to evaluate type annotation 'Path'.
+Unable to evaluate type annotation 'Path'
 ```
 
-Pydantic's `_typing_extra` calls `typing._eval_type()` with a keyword that
-CPython 3.14 no longer accepts, and the failure occurs at class-construction
-time, so it takes down the first `import pramaanx.config`.
+But it was observed on **CPython 3.14.0rc2**, which was the only 3.14 build the
+development machine's `uv` could fetch — its bundled download manifest predated
+the stable release. A release candidate is not the release, and the conclusion
+drawn from it ("3.14 is unsupported") did not follow from the evidence
+("this rc build fails"). The right response to *cannot test X* is to say so, not
+to record an unsupported generalisation as a fact.
 
-The check was run against **CPython 3.14.0rc2**, which is the 3.14 build
-available from the Python mirror on the machine used for development. That is a
-release candidate, not the 3.14 release, so this is evidence about that specific
-build and not a general claim about 3.14. A newer pydantic may well have fixed
-it already.
+Verified since, on the same dependency set:
 
-No published pydantic fixes it today: 2.13.4, the newest available, fails the
-same way.
+| | |
+| --- | --- |
+| CPython | 3.14.7 |
+| pydantic | 2.13.4 |
+| pydantic-core | 2.46.4 |
+| Result | imports cleanly, full suite passes |
 
-## Adding 3.14 (or later)
+Python 3.14 has been stable since October 2025. The relevant pydantic issue
+([#12544](https://github.com/pydantic/pydantic/issues/12544)) was reported
+against a 3.14 release candidate and does not describe the stable series.
 
-1. `uv lock --upgrade-package pydantic`
-2. `uv run --python 3.14 python -c "import pramaanx.config"`
-3. If it imports, raise the `requires-python` upper bound in `pyproject.toml`,
-   add `"3.14"` to `matrix.python-version` in the CI workflow, and run the full
-   suite on it.
-4. Update this file with what was actually tested.
+If a newer 3.14 build is genuinely unobtainable on some machine, the fix is
+`uv self update` — an older `uv` will not offer a Python it does not know about,
+and that absence is not evidence of anything.
 
-The bound and the matrix must move together —
-`tests/contracts/test_packaging.py` fails if they disagree.
+## Adding a version
 
-Do not add a version to the matrix before step 2 passes locally. A matrix entry
-is a claim, and an untested claim in CI is worse than no entry: it turns red on
-a schedule nobody chose and gets muted.
+1. `uv python install 3.<n>`
+2. `uv run --python 3.<n> python -c "import pramaanx.config"`
+3. Raise the `requires-python` upper bound in `pyproject.toml`.
+4. Add `"3.<n>"` to `matrix.python-version` in the CI workflow.
+5. `uv lock` and run the full suite on it.
+6. Update this file with what was actually tested — the version, the dependency
+   versions, and the result.
+
+Steps 3 and 4 must happen together; the packaging contract test enforces it.

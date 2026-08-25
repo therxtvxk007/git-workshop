@@ -3,19 +3,19 @@
 One milestone, explicit tests, then stop. Each deliverable below names the code
 that implements it and the tests that hold it to account.
 
-Run everything: `make check` — ruff, mypy, and 274 tests with an enforced
+Run everything: `make check` — ruff, mypy, and 296 tests with an enforced
 coverage floor.
 
 | Suite | Tests | What it covers |
 | --- | ---: | --- |
-| `tests/unit` | 138 | Hashing, storage, config, HTTP/proxy, connectors, generator, recency, matcher, metrics, extraction |
-| `tests/contracts` | 53 | Schema round-trips, validation, versioning, configuration typos, packaging metadata |
+| `tests/unit` | 139 | Hashing, storage, config, HTTP/proxy, connectors, generator, recency, matcher, metrics, extraction |
+| `tests/contracts` | 74 | Schema round-trips, validation, versioning, configuration and source-option typos, packaging metadata |
 | `tests/leakage` | 24 | `CutoffGuard`, snapshot immutability, leakage audit |
 | `tests/metamorphic` | 8 | Future-document injection, determinism, chunk invariance |
 | `tests/integration` | 51 | Full pipeline, outcome isolation, censoring, backtest reproducibility, CLI, `make demo` |
 | `tests/network` | 1 | Live GDELT fetch. Opt-in, excluded from CI (`-m "not network"`) |
 
-Counts are from `pytest --collect-only`; 274 offline plus 1 opt-in network test.
+Counts are from `pytest --collect-only`; 296 offline plus 1 opt-in network test.
 
 ---
 
@@ -167,6 +167,38 @@ rates.
   and calibration slope return `None` on a single-class fold
   (`test_roc_auc_undefined_with_one_class`).
 
+## 6a. Strict configuration, including source options
+
+**Implementation** — `ConfigModel` (every block forbids unknown fields),
+`SyntheticSourceConfig`, `GdeltSourceConfig`, `SOURCE_OPTION_MODELS`,
+`Settings.source_options`, `Connector.options_model`.
+
+A misspelled key in YAML is the quietest failure available: the run succeeds,
+the default applies, and the report describes an experiment nobody configured.
+With `publication_lag_minuts: 999` the GDELT connector read 15 instead, and
+every `first_observed_at` in bronze would have been wrong by the difference.
+
+**Accepted when** — `tests/contracts/test_config_contracts.py` and
+`tests/contracts/test_source_config.py`:
+
+- every configuration block rejects unknown fields, by inheritance rather than
+  a per-class setting, so a new block cannot be added without the protection;
+- nested typos are rejected from a YAML file, an override and an environment
+  variable alike (`evaluation.match_min_socre` and eleven others);
+- `publication_lag_minuts` and `country_filer` are rejected, and the error names
+  the source rather than reporting a bare field name;
+- an unknown source name is rejected — `sources.acled` is a typo until a
+  connector for it exists;
+- rejection happens when settings load, not when ingestion eventually runs, and
+  also when a connector is constructed directly;
+- valid synthetic and GDELT configurations still load, with defaults applied;
+- **every option the connectors actually read is declared**, checked by parsing
+  the connector modules rather than by importing them
+  (`TestEveryConsumedOptionIsDeclared`), and no connector reads an option by
+  string key any more;
+- source options remain inside `config_hash`, so a run with a different
+  publication lag is a different experiment and the manifest says so.
+
 ## 7a. Outcome isolation (structural)
 
 **Implementation** — `src/pramaanx/isolation.py`, `Backtester.forecasting_pass`
@@ -253,11 +285,13 @@ honestly rather than excluded: the CLI suite runs in-process through Typer's
 that prove the installed console script exists, which is a packaging fact, not a
 code path.
 
-CI tests Python 3.13 and nothing else, and `requires-python` is bounded to
-match (`>=3.13,<3.14`) so that `uv sync` cannot select an untested interpreter.
-`tests/contracts/test_packaging.py` fails if the bound and the matrix ever
-disagree. See [docs/python_versions.md](python_versions.md) for why 3.14 is
-excluded and what would have to be true to add it.
+CI runs the full suite on Python 3.13 and 3.14, and `requires-python`
+(`>=3.13,<3.15`) is bounded to match, so `uv sync` cannot select an untested
+interpreter. `tests/contracts/test_packaging.py` compares the two with
+`packaging.specifiers` and fails if either drifts — an untested supported
+version and an unsupported tested version are both contradictions. See
+[docs/python_versions.md](python_versions.md), which also records a wrong
+conclusion drawn earlier from a release-candidate build.
 
 ## 10. Documentation
 

@@ -4,16 +4,15 @@ version = "0.1.0"
 description = "Cutoff-safe, open-world future-event forecasting: candidate discovery -> adjudication -> calibration -> risk-controlled alerting."
 readme = "README.md"
 license = { file = "LICENSE" }
-# Upper-bounded on purpose. The package does not import on 3.14 with any
-# pydantic currently published: pydantic calls typing._eval_type() with a
-# keyword CPython 3.14 removed, and it fails at class-construction time. Without
-# the bound, `uv sync` picks the newest interpreter present and a fresh clone
-# fails before the first test. See docs/python_versions.md.
-requires-python = ">=3.13,<3.14"
+# Bounded at both ends. The lower bound is what the code needs; the upper bound
+# is what has actually been run. CI tests every minor version inside this range,
+# and tests/contracts/test_packaging.py fails if the two disagree.
+requires-python = ">=3.13,<3.15"
 authors = [{ name = "PRAMAAN-X" }]
 keywords = ["forecasting", "osint", "temporal-knowledge-graph", "conformal-risk-control", "calibration"]
 classifiers = [
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Intended Audience :: Science/Research",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
@@ -35,6 +34,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "packaging>=24.0",  # version-specifier parsing in the packaging contract tests
   "pytest>=8.3",
   "pytest-cov>=5.0",
   "ruff>=0.6",
@@ -60,7 +60,7 @@ default-groups = []
 
 [tool.ruff]
 line-length = 100
-target-version = "py313"
+target-version = "py313"  # lowest supported; keeps syntax portable across the range
 src = ["src", "tests", "scripts"]
 
 [tool.ruff.lint]

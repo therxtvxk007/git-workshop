@@ -23,10 +23,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.13 only. The locked dependency set does not import on 3.14 yet:
-        # pydantic calls typing._eval_type() with a keyword that 3.14 removed.
-        # See docs/python_versions.md before adding a version here.
-        python-version: ["3.13"]
+        # Every minor version inside requires-python. The packaging contract
+        # test fails if this list and the metadata drift apart.
+        python-version: ["3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
 

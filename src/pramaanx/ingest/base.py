@@ -9,12 +9,12 @@ connector that fakes it defeats the entire temporal guarantee.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, ClassVar
 
-from pramaanx.config import Settings
+from pramaanx.config import SOURCE_OPTION_MODELS, Settings, SourceOptions
 from pramaanx.schemas.observation import Modality, SourceRecord
 
 
@@ -80,12 +80,25 @@ class Connector(ABC):
     #: 0 = required for the first working model, 1 = later extension,
     #: 2 = institutional/licensed.
     tier: int = 0
+    #: The validated shape of this connector's options, from
+    #: :data:`pramaanx.config.SOURCE_OPTION_MODELS`.
+    options_model: ClassVar[type[SourceOptions]]
 
-    def __init__(self, settings: Settings, options: dict[str, Any] | None = None) -> None:
-        self.settings = settings
-        self.options = dict(options or {})
+    def __init__(
+        self, settings: Settings, options: SourceOptions | Mapping[str, Any] | None = None
+    ) -> None:
         if not self.source_id:
             raise ConnectorError(f"{type(self).__name__} must define source_id")
+        self.settings = settings
+        # A plain mapping is validated here rather than trusted, so constructing
+        # a connector directly rejects the same typos that loading a config
+        # would. Options are typed from this point on: no .get() with a string
+        # key that nothing checks.
+        model = type(self).options_model
+        if isinstance(options, SourceOptions):
+            self.options = options
+        else:
+            self.options = model.model_validate(dict(options or {}))
 
     @property
     @abstractmethod
@@ -104,7 +117,7 @@ class Connector(ABC):
             "window_start": window.start.isoformat(),
             "window_end": window.end.isoformat(),
             "window_days": round(window.days, 4),
-            "options": dict(sorted(self.options.items())),
+            "options": self.options.model_dump(mode="json"),
             "implemented": type(self).fetch is not Connector.fetch,
         }
 
@@ -129,6 +142,13 @@ def register_connector(cls: type[Connector]) -> type[Connector]:
         raise ConnectorError(f"{cls.__name__} must define source_id before registration")
     if cls.source_id in _REGISTRY and _REGISTRY[cls.source_id] is not cls:
         raise ConnectorError(f"duplicate connector source_id: {cls.source_id}")
+    registered = SOURCE_OPTION_MODELS.get(cls.source_id)
+    if registered is None:
+        raise ConnectorError(
+            f"connector {cls.source_id!r} has no options model registered in "
+            "pramaanx.config.SOURCE_OPTION_MODELS; its configuration would be unchecked"
+        )
+    cls.options_model = registered
     _REGISTRY[cls.source_id] = cls
     return cls
 
@@ -144,7 +164,7 @@ def get_connector_class(source_id: str) -> type[Connector]:
 
 def build_connector(source_id: str, settings: Settings) -> Connector:
     cls = get_connector_class(source_id)
-    return cls(settings, settings.sources.get(source_id, {}))
+    return cls(settings, settings.source_options(source_id))
 
 
 def available_connectors() -> dict[str, type[Connector]]:
