@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from pramaanx.hashing import hash_object
 
@@ -22,7 +22,20 @@ ENV_PREFIX = "PRAMAANX_"
 DEFAULT_CONFIG_PATH = Path("configs/base.yaml")
 
 
-class StorageConfig(BaseModel):
+class ConfigModel(BaseModel):
+    """Base for every configuration block.
+
+    ``extra="forbid"`` is on the base class rather than on each block, because
+    the failure it prevents is silent: a typo like ``match_min_socre`` in a YAML
+    file would otherwise be ignored, the default would apply, and the run would
+    report metrics computed under a threshold nobody chose. A config typo has to
+    be an error, not a shrug.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class StorageConfig(ConfigModel):
     data_root: Path = Path("data")
     run_root: Path = Path("runs")
     parquet_compression: str = "zstd"
@@ -45,7 +58,7 @@ class StorageConfig(BaseModel):
         return self.data_root / "snapshots"
 
 
-class TimeguardConfig(BaseModel):
+class TimeguardConfig(ConfigModel):
     """Cutoff safety is a model feature, not merely an evaluation option."""
 
     strict: bool = True
@@ -69,7 +82,7 @@ class TimeguardConfig(BaseModel):
     max_future_skew_seconds: int = 0
 
 
-class GeneratorConfig(BaseModel):
+class GeneratorConfig(ConfigModel):
     """Which candidate generators run, and with what proposal budget.
 
     M0 ships one generator (``base_rate``). The list exists so that adding G1-G7
@@ -86,7 +99,7 @@ class GeneratorConfig(BaseModel):
     recent_activity_days: int = Field(default=30, gt=0)
 
 
-class AlertPolicyConfig(BaseModel):
+class AlertPolicyConfig(ConfigModel):
     """Placeholder thresholds for the backtest skeleton.
 
     These are NOT the risk controller. Phase 8 replaces this with recall-first
@@ -112,7 +125,7 @@ class AlertPolicyConfig(BaseModel):
         return self
 
 
-class EvaluationConfig(BaseModel):
+class EvaluationConfig(ConfigModel):
     time_buckets: list[str] = Field(
         default_factory=lambda: ["0-1d", "2-3d", "4-7d", "8-14d", "15-30d", "31-90d"]
     )
@@ -120,11 +133,17 @@ class EvaluationConfig(BaseModel):
     match_min_score: float = Field(default=0.6, ge=0.0, le=1.0)
     proposal_budgets: list[int] = Field(default_factory=lambda: [50, 100, 250, 500])
     alerts_per_region_day: float = Field(default=5.0, gt=0.0)
+    #: Floor on how long after an event its first legitimate report may arrive.
+    #: The backtest requires evidence through
+    #: ``final cutoff + horizon + max(this, the empirical maximum)`` before it
+    #: will score a fold; anything shorter is right-censored, and missing
+    #: reports are indistinguishable from events that never happened.
+    max_reporting_delay_days: float = Field(default=3.0, ge=0.0)
     reliability_bins: int = Field(default=10, gt=1)
     step_days: int = Field(default=7, gt=0)
 
 
-class Settings(BaseModel):
+class Settings(ConfigModel):
     """Fully resolved run configuration."""
 
     version: int = 1
@@ -139,8 +158,6 @@ class Settings(BaseModel):
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     sources: dict[str, dict[str, Any]] = Field(default_factory=dict)
     extras: dict[str, Any] = Field(default_factory=dict)
-
-    model_config = {"extra": "forbid"}
 
     @field_validator("log_format")
     @classmethod

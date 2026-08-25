@@ -24,6 +24,7 @@ from typing import Any
 from pramaanx.config import Settings
 from pramaanx.hashing import stable_id
 from pramaanx.ingest.ledger import EvidenceLedger
+from pramaanx.isolation import guard_outcome_access
 from pramaanx.logging import get_logger
 from pramaanx.schemas.event import ResolvedEvent
 from pramaanx.schemas.observation import Observation
@@ -132,6 +133,7 @@ def build_outcome_registry(
     registry_version: str = AUTO_REGISTRY_VERSION,
 ) -> list[OutcomeRecord]:
     """Derive provisional outcome records from asserted reporting."""
+    guard_outcome_access("build_outcome_registry")
     grouped: dict[str, list[_Report]] = {}
     for observation in observations:
         if observation.source_id not in {"synthetic", "gdelt"}:

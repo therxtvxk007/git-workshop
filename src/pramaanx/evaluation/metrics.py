@@ -247,10 +247,17 @@ def precision_recall_f1(counts: Mapping[str, int]) -> dict[str, float | None]:
     tp, fp, fn = counts["tp"], counts["fp"], counts["fn"]
     precision = round(tp / (tp + fp), 9) if (tp + fp) else None
     recall = round(tp / (tp + fn), 9) if (tp + fn) else None
-    if precision and recall and (precision + recall) > 0:
-        f1: float | None = round(2 * precision * recall / (precision + recall), 9)
+    # F1 is undefined only when precision or recall is itself undefined -- that
+    # is, when nothing was predicted positive or nothing was positive. A model
+    # that predicted and was wrong every time has precision 0.0 and F1 0.0; an
+    # earlier version reported None there, because 0.0 is falsy, which quietly
+    # turned the worst possible score into a missing one.
+    if precision is None or recall is None:
+        f1: float | None = None
+    elif precision + recall == 0.0:
+        f1 = 0.0
     else:
-        f1 = None
+        f1 = round(2 * precision * recall / (precision + recall), 9)
     return {"precision": precision, "recall": recall, "f1": f1}
 
 

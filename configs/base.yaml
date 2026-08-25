@@ -65,13 +65,23 @@ sources:
     world_end: "2026-07-01T00:00:00Z"
     noise_per_day: 5
   gdelt:
-    base_url: "http://data.gdeltproject.org/gdeltv2"
+    # https, not http: CONNECT-style egress proxies reject plain-HTTP requests.
+    base_url: "https://data.gdeltproject.org/gdeltv2"
     # GDELT publishes a file per 15-minute slot; the lag is how long after the
     # slot the file is treated as observable. Conservative on purpose.
     publication_lag_minutes: 15
     cache: true
     max_attempts: 4
     backoff_seconds: 2.0
+    # Egress. By default the standard environment is honoured:
+    # HTTP_PROXY / HTTPS_PROXY / ALL_PROXY / NO_PROXY / SSL_CERT_FILE.
+    # Set proxy to override it explicitly (http://, https:// or socks5://),
+    # trust_env: false to ignore the environment entirely, and ca_bundle to
+    # point at a private root where the proxy terminates TLS.
+    # proxy: "socks5://127.0.0.1:1080"
+    trust_env: true
+    # ca_bundle: /etc/ssl/certs/corp-root.pem
+    verify: true
     # Unfiltered ingestion is roughly 2000 rows per file. Narrow before running
     # anything longer than a day.
     max_rows_per_file: 0

@@ -147,6 +147,10 @@ def estimate_rates(
     for mention in mentions:
         if mention.modality not in OCCURRED:
             continue
+        # A report that was not available by the cutoff cannot inform a rate at
+        # the cutoff, even if the event it describes is older than one.
+        if mention.observed_at > cutoff_at:
+            continue
         moment = mention.event_time_start
         if moment is None or moment < window_start or moment > cutoff_at:
             continue
@@ -201,6 +205,8 @@ def seasonal_multiplier(
     total = 0
     for mention in mentions:
         if mention.event_type != event_type or mention.modality not in OCCURRED:
+            continue
+        if mention.observed_at > cutoff_at:
             continue
         moment = mention.event_time_start
         if moment is None or moment < window_start or moment > cutoff_at:
@@ -281,22 +287,19 @@ class BaseRateGenerator(BaseGenerator):
         for mention in self.mentions:
             if mention.modality not in FORWARD_LOOKING and mention.modality != "denied":
                 continue
+            # Recency is a question about when the claim became available, which
+            # is what observed_at records. Using event_time_start here would be
+            # wrong three ways at once: every undated claim would be kept
+            # forever, a fresh warning about an event two months out would be
+            # discarded as "outside the window", and a stale claim about an
+            # imminent event would count as new activity.
+            if not mention.is_recent(window_start=window_start, cutoff_at=cutoff_at):
+                continue
             activity[stream_key(mention)].append(mention)
-        # Recency is judged by when the claim was made, which for these sources
-        # is the mention's own observation; mentions carry no separate
-        # observation time, so the trailing filter uses the event time when the
-        # source supplied one and keeps the mention otherwise.
-        trimmed: dict[StreamKey, list[EventMention]] = {}
-        for key, items in activity.items():
-            kept = [
-                item
-                for item in items
-                if item.event_time_start is None
-                or (window_start <= item.event_time_start <= cutoff_at)
-            ]
-            if kept:
-                trimmed[key] = sorted(kept, key=lambda item: item.mention_id)
-        return trimmed
+        return {
+            key: sorted(items, key=lambda item: item.mention_id)
+            for key, items in sorted(activity.items())
+        }
 
     def _activity_multiplier(self, mentions: Sequence[EventMention]) -> float:
         supporting = [item for item in mentions if item.modality in FORWARD_LOOKING]

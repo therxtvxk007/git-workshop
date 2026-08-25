@@ -3,15 +3,19 @@
 One milestone, explicit tests, then stop. Each deliverable below names the code
 that implements it and the tests that hold it to account.
 
-Run everything: `make check` (167 tests, ruff, mypy).
+Run everything: `make check` — ruff, mypy, and 270 tests with an enforced
+coverage floor.
 
 | Suite | Tests | What it covers |
 | --- | ---: | --- |
-| `tests/unit` | 102 | Hashing, storage, config, connectors, generator, matcher, metrics, extraction |
-| `tests/contracts` | 18 | Schema round-trips, validation, versioning |
-| `tests/leakage` | 23 | `CutoffGuard`, snapshot immutability, leakage audit |
+| `tests/unit` | 138 | Hashing, storage, config, HTTP/proxy, connectors, generator, recency, matcher, metrics, extraction |
+| `tests/contracts` | 49 | Schema round-trips, validation, versioning, configuration typos |
+| `tests/leakage` | 24 | `CutoffGuard`, snapshot immutability, leakage audit |
 | `tests/metamorphic` | 8 | Future-document injection, determinism, chunk invariance |
-| `tests/integration` | 16 | Full pipeline, backtest reproducibility, CLI |
+| `tests/integration` | 51 | Full pipeline, outcome isolation, censoring, backtest reproducibility, CLI, `make demo` |
+| `tests/network` | 1 | Live GDELT fetch. Opt-in, excluded from CI (`-m "not network"`) |
+
+Counts are from `pytest --collect-only`; 270 offline plus 1 opt-in network test.
 
 ---
 
@@ -20,9 +24,17 @@ Run everything: `make check` (167 tests, ruff, mypy).
 **Implementation** — `pyproject.toml`, `Makefile`, `configs/`, `.env.example`,
 `.gitignore`, `LICENSE`.
 
-**Accepted when** — `uv sync --extra dev` installs from a lock file, `make check`
-runs lint, types and tests, and no credential or licensed datum is committed
-(`data/**` is git-ignored; credentials live in `.env`, which is not).
+**Accepted when** — `uv sync --frozen --extra dev` installs from the lock file,
+`make check` runs lint, types and tests behind a coverage floor, `make demo`
+runs end to end offline from a fresh clone, and no credential or licensed datum
+is committed (`data/**` is git-ignored; credentials live in `.env`, which is not).
+
+`tests/integration/test_make_demo.py` does not re-implement the demo: it *reads
+the recipe out of the Makefile* and runs it, so the documented entry point
+cannot drift from what is tested. It also checks the two things that actually
+broke it — an argument the bootstrap script never accepted
+(`test_bootstrap_accepts_every_documented_argument`) and an ingestion window too
+short for the final fold (`test_ingestion_window_outruns_the_final_fold`).
 
 ## 2. The five core schemas
 
@@ -155,6 +167,55 @@ rates.
   and calibration slope return `None` on a single-class fold
   (`test_roc_auc_undefined_with_one_class`).
 
+## 7a. Outcome isolation (structural)
+
+**Implementation** — `src/pramaanx/isolation.py`, `Backtester.forecasting_pass`
+and `Backtester.scoring_pass`.
+
+The ordering rule used to be enforced by the order of two statements in one
+function. That is a convention, and conventions last until someone adds a line
+in the wrong place — at which point nothing announces itself and the run simply
+gets better. The rule is now enforced by the runtime: during the forecasting
+pass, a context variable seals every outcome-reading entry point
+(`EvidenceLedger.read_outcomes`, `read_resolved_events`, `write_outcomes`,
+`build_outcome_registry`, `OutcomeMatcher.score`), and any access raises
+`OutcomeAccessError` however deep in the call stack it happens.
+
+**Accepted when** — `tests/integration/test_outcome_isolation.py`:
+
+- pass A runs against a ledger that raises on any outcome access, and completes
+  (`test_forecasting_pass_never_touches_outcomes`);
+- what crosses between passes carries no outcome data — `CutoffPlan` has exactly
+  five fields (`test_pass_a_output_carries_no_outcome_data`);
+- pass B re-reads forecasts **from the ledger**, so what is scored is provably
+  what was persisted before outcomes existed
+  (`test_scoring_pass_reads_forecasts_back_from_the_ledger`);
+- the seal releases on the way out, including on an exception;
+- observations stay readable inside the seal — it must not block the evidence
+  the forecasting pass legitimately needs.
+
+## 7b. Right-censored evaluation
+
+**Implementation** — `ResolutionBoundary`, `measure_resolution_boundary`,
+`CensoredEvaluationError`, `evaluation.max_reporting_delay_days`.
+
+A fold whose evidence stops before `cutoff + horizon + reporting delay` has not
+seen the reports that would resolve it. Score it anyway and the missing reports
+look exactly like events that never happened.
+
+**Accepted when** — `tests/integration/test_censoring.py`:
+
+- the delay allowance is the larger of the configured floor and the maximum
+  actually observed in the registry (`test_delay_is_the_larger_of_configured_and_observed`);
+- short folds are marked unscoreable with the shortfall stated in days, and are
+  excluded from the aggregate — but are still forecast, because censoring is an
+  evaluation limit, not a reason to skip the work;
+- a walk with no scoreable fold raises `CensoredEvaluationError` rather than
+  emitting a report of artefacts (`test_a_wholly_censored_walk_fails_loudly`);
+- the report names the censored folds and says so in its interpretation limits;
+- the shipped experiments fit inside the demo ingestion window
+  (`TestShippedExperimentsAreNotCensored`).
+
 ## 8. Future-leakage tests
 
 **The M0 gate.** `tests/metamorphic/test_future_injection.py`:
@@ -182,9 +243,19 @@ Two negative controls stop this passing for the wrong reason:
 **Implementation** — `.github/workflows/ci.yaml`, `Makefile`, `pyproject.toml`.
 
 **Accepted when** — two jobs pass: `quality` (ruff check, ruff format --check,
-mypy, pytest with coverage) and `m0-gate` (leakage + metamorphic + contract
-suites verbosely, then the offline end-to-end demo). Network-marked tests are
-excluded from CI: a green build must never mean "GDELT happened to be reachable".
+mypy, pytest with `--cov-fail-under=88`) and `m0-gate` (leakage + metamorphic +
+contract suites verbosely, then `make demo`). Network-marked tests are excluded
+from CI: a green build must never mean "GDELT happened to be reachable".
+
+The coverage floor is **enforced**, not reported. CLI coverage is measured
+honestly rather than excluded: the CLI suite runs in-process through Typer's
+`CliRunner`, so its lines count, and only two subprocess tests remain — the ones
+that prove the installed console script exists, which is a packaging fact, not a
+code path.
+
+CI tests Python 3.13 and nothing else. See
+[docs/python_versions.md](python_versions.md) for why 3.14 is not in the matrix
+and what would have to be true to add it.
 
 ## 10. Documentation
 

@@ -141,6 +141,11 @@ class LatentEvent:
         }
 
 
+#: Generated worlds, keyed by the parameters that determine them. The world is a
+#: pure function of those parameters, so this changes speed and nothing else.
+_WORLD_CACHE: dict[tuple[int, str, str, float], list[SyntheticDoc]] = {}
+
+
 @dataclass(frozen=True)
 class SyntheticDoc:
     """One document the world publishes."""
@@ -226,6 +231,15 @@ class SyntheticConnector(Connector):
         return window.days * (self._noise_per_day + latent_per_day * docs_per_latent)
 
     # -- generation -------------------------------------------------------
+    @property
+    def _world_key(self) -> tuple[int, str, str, float]:
+        return (
+            self._seed,
+            self._world_start.isoformat(),
+            self._world_end.isoformat(),
+            self._noise_per_day,
+        )
+
     def _latent_events(self) -> list[LatentEvent]:
         """Generate the full latent event set once, for the whole world span.
 
@@ -275,12 +289,26 @@ class SyntheticConnector(Connector):
         return sorted(events, key=lambda item: (item.occurred_at, item.event_key))
 
     def _documents(self) -> list[SyntheticDoc]:
+        """The whole world, generated once per parameter set.
+
+        Generating everything and then filtering is what makes ingestion
+        chunk-invariant, but it also means an unmemoised generator re-derives
+        547 days of world for every window a caller asks for. The result is a
+        pure function of the four parameters below, so it is cached: chunked
+        ingestion goes from O(chunks x world) to O(world), and a test suite that
+        ingests dozens of times pays for it once.
+        """
+        cached = _WORLD_CACHE.get(self._world_key)
+        if cached is not None:
+            return cached
         docs: list[SyntheticDoc] = []
         for event in self._latent_events():
             docs.extend(self._precursors(event))
             docs.extend(self._reports(event))
         docs.extend(self._noise())
-        return sorted(docs, key=lambda doc: (doc.first_observed_at, doc.payload["doc_id"]))
+        ordered = sorted(docs, key=lambda doc: (doc.first_observed_at, doc.payload["doc_id"]))
+        _WORLD_CACHE[self._world_key] = ordered
+        return ordered
 
     def _precursors(self, event: LatentEvent) -> Iterator[SyntheticDoc]:
         """Chatter before the event. Some events leave no trace at all."""

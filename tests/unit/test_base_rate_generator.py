@@ -27,18 +27,30 @@ def mention(
     actor: str = "Farmers Union Federation",
     modality: str = "asserted",
     days_before: float = 10.0,
+    observed_days_before: float | None = None,
+    dated: bool = True,
 ) -> EventMention:
+    """A mention whose event time and availability time can differ.
+
+    ``days_before`` is when the event is (or was); ``observed_days_before`` is
+    when somebody said so. They are separate on purpose -- conflating them is
+    the bug this factory exists to test for.
+    """
     moment = CUTOFF - timedelta(days=days_before)
+    observed = CUTOFF - timedelta(
+        days=days_before if observed_days_before is None else observed_days_before
+    )
     return EventMention(
         mention_id=f"men_{index:04d}",
         observation_id=f"obs_{index:04d}",
+        observed_at=observed,
         subject=actor,
         relation="participates_in",
         object=None,
         event_type=event_type,
         location_text=region,
-        event_time_start=moment,
-        event_time_end=moment,
+        event_time_start=moment if dated else None,
+        event_time_end=moment if dated else None,
         modality=modality,  # type: ignore[arg-type]
         extraction_probability=0.8,
         supporting_span=f"span {index}",

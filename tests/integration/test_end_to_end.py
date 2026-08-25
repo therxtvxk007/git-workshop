@@ -8,13 +8,16 @@ operable without notebooks.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 import yaml
+from typer.testing import CliRunner, Result
 
 from pramaanx.clock import FixedClock
 from pramaanx.config import Settings
@@ -29,6 +32,7 @@ from pramaanx.schemas.forecast import ForecastStatus
 from pramaanx.timeguard.snapshots import SnapshotBuilder
 
 CUTOFF = datetime(2025, 6, 1, tzinfo=UTC)
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 @pytest.fixture
@@ -185,104 +189,161 @@ class TestBacktest:
 
 
 class TestCli:
-    """The CLI is the product surface; it has to work from a clean directory."""
+    """The CLI is the product surface; it has to work from a clean directory.
 
-    def run(self, *args: str, cwd: Path) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [sys.executable, "-m", "pramaanx.cli", *args],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+    Invoked in-process through Typer's runner rather than as a subprocess, so
+    the CLI's own lines are visible to coverage. One subprocess test remains
+    below, because in-process invocation cannot prove the installed console
+    script exists.
+    """
 
     @pytest.fixture
-    def workspace(self, tmp_path: Path) -> Path:
+    def workspace(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         config = {
             "storage": {"data_root": str(tmp_path / "data"), "run_root": str(tmp_path / "runs")},
             "horizon_days": 30,
             "sources": {"synthetic": {"seed": 7}},
         }
         (tmp_path / "config.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")
+        # Experiment files are referenced by relative path, as they are in the
+        # documented commands.
+        shutil.copytree(REPO_ROOT / "configs", tmp_path / "configs")
+        monkeypatch.chdir(tmp_path)
         return tmp_path
 
+    def invoke(self, *args: str) -> Result:
+        from pramaanx.cli import app
+
+        result = CliRunner().invoke(app, list(args))
+        if result.exception is not None and not isinstance(result.exception, SystemExit):
+            raise result.exception
+        return result
+
+    def payload(self, result: Result) -> dict[str, Any]:
+        assert result.exit_code == 0, result.output
+        # The manifest is the last line; structlog writes to stderr.
+        return json.loads(result.output.strip().splitlines()[-1])
+
     def test_version_lists_what_is_not_built(self, workspace: Path) -> None:
-        result = self.run("version", cwd=workspace)
-        assert result.returncode == 0
-        payload = json.loads(result.stdout)
+        payload = self.payload(self.invoke("version"))
         assert payload["milestone"] == "M0"
         assert "calibration" in payload["not_implemented_stages"]
 
     def test_dry_run_writes_nothing(self, workspace: Path) -> None:
-        result = self.run(
-            "ingest",
-            "--source",
-            "synthetic",
-            "--from",
-            "2025-01-01",
-            "--until",
-            "2025-02-01",
-            "--config",
-            "config.yaml",
-            "--dry-run",
-            cwd=workspace,
+        payload = self.payload(
+            self.invoke(
+                "ingest",
+                "--source",
+                "synthetic",
+                "--from",
+                "2025-01-01",
+                "--until",
+                "2025-02-01",
+                "--config",
+                "config.yaml",
+                "--dry-run",
+            )
         )
-        assert result.returncode == 0, result.stderr
-        payload = json.loads(result.stdout)
         assert payload["dry_run"] is True
         assert payload["written"] == 0
         assert not (workspace / "data" / "bronze" / "observations").exists()
 
     def test_ingest_snapshot_and_candidates(self, workspace: Path) -> None:
-        ingest = self.run(
-            "ingest",
-            "--source",
-            "synthetic",
-            "--from",
-            "2025-01-01",
-            "--until",
-            "2025-06-01",
-            "--config",
-            "config.yaml",
-            cwd=workspace,
+        ingest = self.payload(
+            self.invoke(
+                "ingest",
+                "--source",
+                "synthetic",
+                "--from",
+                "2025-01-01",
+                "--until",
+                "2025-06-01",
+                "--config",
+                "config.yaml",
+            )
         )
-        assert ingest.returncode == 0, ingest.stderr
-        assert json.loads(ingest.stdout)["written"] > 0
+        assert ingest["written"] > 0
 
-        snapshot = self.run(
-            "snapshot",
-            "build",
-            "--cutoff",
-            "2025-05-01T00:00:00Z",
-            "--config",
-            "config.yaml",
-            cwd=workspace,
+        snapshot = self.payload(
+            self.invoke(
+                "snapshot", "build", "--cutoff", "2025-05-01T00:00:00Z", "--config", "config.yaml"
+            )
         )
-        assert snapshot.returncode == 0, snapshot.stderr
-        snapshot_id = json.loads(snapshot.stdout)["snapshot_id"]
+        snapshot_id = snapshot["snapshot_id"]
 
-        candidates = self.run(
-            "candidates",
-            "generate",
-            "--snapshot",
-            snapshot_id,
-            "--budget",
-            "50",
-            "--config",
-            "config.yaml",
-            cwd=workspace,
+        listing = self.payload(self.invoke("snapshot", "list", "--config", "config.yaml"))
+        assert snapshot_id in {item["snapshot_id"] for item in listing["snapshots"]}
+
+        extracted = self.payload(
+            self.invoke("extract", "--snapshot", snapshot_id, "--config", "config.yaml")
         )
-        assert candidates.returncode == 0, candidates.stderr
-        payload = json.loads(candidates.stdout)
-        assert 0 < payload["candidates"] <= 50
-        assert payload["forecasts_written"] == payload["candidates"]
+        assert extracted["mentions"] > 0
 
-        audit = self.run("audit", "leakage", "--config", "config.yaml", cwd=workspace)
-        assert audit.returncode == 0, audit.stderr
-        assert json.loads(audit.stdout)["mechanically_clean"] is True
+        candidates = self.payload(
+            self.invoke(
+                "candidates",
+                "generate",
+                "--snapshot",
+                snapshot_id,
+                "--budget",
+                "50",
+                "--config",
+                "config.yaml",
+            )
+        )
+        assert 0 < candidates["candidates"] <= 50
+        assert candidates["forecasts_written"] == candidates["candidates"]
+
+        outcomes = self.payload(self.invoke("outcomes", "build", "--config", "config.yaml"))
+        assert outcomes["outcomes"] > 0
+        assert outcomes["adjudication"]["unadjudicated_fraction"] == 1.0
+
+        audit = self.payload(self.invoke("audit", "leakage", "--config", "config.yaml"))
+        assert audit["mechanically_clean"] is True
+
+    def test_backtest_dry_run_lists_cutoffs(self, workspace: Path) -> None:
+        payload = self.payload(
+            self.invoke("backtest", "--experiment", "configs/experiments/smoke.yaml", "--dry-run")
+        )
+        assert payload["dry_run"] is True
+        assert payload["cutoffs"]
+
+    def test_report_for_an_unknown_run_fails_cleanly(self, workspace: Path) -> None:
+        result = self.invoke("report", "--run-id", "run_missing", "--config", "config.yaml")
+        assert result.exit_code == 1
 
     def test_sources_reports_licences(self, workspace: Path) -> None:
-        result = self.run("sources", "--config", "config.yaml", cwd=workspace)
-        assert result.returncode == 0
-        sources = {item["source_id"]: item for item in json.loads(result.stdout)["sources"]}
+        payload = self.payload(self.invoke("sources", "--config", "config.yaml"))
+        sources = {item["source_id"]: item for item in payload["sources"]}
         assert sources["gdelt"]["redistributable"] is False
+
+    def test_manifests_can_be_written_to_a_file(self, workspace: Path) -> None:
+        target = workspace / "manifest.json"
+        result = self.invoke("sources", "--config", "config.yaml", "--output", str(target))
+        assert result.exit_code == 0
+        assert json.loads(target.read_text())["kind"] == "sources"
+
+
+class TestInstalledEntryPoint:
+    """The console script exists and runs. Subprocess, necessarily."""
+
+    def test_module_entry_point_runs(self, tmp_path: Path) -> None:
+        result = subprocess.run(
+            [sys.executable, "-m", "pramaanx.cli", "version"],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr
+        assert json.loads(result.stdout)["milestone"] == "M0"
+
+    def test_console_script_is_installed(self, tmp_path: Path) -> None:
+        executable = Path(sys.executable).parent / "pramaanx"
+        if not executable.exists():  # pragma: no cover - editable install layout
+            pytest.skip("console script not present in this environment")
+        result = subprocess.run(
+            [str(executable), "version"], cwd=tmp_path, capture_output=True, text=True, check=False
+        )
+        assert result.returncode == 0, result.stderr
+        assert json.loads(result.stdout)["milestone"] == "M0"

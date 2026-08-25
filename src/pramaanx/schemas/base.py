@@ -19,8 +19,11 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from pramaanx.hashing import canonical_bytes, hash_object
 
-SCHEMA_VERSION = 1
-"""Bump on any change to persisted field meaning. See docs/schema_changelog."""
+SCHEMA_VERSION = 2
+"""Bump on any change to persisted field meaning.
+
+See ``docs/schema_changelog.md``. Version 2 added ``EventMention.observed_at``.
+"""
 
 Probability = Annotated[float, Field(ge=0.0, le=1.0)]
 

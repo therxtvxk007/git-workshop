@@ -20,6 +20,7 @@ from pramaanx.clock import Clock, SystemClock
 from pramaanx.config import Settings
 from pramaanx.hashing import utc_isoformat
 from pramaanx.ingest.base import Connector, ConnectorError, FetchWindow, RawItem, build_connector
+from pramaanx.isolation import guard_outcome_access
 from pramaanx.logging import get_logger, log_context
 from pramaanx.schemas.event import EventMention, ResolvedEvent
 from pramaanx.schemas.observation import Observation, SourceRecord
@@ -229,9 +230,11 @@ class EvidenceLedger:
         return self.mentions.append(list(mentions))
 
     def write_resolved_events(self, events: Iterable[ResolvedEvent]) -> WriteResult:
+        guard_outcome_access("EvidenceLedger.write_resolved_events")
         return self.resolved_events.append(list(events))
 
     def write_outcomes(self, outcomes: Iterable[OutcomeRecord]) -> WriteResult:
+        guard_outcome_access("EvidenceLedger.write_outcomes")
         return self.outcomes.append(list(outcomes))
 
     # -- reading ---------------------------------------------------------
@@ -252,9 +255,11 @@ class EvidenceLedger:
         return self.sources.read_models(SourceRecord)
 
     def read_resolved_events(self) -> list[ResolvedEvent]:
+        guard_outcome_access("EvidenceLedger.read_resolved_events")
         return self.resolved_events.read_models(ResolvedEvent)
 
     def read_outcomes(self) -> list[OutcomeRecord]:
+        guard_outcome_access("EvidenceLedger.read_outcomes")
         return self.outcomes.read_models(OutcomeRecord)
 
     def read_mentions(self) -> list[EventMention]:

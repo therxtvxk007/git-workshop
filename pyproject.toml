@@ -24,7 +24,8 @@ dependencies = [
   "numpy>=1.26",
   "scikit-learn>=1.5",
   "scipy>=1.11",
-  "httpx>=0.27",
+  # [socks] so a SOCKS proxy works without a second install step.
+  "httpx[socks]>=0.27",
 ]
 
 [project.optional-dependencies]
@@ -94,3 +95,25 @@ markers = [
   "slow: long-running test",
 ]
 filterwarnings = ["error::DeprecationWarning:pramaanx.*"]
+
+[tool.coverage.run]
+source = ["pramaanx"]
+branch = true
+# CLI commands are exercised in-process through Typer's CliRunner so their lines
+# are measured normally. The two subprocess tests that prove the installed entry
+# point works are not measured, and are not meant to be: they assert the script
+# exists, which is a packaging fact, not a code path.
+parallel = false
+omit = []
+
+[tool.coverage.report]
+precision = 1
+show_missing = true
+skip_covered = false
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "@overload",
+  "\\.\\.\\.$",
+]

@@ -172,3 +172,46 @@ class TestSourceRecord:
         assert record.tier == 0
         assert not record.redistributable
         assert "GDELT" in record.licence
+
+
+class TestEgress:
+    """Proxy behaviour: standard environment by default, overridable per source."""
+
+    def test_default_base_url_is_https(self) -> None:
+        # CONNECT-style egress proxies reject plain-HTTP requests outright, so
+        # http:// would fail before leaving the machine on many networks.
+        from pramaanx.ingest.connectors.gdelt import DEFAULT_BASE_URL
+
+        assert DEFAULT_BASE_URL.startswith("https://")
+
+    def test_source_config_reaches_the_http_client(self) -> None:
+        connector = GdeltConnector(
+            Settings(
+                sources={
+                    "gdelt": {
+                        "proxy": "socks5://127.0.0.1:1080",
+                        "ca_bundle": "/etc/ssl/corp.pem",
+                        "trust_env": False,
+                        "cache": False,
+                    }
+                }
+            ),
+            {
+                "proxy": "socks5://127.0.0.1:1080",
+                "ca_bundle": "/etc/ssl/corp.pem",
+                "trust_env": False,
+                "cache": False,
+            },
+        )
+        # The fetcher is a bound method of the configured client.
+        client = connector._fetcher.__self__  # type: ignore[attr-defined]
+        assert client.proxy == "socks5://127.0.0.1:1080"
+        assert client.ca_bundle == "/etc/ssl/corp.pem"
+        assert client.trust_env is False
+
+    def test_plan_reports_the_egress_route(self) -> None:
+        connector = GdeltConnector(Settings(), {"cache": False}, fetcher=lambda _: b"")
+        window = FetchWindow(
+            datetime(2026, 1, 15, tzinfo=UTC), datetime(2026, 1, 15, 1, 0, tzinfo=UTC)
+        )
+        assert connector.plan(window)["proxy"] == "<environment>"

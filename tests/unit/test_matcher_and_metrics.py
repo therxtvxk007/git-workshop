@@ -191,6 +191,41 @@ class TestMetrics:
     def test_candidate_recall_undefined_without_outcomes(self) -> None:
         assert metrics.candidate_recall([], []) is None
 
+    def test_f1_is_zero_when_precision_and_recall_are_zero(self) -> None:
+        # Predicted one positive, got it wrong, and missed the real one.
+        # precision 0.0 and recall 0.0 are both defined, so F1 is 0.0 --
+        # reporting None here turned the worst possible score into a missing
+        # one, because 0.0 is falsy.
+        assert metrics.precision_recall_f1(metrics.confusion([1, 0], [0, 1])) == {
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0,
+        }
+
+    def test_f1_is_zero_when_only_precision_is_zero(self) -> None:
+        result = metrics.precision_recall_f1({"tp": 0, "fp": 3, "fn": 2, "tn": 5})
+        assert result == {"precision": 0.0, "recall": 0.0, "f1": 0.0}
+
+    def test_f1_is_undefined_when_nothing_was_predicted_positive(self) -> None:
+        # precision is genuinely undefined (0/0), so F1 must be too.
+        result = metrics.precision_recall_f1({"tp": 0, "fp": 0, "fn": 4, "tn": 6})
+        assert result == {"precision": None, "recall": 0.0, "f1": None}
+
+    def test_f1_is_undefined_when_there_were_no_positives(self) -> None:
+        result = metrics.precision_recall_f1({"tp": 0, "fp": 4, "fn": 0, "tn": 6})
+        assert result == {"precision": 0.0, "recall": None, "f1": None}
+
+    def test_f1_is_undefined_on_an_empty_confusion(self) -> None:
+        result = metrics.precision_recall_f1({"tp": 0, "fp": 0, "fn": 0, "tn": 0})
+        assert result == {"precision": None, "recall": None, "f1": None}
+
+    def test_f1_matches_the_harmonic_mean_when_positive(self) -> None:
+        result = metrics.precision_recall_f1({"tp": 2, "fp": 2, "fn": 0, "tn": 0})
+        assert result == {"precision": 0.5, "recall": 1.0, "f1": round(2 / 3, 9)}
+
+    def test_perfect_prediction_scores_one(self) -> None:
+        assert metrics.precision_recall_f1(metrics.confusion([1, 0], [1, 0]))["f1"] == 1.0
+
     def test_wilson_interval_brackets_the_estimate(self) -> None:
         low, high = metrics.wilson_interval(50, 100)
         assert low < 0.5 < high

@@ -82,6 +82,9 @@ def _mention(
     return EventMention(
         mention_id=EventMention.build_id(observation.observation_id, relation, span),
         observation_id=observation.observation_id,
+        # Availability, taken straight from the observation. Never the event
+        # time, and never a wall clock.
+        observed_at=observation.first_observed_at,
         subject=subject,
         relation=relation,
         object=obj,

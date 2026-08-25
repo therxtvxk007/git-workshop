@@ -77,3 +77,52 @@ class TestValidation:
     def test_config_hash_tracks_content_not_object_identity(self) -> None:
         assert Settings().config_hash == Settings().config_hash
         assert Settings().config_hash != Settings(horizon_days=7).config_hash
+
+
+class TestLoggingStreams:
+    """Reconfiguring logging must never leave a logger holding a dead stream."""
+
+    def test_logging_survives_a_replaced_stderr(self, capsys: pytest.CaptureFixture[str]) -> None:
+        import io
+        import sys
+
+        from pramaanx.logging import configure_logging, get_logger
+
+        configure_logging("INFO", "json")
+        logger = get_logger("test.stream")
+        logger.info("first")
+
+        # Exactly what a CLI reconfiguring in-process, a supervisor redirecting
+        # output, or a test harness swapping capture buffers does.
+        original = sys.stderr
+        replacement = io.StringIO()
+        sys.stderr = replacement
+        try:
+            logger.info("second")
+            assert "second" in replacement.getvalue()
+        finally:
+            sys.stderr = original
+
+    def test_logging_survives_a_closed_stderr(self) -> None:
+        import io
+        import sys
+
+        from pramaanx.logging import configure_logging, get_logger
+
+        configure_logging("INFO", "json")
+        logger = get_logger("test.closed")
+
+        original = sys.stderr
+        closed = io.StringIO()
+        sys.stderr = closed
+        logger.info("before close")
+        closed.close()
+        replacement = io.StringIO()
+        sys.stderr = replacement
+        try:
+            # Binding the stream at configuration time raised
+            # "I/O operation on closed file" here.
+            logger.info("after close")
+            assert "after close" in replacement.getvalue()
+        finally:
+            sys.stderr = original

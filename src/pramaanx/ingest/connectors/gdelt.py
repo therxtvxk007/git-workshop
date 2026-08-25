@@ -39,7 +39,7 @@ from pramaanx.schemas.observation import Modality, SourceRecord
 
 log = get_logger(__name__)
 
-DEFAULT_BASE_URL = "http://data.gdeltproject.org/gdeltv2"
+DEFAULT_BASE_URL = "https://data.gdeltproject.org/gdeltv2"
 GDELT_V2_START = datetime(2015, 2, 18, 23, 0, tzinfo=UTC)
 SLOT_MINUTES = 15
 
@@ -182,6 +182,12 @@ class GdeltConnector(Connector):
             timeout_seconds=float(self.options.get("timeout_seconds", 60.0)),
             max_attempts=int(self.options.get("max_attempts", 4)),
             backoff_seconds=float(self.options.get("backoff_seconds", 2.0)),
+            # Proxy behaviour is configurable per source and otherwise follows
+            # the standard environment. See pramaanx.ingest.http.
+            proxy=self.options.get("proxy"),
+            trust_env=bool(self.options.get("trust_env", True)),
+            ca_bundle=self.options.get("ca_bundle"),
+            verify=bool(self.options.get("verify", True)),
         )
         return client.get
 
@@ -215,6 +221,8 @@ class GdeltConnector(Connector):
             {
                 "base_url": self.base_url,
                 "publication_lag_minutes": self.publication_lag_minutes,
+                "proxy": self.options.get("proxy")
+                or ("<environment>" if self.options.get("trust_env", True) else "<none>"),
                 "files": len(slots),
                 "first_file": self.file_url(slots[0]) if slots else None,
                 "last_file": self.file_url(slots[-1]) if slots else None,

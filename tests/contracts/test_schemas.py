@@ -63,6 +63,7 @@ class TestRoundTrips:
         original = EventMention(
             mention_id="men_1",
             observation_id="obs_1",
+            observed_at=NOW,
             subject="Metro Workers Collective",
             relation="participates_in",
             object="Rail Interchange",
@@ -184,6 +185,7 @@ class TestValidation:
             EventMention(
                 mention_id="men_1",
                 observation_id="obs_1",
+                observed_at=NOW,
                 subject=None,
                 relation="r",
                 object=None,

@@ -6,7 +6,12 @@ credentials, no network, no licensed data. The clock is fixed so that two
 bootstraps produce identical bytes, which is what the reproducibility and
 leakage tests rely on.
 
-    uv run python scripts/bootstrap_data.py --from 2025-01-01 --until 2026-04-01
+    uv run python scripts/bootstrap_data.py --from 2025-01-01 --until 2026-05-01
+
+The default window deliberately runs past the last experiment cutoff plus its
+horizon plus the reporting delay. Stop earlier and the final folds are
+right-censored: late reports have not arrived yet, and a missing report is
+indistinguishable from an event that never happened.
 """
 
 from __future__ import annotations
@@ -32,7 +37,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=Path("configs/base.yaml"))
     parser.add_argument("--from", dest="start", default="2025-01-01T00:00:00Z")
-    parser.add_argument("--until", dest="end", default="2026-04-01T00:00:00Z")
+    parser.add_argument("--until", dest="end", default="2026-05-01T00:00:00Z")
     parser.add_argument(
         "--set", dest="overrides", action="append", default=[], help="config override"
     )

@@ -82,7 +82,7 @@ def main_callback() -> None:
 
 
 @app.command()
-def version() -> None:
+def version(output: OutputOption = None) -> None:
     """Print the version and the registered components."""
     from pramaanx.generators.base import available_generators
     from pramaanx.ingest.base import available_connectors
@@ -102,7 +102,8 @@ def version() -> None:
                 "calibration",
                 "risk_control",
             ],
-        }
+        },
+        output,
     )
 
 
@@ -164,6 +165,7 @@ def snapshot_build(
 def snapshot_list(
     config: ConfigOption = Path("configs/base.yaml"),
     set_: SetOption = None,
+    output: OutputOption = None,
 ) -> None:
     """List stored snapshots, oldest cutoff first."""
     from pramaanx.timeguard.snapshots import SnapshotBuilder
@@ -183,7 +185,8 @@ def snapshot_list(
                 }
                 for item in manifests
             ],
-        }
+        },
+        output,
     )
 
 
@@ -387,6 +390,7 @@ def report(
 def sources(
     config: ConfigOption = Path("configs/base.yaml"),
     set_: SetOption = None,
+    output: OutputOption = None,
 ) -> None:
     """List registered connectors and the licence terms they carry."""
     from pramaanx.ingest.base import available_connectors
@@ -406,7 +410,7 @@ def sources(
                 "reliability_prior": record.reliability_prior,
             }
         )
-    _emit({"kind": "sources", "count": len(entries), "sources": entries})
+    _emit({"kind": "sources", "count": len(entries), "sources": entries}, output)
 
 
 def main() -> None:

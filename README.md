@@ -30,7 +30,7 @@ impressive number.
 | 6 | Base-rate generator (G0) | `src/pramaanx/generators/base_rate.py` |
 | 7 | Rolling-backtest skeleton | `src/pramaanx/evaluation/` |
 | 8 | Future-leakage tests | `tests/leakage/`, `tests/metamorphic/` |
-| 9 | Ruff, mypy, pytest, GitHub Actions | `Makefile`, `.github/workflows/ci.yaml` |
+| 9 | Ruff, mypy, pytest, coverage floor, GitHub Actions | `Makefile`, `.github/workflows/ci.yaml` |
 | 10 | Setup and architecture documentation | this file, `docs/` |
 
 Acceptance criteria and the test that proves each one: **[docs/M0_ACCEPTANCE.md](docs/M0_ACCEPTANCE.md)**.
@@ -62,15 +62,19 @@ worse than a missing one, because it makes a skipped requirement look finished.
 
 ## Quickstart
 
-Requires Python 3.13+ and [uv](https://docs.astral.sh/uv/).
+Requires [uv](https://docs.astral.sh/uv/) and Python 3.13. `requires-python` is
+`>=3.13`, but 3.13 is the only version CI tests and the only one known to work
+with the current lock file — see **[docs/python_versions.md](docs/python_versions.md)**.
 
 ```bash
-uv sync --extra dev                    # install
+uv sync --frozen --extra dev           # install exactly what CI installs
 make demo                              # bootstrap synthetic evidence + backtest
-make check                             # ruff + mypy + pytest
+make check                             # ruff + mypy + pytest with a coverage floor
 ```
 
-`make demo` runs offline. No credentials, no network, no licensed data.
+`make demo` runs offline from a fresh clone. No credentials, no network, no
+licensed data. It ingests the synthetic world, builds a snapshot, screens for
+leakage and runs the nine-fold backtest, printing a JSON manifest at each step.
 
 ### The commands
 
@@ -88,8 +92,13 @@ uv run pramaanx backtest --experiment configs/experiments/e2e_v1.yaml
 uv run pramaanx report --run-id <run-id>
 ```
 
-Every command takes `--dry-run` and prints a canonical-JSON manifest to stdout.
-Commands for unbuilt stages (`graph`, `adjudicate`, `calibrate`) do not exist yet.
+Every command prints a canonical-JSON manifest to stdout and accepts `--output`
+to write it to a file. Commands that *write* something also take `--dry-run`
+(`ingest`, `snapshot build`, `extract`, `candidates generate`, `outcomes build`,
+`backtest`); the read-only ones do not, because a no-op flag that pretends to do
+something is worse than an absent one. `report` prints Markdown rather than a
+manifest. Commands for unbuilt stages (`graph`, `adjudicate`, `calibrate`) do
+not exist yet.
 
 ### Real evidence
 
@@ -102,6 +111,19 @@ uv run pramaanx ingest --source gdelt \
 GDELT needs no key. Other Tier-0 sources (ACLED, ReliefWeb, data.gov.in) require
 accounts and licence review, which is why they are Phase 1 rather than M0 — see
 `.env.example`. **No licensed data may be committed to this repository.**
+
+Behind a proxy, the standard environment is honoured (`HTTPS_PROXY`,
+`ALL_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`), and every part of it is overridable
+per source — `proxy`, `trust_env`, `ca_bundle`, `verify` — including SOCKS. A
+policy denial (403/407) is reported immediately, naming the blocked host,
+instead of being retried. To check egress end to end:
+
+```bash
+PRAMAANX_LIVE_GDELT=1 uv run pytest tests/network -m network -v
+```
+
+That test is opt-in and never runs in ordinary CI: a green build must mean the
+code is correct, not that GDELT happened to be reachable.
 
 ## Architecture
 

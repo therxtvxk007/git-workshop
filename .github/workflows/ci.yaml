@@ -17,9 +17,16 @@ env:
 
 jobs:
   quality:
-    name: lint, types, tests
+    name: lint, types, tests (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.13 only. The locked dependency set does not import on 3.14 yet:
+        # pydantic calls typing._eval_type() with a keyword that 3.14 removed.
+        # See docs/python_versions.md before adding a version here.
+        python-version: ["3.13"]
     steps:
       - uses: actions/checkout@v4
 
@@ -29,10 +36,10 @@ jobs:
           enable-cache: true
 
       - name: Set up Python
-        run: uv python install 3.13
+        run: uv python install ${{ matrix.python-version }}
 
-      - name: Install the project
-        run: uv sync --extra dev
+      - name: Install the locked environment
+        run: uv sync --frozen --extra dev
 
       - name: Ruff lint
         run: uv run ruff check src tests scripts
@@ -44,7 +51,9 @@ jobs:
         run: uv run mypy
 
       - name: Tests
-        run: uv run pytest ${{ env.PYTEST_ARGS }} --cov=pramaanx --cov-report=term-missing
+        # The coverage floor is enforced here, not merely reported. See
+        # [tool.coverage] in pyproject.toml for how CLI coverage is measured.
+        run: uv run pytest ${{ env.PYTEST_ARGS }} --cov=pramaanx --cov-report=term-missing --cov-fail-under=88
 
   m0-gate:
     name: M0 acceptance gate
@@ -61,18 +70,14 @@ jobs:
       - name: Set up Python
         run: uv python install 3.13
 
-      - name: Install the project
-        run: uv sync --extra dev
+      - name: Install the locked environment
+        run: uv sync --frozen --extra dev
 
       # The gate M0 exists for: future documents must not be able to change a
       # past cutoff, and identical inputs must reproduce identical reports.
       - name: Leakage and reproducibility gates
         run: uv run pytest tests/leakage tests/metamorphic tests/contracts -v
 
-      - name: End-to-end demo runs offline
-        run: |
-          uv run python scripts/bootstrap_data.py \
-            --from 2025-01-01T00:00:00Z --until 2026-04-01T00:00:00Z
-          uv run pramaanx snapshot build --cutoff 2026-01-15T00:00:00Z
-          uv run pramaanx audit leakage --cutoff 2026-01-15T00:00:00Z
-          uv run pramaanx backtest --experiment configs/experiments/e2e_v1.yaml
+      # The documented entry point, exactly as a new clone would run it.
+      - name: make demo
+        run: make demo

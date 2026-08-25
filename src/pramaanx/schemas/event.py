@@ -36,6 +36,15 @@ class EventModality(StrEnum):
 class EventMention(VersionedModel):
     mention_id: str
     observation_id: str
+    #: When the claim became available -- the ``first_observed_at`` of the
+    #: observation this mention was extracted from.
+    #:
+    #: Carried on the mention rather than looked up later because it answers a
+    #: different question from ``event_time_start``. "Is this chatter recent?"
+    #: is about when somebody said it; "when will the event happen?" is about
+    #: the event. Filtering recency on event time silently drops every undated
+    #: claim and lets a claim about a distant future event look stale.
+    observed_at: UtcDatetime
     subject: str | None
     relation: str
     object: str | None
@@ -58,6 +67,14 @@ class EventMention(VersionedModel):
         if overlap:
             raise ValueError(f"fields cannot be both explicit and unresolved: {sorted(overlap)}")
         return self
+
+    def is_recent(self, *, window_start: datetime, cutoff_at: datetime) -> bool:
+        """Was this claim made inside the trailing activity window?
+
+        Judged purely on availability. An undated claim from last week counts;
+        a claim from last year does not, whatever event date it carries.
+        """
+        return window_start <= self.observed_at <= cutoff_at
 
     @staticmethod
     def build_id(observation_id: str, relation: str, span: str) -> str:

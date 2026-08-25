@@ -81,6 +81,36 @@ The alternative — injecting known answers — would make the whole loop untest
 in the one respect that matters, because the system would be scored against
 information it could in principle have reached.
 
+### Outcome isolation is structural, not procedural
+
+The backtest runs in two passes. Pass A builds snapshots and persists forecasts;
+pass B builds outcomes and scores what pass A froze. Pass A executes inside
+`pramaanx.isolation.forecasting_pass`, which seals every outcome-reading entry
+point for its duration.
+
+The distinction that matters: the previous version had the same *ordering*, but
+enforced by the sequence of statements in one function. That works until an edit
+moves an outcome lookup earlier, and nothing about that edit looks wrong — the
+run succeeds and the metrics improve. A context variable makes the mistake raise
+instead, from wherever in the call stack it happens.
+
+Pass B re-reads forecasts from the ledger rather than keeping them in memory, so
+what is scored is provably what was persisted before any outcome existed.
+
+### Censoring is an evaluation limit, not a scoring detail
+
+Evidence that stops too early does not produce noisy metrics; it produces
+confidently wrong ones. Reports that have not arrived yet are indistinguishable
+from events that never happened, so recall is understated and precision
+overstated, and nothing in the numbers hints at it.
+
+A fold is therefore scoreable only when the ledger reaches
+`cutoff + horizon + reporting delay`, where the delay is the larger of a
+configured floor and the maximum actually observed in the registry. Short folds
+are still forecast — the work is valid, only the scoring is not — but they are
+marked unscoreable, excluded from the aggregate and named in the report. A walk
+with no scoreable fold raises rather than emitting a report of artefacts.
+
 ### Uncertainty is not one number
 
 `epistemic_uncertainty` on an M0 forecast means exactly one thing: the width of

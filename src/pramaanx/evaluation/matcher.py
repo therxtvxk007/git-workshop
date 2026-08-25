@@ -21,6 +21,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+from pramaanx.isolation import guard_outcome_access
 from pramaanx.logging import get_logger
 from pramaanx.schemas.forecast import ForecastRecord
 from pramaanx.schemas.outcome import MatchResult, OutcomeRecord
@@ -131,6 +132,7 @@ class OutcomeMatcher:
     def score(
         self, forecast: ForecastRecord, outcome: OutcomeRecord, context: MatchContext
     ) -> MatchResult:
+        guard_outcome_access("OutcomeMatcher.score")
         hypothesis = forecast.hypothesis
         tolerance = outcome.tolerance
         event = outcome.event

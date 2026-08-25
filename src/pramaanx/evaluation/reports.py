@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from pramaanx.evaluation.backtest import BacktestReport
-from pramaanx.hashing import canonical_json
+from pramaanx.hashing import canonical_json, utc_isoformat
 from pramaanx.logging import get_logger
 
 log = get_logger(__name__)
@@ -44,8 +44,12 @@ def render_markdown(report: BacktestReport) -> str:
         f"- Code hash: `{report.provenance['code_hash']}`",
         f"- Window: {spec.start.date()} to {spec.end.date()}, every {spec.step_days}d, "
         f"horizon {spec.horizon_days}d",
-        f"- Folds: {aggregate['folds']} | forecasts: {aggregate['forecasts']} | "
-        f"outcomes scored: {aggregate['outcomes_scored']}",
+        f"- Folds: {aggregate['folds']} "
+        f"({aggregate['scoreable_folds']} scored, {aggregate['censored_folds']} censored) "
+        f"| forecasts: {aggregate['forecasts']} | outcomes scored: {aggregate['outcomes_scored']}",
+        f"- Evidence reaches {aggregate['resolution_boundary']['latest_evidence_at'][:10]}; "
+        f"reporting delay allowance "
+        f"{_fmt(aggregate['resolution_boundary']['reporting_delay_days'], 2)}d",
         "",
         "## What these numbers are not",
         "",
@@ -85,12 +89,25 @@ def render_markdown(report: BacktestReport) -> str:
     )
     for fold in report.folds:
         data = fold.to_dict()
+        if not data["scoreable"]:
+            lines.append(
+                f"| {data['cutoff_at'][:10]} | {data['observations']} | {data['forecasts']} | "
+                "— | *censored* | — | — |"
+            )
+            continue
         lines.append(
             f"| {data['cutoff_at'][:10]} | {data['observations']} | {data['forecasts']} | "
             f"{data['outcomes_in_window']} | "
             f"{_fmt(data['metrics']['discovery']['candidate_recall'])} | "
             f"{_fmt(data['metrics']['probability']['brier'])} | "
             f"{data['metrics']['alerts']['count']} |"
+        )
+    censored = [fold for fold in report.folds if not fold.scoreable]
+    if censored:
+        lines.extend(["", "### Censored folds", ""])
+        lines.extend(
+            f"- `{utc_isoformat(fold.cutoff_at)[:10]}` — {fold.censoring_reason}"
+            for fold in censored
         )
     lines.extend(
         [
