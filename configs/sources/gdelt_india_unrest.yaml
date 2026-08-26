@@ -1,0 +1,11 @@
+# A narrow GDELT slice: Indian protest/coercion/assault codes.
+# Layer over the base config:
+#   uv run pramaanx ingest --config configs/sources/gdelt_india_unrest.yaml ...
+include: ../base.yaml
+
+sources:
+  gdelt:
+    country_filter: ["IN"]
+    # CAMEO roots: 10 demand, 13 threaten, 14 protest, 17 coerce, 18 assault
+    event_root_codes: ["10", "13", "14", "17", "18"]
+    max_rows_per_file: 500

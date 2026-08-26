@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Network tests are excluded: CI must not depend on a third party's uptime,
+  # and a green build must never mean "GDELT happened to be reachable".
+  PYTEST_ARGS: -m "not network"
+
+jobs:
+  quality:
+    name: lint, types, tests (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every minor version inside requires-python. The packaging contract
+        # test fails if this list and the metadata drift apart.
+        python-version: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install the locked environment
+        run: uv sync --frozen --extra dev
+
+      - name: Ruff lint
+        run: uv run ruff check src tests scripts
+
+      - name: Ruff format check
+        run: uv run ruff format --check src tests scripts
+
+      - name: Type check
+        run: uv run mypy
+
+      - name: Tests
+        # The coverage floor is enforced here, not merely reported. See
+        # [tool.coverage] in pyproject.toml for how CLI coverage is measured.
+        run: uv run pytest ${{ env.PYTEST_ARGS }} --cov=pramaanx --cov-report=term-missing --cov-fail-under=88
+
+  m0-gate:
+    name: M0 acceptance gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install the locked environment
+        run: uv sync --frozen --extra dev
+
+      # The gate M0 exists for: future documents must not be able to change a
+      # past cutoff, and identical inputs must reproduce identical reports.
+      - name: Leakage and reproducibility gates
+        run: uv run pytest tests/leakage tests/metamorphic tests/contracts -v
+
+      # The documented entry point, exactly as a new clone would run it.
+      - name: make demo
+        run: make demo

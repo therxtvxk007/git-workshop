@@ -1,0 +1,16 @@
+name: smoke
+description: Two cutoffs over the synthetic world. Used by the integration test.
+
+base_config: configs/base.yaml
+
+backtest:
+  start: "2026-01-07T00:00:00Z"
+  end: "2026-01-14T00:00:00Z"
+  step_days: 7
+  horizon_days: 30
+
+settings:
+  generators:
+    proposal_budget: 100
+  evaluation:
+    proposal_budgets: [10, 25, 50]
