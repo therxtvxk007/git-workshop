@@ -28,6 +28,7 @@ from pramaanx.ingest.connectors.reliefweb import (
     REQUESTED_FIELDS,
     ReliefWebConnector,
     ReliefWebContractError,
+    ReliefWebIncompleteIngestError,
     availability_of,
     instants_of,
     parse_api_datetime,
@@ -49,7 +50,14 @@ def paging_fetcher(*names: str) -> Any:
     def fetch(url: str) -> bytes:
         calls.append(url)
         index = len(calls) - 1
-        return fixture(pages[index] if index < len(pages) else "reports_empty")
+        payload = fixture(pages[index] if index < len(pages) else "reports_empty")
+        # A one-page test fixture represents a complete response, not page one
+        # of the two-page pagination scenario encoded in reports_page1.json.
+        if len(pages) == 1:
+            document = json.loads(payload)
+            document["totalCount"] = document["count"]
+            return json.dumps(document).encode()
+        return payload
 
     fetch.calls = calls  # type: ignore[attr-defined]
     return fetch
@@ -227,18 +235,41 @@ class TestPagination:
         )
         assert len(items) == 2
 
-    def test_max_pages_stops_an_unbounded_walk(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_max_pages_fails_instead_of_returning_a_partial_walk(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         def never_ending(url: str) -> bytes:
-            return fixture("reports_page1")
+            return envelope(report(), totalCount=100)
 
-        items = list(connector(never_ending, monkeypatch=monkeypatch, max_pages=2).fetch(WINDOW))
-        # Deduplication means the second page adds nothing, but the walk stops.
-        assert len(items) == 3
+        with pytest.raises(ReliefWebIncompleteIngestError, match="max_pages=2"):
+            list(connector(never_ending, monkeypatch=monkeypatch, max_pages=2).fetch(WINDOW))
 
     def test_an_empty_page_ends_the_walk(self, monkeypatch: pytest.MonkeyPatch) -> None:
         fetcher = paging_fetcher("reports_empty")
         assert list(connector(fetcher, monkeypatch=monkeypatch).fetch(WINDOW)) == []
         assert len(fetcher.calls) == 1
+
+    def test_an_empty_page_with_reported_rows_remaining_fails(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        payload = json.dumps({"totalCount": 10, "count": 0, "data": []}).encode()
+        with pytest.raises(ReliefWebIncompleteIngestError, match="empty page"):
+            list(connector(lambda url: payload, monkeypatch=monkeypatch).fetch(WINDOW))
+
+    def test_a_page_cannot_extend_past_the_reported_total(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        first = envelope(report(900098), totalCount=2)
+        second = envelope(report(900099), totalCount=1)
+        calls = 0
+
+        def shrinking_total(url: str) -> bytes:
+            nonlocal calls
+            calls += 1
+            return first if calls == 1 else second
+
+        with pytest.raises(ReliefWebIncompleteIngestError, match="totalCount from 2 to 1"):
+            list(connector(shrinking_total, monkeypatch=monkeypatch, page_size=1).fetch(WINDOW))
 
 
 class TestWindowBoundaries:
@@ -399,11 +430,14 @@ class TestRequestBuilding:
         assert "Situation+Report" in url
         assert "filter%5Boperator%5D=AND" in url
 
-    def test_availability_field_is_what_is_filtered(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        # Filtering on date.created would miss reports revised into the window.
+    def test_both_raw_availability_inputs_are_filtered(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Changed-only misses records where changed is absent or precedes
+        # created. Created-only misses reports revised into the window.
         url = connector(monkeypatch=monkeypatch).build_url(WINDOW, offset=0)
         assert "date.changed" in url
-        assert "date.created" not in url.split("filter")[1] if "filter" in url else True
+        assert "date.created" in url
 
     def test_requested_fields_are_exactly_the_declared_set(
         self, monkeypatch: pytest.MonkeyPatch
@@ -758,6 +792,26 @@ class TestTemporalFidelity:
         assert instants.changed == datetime(2026, 3, 1, tzinfo=UTC)
         assert instants.revised_after_creation is False
 
+    @pytest.mark.parametrize(
+        "changed",
+        [None, "2026-02-28T00:00:00+00:00"],
+        ids=["changed-absent", "changed-before-created"],
+    )
+    def test_created_in_window_candidates_are_not_silently_lost(
+        self,
+        changed: str | None,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        payload = envelope(
+            report(
+                900534,
+                created="2026-03-02T00:00:00+00:00",
+                changed=changed,
+            )
+        )
+        items = list(connector(lambda url: payload, monkeypatch=monkeypatch).fetch(WINDOW))
+        assert [item.metadata["report_id"] for item in items] == ["900534"]
+
     def test_mixed_timezone_offsets_are_compared_in_utc(self) -> None:
         # created 08:00 UTC, changed 07:30 UTC, original 06:00 UTC -- all three
         # written in different offsets. A naive string comparison would order
@@ -805,11 +859,21 @@ class TestFilterQuerySemantics:
         assert self.query(monkeypatch)["filter[operator]"] == ["AND"]
         assert self.query(monkeypatch, countries=["IND"])["filter[operator]"] == ["AND"]
 
-    def test_the_date_condition_uses_from_and_to(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_the_date_union_uses_from_and_to_for_both_raw_instants(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         query = self.query(monkeypatch)
-        assert query["filter[conditions][0][field]"] == ["date.changed"]
-        assert query["filter[conditions][0][value][from]"] == ["2026-03-01T00:00:00+00:00"]
-        assert query["filter[conditions][0][value][to]"] == ["2026-03-05T00:00:00+00:00"]
+        prefix = "filter[conditions][0]"
+        assert query[f"{prefix}[operator]"] == ["OR"]
+        assert query[f"{prefix}[conditions][0][field]"] == ["date.created"]
+        assert query[f"{prefix}[conditions][1][field]"] == ["date.changed"]
+        for index in (0, 1):
+            assert query[f"{prefix}[conditions][{index}][value][from]"] == [
+                "2026-03-01T00:00:00+00:00"
+            ]
+            assert query[f"{prefix}[conditions][{index}][value][to]"] == [
+                "2026-03-05T00:00:00+00:00"
+            ]
 
     def test_multiple_values_in_one_condition_are_explicitly_or(
         self, monkeypatch: pytest.MonkeyPatch
@@ -838,7 +902,9 @@ class TestFilterQuerySemantics:
             disaster_types=["Flood", "Drought"],
             formats=["Situation Report"],
         )
-        assert query["filter[conditions][0][field]"] == ["date.changed"]
+        assert query["filter[conditions][0][operator]"] == ["OR"]
+        assert query["filter[conditions][0][conditions][0][field]"] == ["date.created"]
+        assert query["filter[conditions][0][conditions][1][field]"] == ["date.changed"]
         assert query["filter[conditions][1][field]"] == ["language.code"]
         assert query["filter[conditions][2][field]"] == ["country.iso3"]
         assert query["filter[conditions][3][field]"] == ["disaster_type.name"]

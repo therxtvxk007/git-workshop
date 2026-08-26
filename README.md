@@ -162,6 +162,11 @@ and `date_original` — alongside the derived `date_availability`. `published_at
 is `date.original` when present, otherwise `date.created`. Details in
 [docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md).
 
+Acquisition queries the union of reports whose `date.created` **or**
+`date.changed` intersects the window, then applies the exact derived maximum
+client-side. A changed-only query would silently lose records whose modification
+instant is absent or earlier than creation.
+
 #### ReliefWeb pagination: overlap your windows
 
 Paging walks `offset` under a total sort (`date.changed:asc`, then `id:asc`).
@@ -173,6 +178,8 @@ nothing handles drops, which are not.
 
 So treat one pass as a sample, not a proof: re-ingest with overlapping windows.
 Bronze is content-addressed and append-only, so re-ingesting is idempotent.
+Detectable truncation is not treated as a sample: an unexpectedly empty page or
+an exhausted `max_pages` bound raises and commits no partial bronze records.
 
 Behind a proxy, the standard environment is honoured (`HTTPS_PROXY`,
 `ALL_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`), and every part of it is overridable

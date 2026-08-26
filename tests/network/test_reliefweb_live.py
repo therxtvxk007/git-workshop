@@ -129,7 +129,7 @@ def raw_page_or_skip(connector: ReliefWebConnector, url: str) -> dict[str, Any]:
             pytest.fail(f"{APPNAME_HINT}\n{error}")
         pytest.fail(f"ReliefWeb refused the request permanently: {error}")
     except RateLimitError as error:  # pragma: no cover - network dependent
-        pytest.skip(f"rate limited by ReliefWeb: {error}")
+        pytest.fail(f"ReliefWeb still rate-limited the request after bounded retries: {error}")
     except HttpFetchError as error:  # pragma: no cover - network dependent
         pytest.fail(f"live ReliefWeb fetch failed: {error}")
 
@@ -148,7 +148,7 @@ def fetch_or_skip(connector: ReliefWebConnector, window: FetchWindow) -> list[An
             pytest.fail(f"{APPNAME_HINT}\n{error}")
         pytest.fail(f"ReliefWeb refused the request permanently: {error}")
     except RateLimitError as error:  # pragma: no cover - network dependent
-        pytest.skip(f"rate limited by ReliefWeb: {error}")
+        pytest.fail(f"ReliefWeb still rate-limited the request after bounded retries: {error}")
     except ReliefWebContractError as error:  # pragma: no cover - network dependent
         pytest.fail(
             f"the live API does not match API_CONTRACT: {error}\n"
@@ -173,9 +173,13 @@ def test_the_request_is_built_against_the_v2_contract() -> None:
     assert query["fields[include][]"] == list(REQUESTED_FIELDS)
     assert query["sort[]"] == ["date.changed:asc", "id:asc"]
     assert query["filter[operator]"] == ["AND"]
-    assert query["filter[conditions][0][field]"] == ["date.changed"]
-    assert query["filter[conditions][0][value][from]"]
-    assert query["filter[conditions][0][value][to]"]
+    assert query["filter[conditions][0][operator]"] == ["OR"]
+    assert query["filter[conditions][0][conditions][0][field]"] == ["date.created"]
+    assert query["filter[conditions][0][conditions][1][field]"] == ["date.changed"]
+    assert query["filter[conditions][0][conditions][0][value][from]"]
+    assert query["filter[conditions][0][conditions][0][value][to]"]
+    assert query["filter[conditions][0][conditions][1][value][from]"]
+    assert query["filter[conditions][0][conditions][1][value][to]"]
 
 
 def test_the_live_envelope_matches_the_documented_result_structure() -> None:

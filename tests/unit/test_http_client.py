@@ -177,11 +177,11 @@ class TestOriginRefusalIsNotAProxyDenial:
         assert caught.value.status_code == 403
         assert not isinstance(caught.value, ProxyPolicyError)
 
-    def test_the_403_message_points_at_the_approved_appname(self, tmp_path: Path) -> None:
-        with pytest.raises(PermanentHttpError, match="appname"):
-            self._client(tmp_path, 403).get("https://api.reliefweb.int/v2/reports")
-        with pytest.raises(PermanentHttpError, match="pre-approved"):
-            self._client(tmp_path, 403).get("https://api.reliefweb.int/v2/reports")
+    def test_the_shared_403_message_is_source_neutral(self, tmp_path: Path) -> None:
+        with pytest.raises(PermanentHttpError, match="destination refused") as caught:
+            self._client(tmp_path, 403).get("https://example.org/private")
+        assert "ReliefWeb" not in str(caught.value)
+        assert "appname" not in str(caught.value)
 
     def test_origin_401_is_a_permanent_http_error(self, tmp_path: Path) -> None:
         with pytest.raises(PermanentHttpError) as caught:

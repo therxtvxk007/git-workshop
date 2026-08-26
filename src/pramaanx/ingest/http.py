@@ -145,9 +145,10 @@ class PermanentHttpError(HttpFetchError):
     HTTP 401 and 403 *from the origin*: the request was delivered and refused.
     Kept distinct from :class:`ProxyPolicyError` because the two have opposite
     meanings and opposite remedies. A proxy denial means the request never left
-    the network and the host needs allowlisting; an origin 403 means ReliefWeb
-    itself rejected the caller -- almost always an appname that is missing,
-    misspelled, or not approved.
+    the network and the host needs allowlisting; an origin 403 means the
+    destination rejected the caller. Source-specific remediation belongs in the
+    connector or its live test; this shared client is also used by GDELT and
+    future sources.
 
     Conflating them is not cosmetic. The live test skips on a proxy denial, so
     an origin 403 filed under the same class would turn "ReliefWeb rejected our
@@ -157,11 +158,7 @@ class PermanentHttpError(HttpFetchError):
     def __init__(self, url: str, status_code: int, detail: str = "") -> None:
         remedy = {
             401: "The API rejected the caller's credentials.",
-            403: (
-                "The API refused this caller. For ReliefWeb this is usually the appname: it "
-                "is mandatory, and since 1 November 2025 it must be pre-approved -- an "
-                "unapproved or misspelled name is refused at the origin."
-            ),
+            403: "The destination refused this caller or request.",
         }.get(status_code, "The server refused this request and a retry will not change that.")
         super().__init__(
             f"{redact_url(url)} returned HTTP {status_code}. {remedy}"

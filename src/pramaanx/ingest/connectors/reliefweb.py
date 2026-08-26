@@ -206,6 +206,8 @@ API_CONTRACT: dict[str, Any] = {
     "filter": {
         "outer_operator_param": "filter[operator]",
         "condition_operator_param": "filter[conditions][N][operator]",
+        "window_fields": ["date.created", "date.changed"],
+        "window_operator": "OR",
         "range_params": ["value[from]", "value[to]"],
         "range_bounds": "inclusive",
     },
@@ -214,11 +216,13 @@ API_CONTRACT: dict[str, Any] = {
 #: Fields requested from the API, every one of them confirmed present in the
 #: official fields table for ``/reports``. Parent field names rather than dotted
 #: leaves: the table names the field, and asking for the field returns its
-#: object. Kept explicit so a response carrying more than this cannot silently
-#: widen what enters bronze; combined with ``profile=list``, which supplies the
-#: list profile's own defaults, these are the additions on top of it.
+#: object. Combined with ``profile=list``, these are explicit additions to the
+#: profile defaults. The profile may still return other documented defaults;
+#: this tuple describes what the connector asks for, not an exact response
+#: allowlist.
 REQUESTED_FIELDS: tuple[str, ...] = (
     "id",
+    "title",
     "body",
     "date.created",
     "date.changed",
@@ -255,6 +259,10 @@ class ReliefWebContractError(ConnectorError):
     in :data:`API_CONTRACT` have drifted, and continuing would write a silent
     gap into an append-only ledger that later looks like a quiet news week.
     """
+
+
+class ReliefWebIncompleteIngestError(ReliefWebContractError):
+    """A bounded or contradictory page walk ended before all reported rows were read."""
 
 
 def _iso(value: datetime) -> str:
@@ -459,9 +467,13 @@ class ReliefWebConnector(Connector):
     def build_url(self, window: FetchWindow, *, offset: int) -> str:
         """One page request, with every relationship stated rather than defaulted.
 
-        Filtering is on ``date.changed`` because that is what availability
-        tracks. The window is applied again client-side, because the API's range
-        bounds are inclusive while a :class:`FetchWindow` is half-open.
+        Availability is ``max(date.created, date.changed)``. A changed-only
+        query cannot implement that rule: it misses records where ``changed``
+        is absent, and a source anomaly where ``changed < created`` can be
+        selected in the earlier window and then rejected client-side. The date
+        condition is therefore a nested OR: either raw instant intersects the
+        window. The exact derived maximum and half-open boundary are applied
+        again client-side.
 
         Two operators are written explicitly, never left to a default:
 
@@ -491,12 +503,21 @@ class ReliefWebConnector(Connector):
         # repeat records. Both keys are sortable per the official fields table.
         params += [("sort[]", "date.changed:asc"), ("sort[]", "id:asc")]
 
-        index = 0
+        # Outer AND: the date union and every configured taxonomy filter must
+        # all hold. Inner OR: either timestamp may place the derived maximum in
+        # the window. Fetching a few extra candidates is safe; filtering only
+        # on changed can silently miss evidence.
+        date_group = "filter[conditions][0]"
         params += [
-            (f"filter[conditions][{index}][field]", "date.changed"),
-            (f"filter[conditions][{index}][value][from]", _iso(window.start)),
-            (f"filter[conditions][{index}][value][to]", _iso(window.end)),
+            (f"{date_group}[operator]", "OR"),
+            (f"{date_group}[conditions][0][field]", "date.created"),
+            (f"{date_group}[conditions][0][value][from]", _iso(window.start)),
+            (f"{date_group}[conditions][0][value][to]", _iso(window.end)),
+            (f"{date_group}[conditions][1][field]", "date.changed"),
+            (f"{date_group}[conditions][1][value][from]", _iso(window.start)),
+            (f"{date_group}[conditions][1][value][to]", _iso(window.end)),
         ]
+        index = 0
         for values, field in (
             (config.languages, "language.code"),
             (config.countries, "country.iso3"),
@@ -665,13 +686,34 @@ class ReliefWebConnector(Connector):
         seen: set[str] = set()
         emitted = 0
         offset = 0
+        reported_total: int | None = None
 
         for page in range(1, config.max_pages + 1):
             url = self.build_url(window, offset=offset)
             payload = fetcher(url)
             entries, total = self.parse_envelope(payload, url=url)
+            if reported_total is None:
+                reported_total = total
+            elif total != reported_total:
+                raise ReliefWebIncompleteIngestError(
+                    f"{redact_url(url)} changed totalCount from {reported_total} to {total} "
+                    "during pagination; the index mutated and completeness cannot be proven. "
+                    "Retry with an overlapping window."
+                )
             if not entries:
+                if offset < total:
+                    raise ReliefWebIncompleteIngestError(
+                        f"{redact_url(url)} returned an empty page at offset {offset} while "
+                        f"totalCount={total}; stopping would silently truncate the window"
+                    )
                 break
+
+            if offset + len(entries) > total:
+                raise ReliefWebContractError(
+                    f"{redact_url(url)} returned {len(entries)} items at offset {offset}, "
+                    f"which exceeds totalCount={total}; the pagination envelope contradicts "
+                    "itself"
+                )
 
             fresh = 0
             for entry in entries:
@@ -699,10 +741,10 @@ class ReliefWebConnector(Connector):
             if offset >= total:
                 break
         else:
-            log.warning(
-                "reliefweb.max_pages_reached",
-                max_pages=config.max_pages,
-                note="the window may be incompletely ingested; narrow it or raise max_pages",
+            raise ReliefWebIncompleteIngestError(
+                f"ReliefWeb pagination reached max_pages={config.max_pages} at offset "
+                f"{offset} before totalCount={reported_total}; no partial observations will be "
+                "committed. Narrow the window or raise max_pages."
             )
 
         log.info("reliefweb.fetch_complete", emitted=emitted, unique_records=len(seen))

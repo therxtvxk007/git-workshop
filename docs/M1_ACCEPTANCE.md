@@ -4,16 +4,16 @@ Phase 1A adds one real Tier-0 source to the point-in-time ledger, preserving
 every M0 guarantee: availability-based admission, append-only content-addressed
 bronze, strict configuration, and the future-injection gate.
 
-Run everything: `make check` — ruff, mypy, and 469 offline tests behind an
+Run everything: `make check` — ruff, mypy, and 475 offline tests behind an
 enforced coverage floor.
 
 | Suite | Tests | Phase 1A additions |
 | --- | ---: | --- |
-| `tests/unit` | 278 | Connector logic, temporal fidelity, envelope strictness, item-id contract, query semantics, plan redaction, HTTP classification and retry bounds |
+| `tests/unit` | 282 | Connector logic, temporal fidelity, envelope strictness, item-id contract, query semantics, fail-closed pagination, plan redaction, HTTP classification and retry bounds |
 | `tests/contracts` | 92 | `ReliefWebSourceConfig` strictness, single-sourced API version, retry ceiling |
 | `tests/leakage` | 24 | (unchanged; M0 guarantees) |
 | `tests/metamorphic` | 8 | (unchanged; M0 guarantees) |
-| `tests/integration` | 67 | Dry-run purity, ledger provenance, cutoff safety, CLI surface |
+| `tests/integration` | 69 | Dry-run purity, atomic incomplete-walk failure, ledger provenance, cutoff safety, CLI surface |
 | `tests/network` | 7 | Opt-in live verification (6 ReliefWeb, 1 GDELT) |
 
 ---
@@ -159,7 +159,15 @@ page instead of continuing.
 the top-level id. Fixtures model ids as integers, as the official fields table
 specifies.
 
-**Query.** Both operators are stated, never left to a default:
+**Query.** Availability is derived from two raw fields, so the window cannot be
+implemented as a `date.changed`-only filter. The first outer condition is a
+nested OR: `date.created` in the window **or** `date.changed` in the window.
+The exact `max(created, changed)` value and the half-open boundary are then
+applied client-side. This admits unrevised records whose `changed` field is
+absent and source anomalies where `changed` precedes `created`, without losing
+reports revised into the window.
+
+Both operators are stated, never left to a default:
 
 - `filter[operator]=AND` — always emitted, even when the date condition stands
   alone, so adding a filter later cannot change the query's meaning;
@@ -170,9 +178,10 @@ specifies.
 Date ranges use `value[from]` / `value[to]`. The API's bounds are inclusive
 while a `FetchWindow` is half-open, so the window is re-applied client-side.
 Sort is the total order `date.changed:asc`, `id:asc` — both documented sort
-keys. `limit` is bounded by the config at 1–1000. `profile=list` supplies the
-list profile's own fields and `fields[include][]` adds the rest, every one of
-them confirmed in the official fields table.
+keys. `limit` is bounded by the config at 1–1000. `profile=list` supplies its
+documented profile defaults and `fields[include][]` explicitly requests every
+additional field the connector needs, including `title`; the requested list is
+not described as an exact response allowlist.
 
 **Accepted when** — `TestFilterQuerySemantics` asserts on `parse_qs` output, not
 substrings. A substring check passes on malformed nesting; an exact parse does
@@ -196,8 +205,10 @@ Now:
 | CONNECT-time `httpx.ProxyError` with a denial marker | `ProxyPolicyError` | no |
 | HTTP 401 / 403 response from the destination | `PermanentHttpError` | no |
 
-The 403 message names the appname and its approval requirement. The live test
-fails on an origin 403 and skips **only** on a genuine proxy/CONNECT denial.
+The shared 403 message is source-neutral. The ReliefWeb live test adds the
+appname and approval guidance, fails on an origin 403, and skips **only** on a
+genuine proxy/CONNECT denial. Exhausted rate-limit retries fail too; they do not
+turn an incomplete live verification into a skip.
 
 **Accepted when** — `TestOriginRefusalIsNotAProxyDenial` proves all three cases
 are distinguishable by type and that a permanent refusal is not retried. GDELT's
@@ -242,8 +253,17 @@ and `API_CONTRACT["pagination"]["residual_limitation"]`, together with the
 operational answer: **overlapping ingestion windows**, which are cheap because
 bronze is content-addressed and re-ingesting is idempotent.
 
-**Accepted when** — `TestPaginationLimitationIsStated` pins the admission in the
-source record a modeller will actually read.
+Detectable truncation is different and is never accepted. A changing
+`totalCount`, an empty page while `offset < totalCount`, a page extending past
+its reported total, or exhaustion of `max_pages` before the reported total is
+reached raises an error. The ledger finishes the connector walk before writing
+source metadata, payloads or observations, so these failures cannot commit a
+partial ingest.
+
+**Accepted when** — `TestPagination` covers all detectable truncation
+shapes, `TestLedgerIntegration` proves no partial bronze write occurs, and
+`TestPaginationLimitationIsStated` pins the residual concurrent-mutation risk in
+the source record a modeller will actually read.
 
 ## 9. `--dry-run` purity
 

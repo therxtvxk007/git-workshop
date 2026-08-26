@@ -23,6 +23,7 @@ from pramaanx.ingest.connectors.reliefweb import (
     APPNAME_ENV,
     REDACTED_APPNAME,
     ReliefWebConnector,
+    ReliefWebIncompleteIngestError,
 )
 from pramaanx.ingest.ledger import EvidenceLedger
 from pramaanx.timeguard.cutoff import CutoffGuard
@@ -35,6 +36,13 @@ WINDOW = FetchWindow(datetime(2026, 3, 1, tzinfo=UTC), datetime(2026, 3, 5, tzin
 
 def page(name: str) -> bytes:
     return (FIXTURES / f"{name}.json").read_bytes()
+
+
+def complete_page(name: str) -> bytes:
+    """Turn a pagination fixture into a self-contained one-page response."""
+    document = json.loads(page(name))
+    document["totalCount"] = document["count"]
+    return json.dumps(document).encode()
 
 
 def record(rid: int, changed: str, created: str | None = None) -> dict[str, Any]:
@@ -125,7 +133,7 @@ class TestLedgerIntegration:
         monkeypatch.setenv(APPNAME_ENV, "pramaanx-test")
         ledger = EvidenceLedger(rw_settings)
         connector = ReliefWebConnector(
-            rw_settings, {"cache": False}, fetcher=lambda url: page("reports_page1")
+            rw_settings, {"cache": False}, fetcher=lambda url: complete_page("reports_page1")
         )
         report = ledger.ingest("reliefweb", WINDOW, connector=connector)
         assert report.written == 3
@@ -155,7 +163,9 @@ class TestLedgerIntegration:
 
         def build() -> ReliefWebConnector:
             return ReliefWebConnector(
-                rw_settings, {"cache": False}, fetcher=lambda url: page("reports_page1")
+                rw_settings,
+                {"cache": False},
+                fetcher=lambda url: complete_page("reports_page1"),
             )
 
         first = ledger.ingest("reliefweb", WINDOW, connector=build())
@@ -169,12 +179,47 @@ class TestLedgerIntegration:
     ) -> None:
         monkeypatch.setenv(APPNAME_ENV, "pramaanx-test")
         connector = ReliefWebConnector(
-            rw_settings, {"cache": False}, fetcher=lambda url: page("reports_page1")
+            rw_settings, {"cache": False}, fetcher=lambda url: complete_page("reports_page1")
         )
         first = [item.payload for item in connector.fetch(WINDOW)]
         second = [item.payload for item in connector.fetch(WINDOW)]
         assert first == second
         assert all(isinstance(payload, bytes) for payload in first)
+
+    @pytest.mark.parametrize("failure", ["empty-page", "max-pages"])
+    def test_incomplete_walk_writes_no_partial_observations(
+        self,
+        failure: str,
+        rw_settings: Settings,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setenv(APPNAME_ENV, "pramaanx-test")
+        first = json.dumps(
+            {
+                "totalCount": 2,
+                "count": 1,
+                "data": [record(900050, "2026-03-02T00:00:00+00:00")],
+            }
+        ).encode()
+        empty_with_rows_remaining = json.dumps({"totalCount": 2, "count": 0, "data": []}).encode()
+        calls = 0
+
+        def fetch(url: str) -> bytes:
+            nonlocal calls
+            calls += 1
+            return first if calls == 1 else empty_with_rows_remaining
+
+        options: dict[str, Any] = {"cache": False, "page_size": 1}
+        if failure == "max-pages":
+            options["max_pages"] = 1
+
+        ledger = EvidenceLedger(rw_settings)
+        connector = ReliefWebConnector(rw_settings, options, fetcher=fetch)
+        with pytest.raises(ReliefWebIncompleteIngestError):
+            ledger.ingest("reliefweb", WINDOW, connector=connector)
+
+        assert ledger.read_observations() == []
+        assert not (rw_settings.storage.bronze / "payloads").exists()
 
 
 class TestCutoffSafety:
@@ -273,7 +318,7 @@ class TestCutoffSafety:
     ) -> None:
         monkeypatch.setenv(APPNAME_ENV, "pramaanx-test")
         connector = ReliefWebConnector(
-            rw_settings, {"cache": False}, fetcher=lambda url: page("reports_page1")
+            rw_settings, {"cache": False}, fetcher=lambda url: complete_page("reports_page1")
         )
         payloads = [item.payload for item in connector.fetch(WINDOW)]
         # No wall clock anywhere in the payload.
