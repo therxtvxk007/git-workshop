@@ -5,8 +5,10 @@
 #     --source reliefweb --from 2026-03-01 --until 2026-03-02
 #
 # The caller identity is NOT set here. ReliefWeb requires every caller to
-# identify itself, and that identity belongs in the environment
-# (PRAMAANX_RELIEFWEB_APPNAME) rather than in a tracked file.
+# identify itself with an appname it has approved in advance (mandatory since
+# 2025-11-01, requested via https://apidoc.reliefweb.int/parameters), and that
+# identity belongs in the environment (PRAMAANX_RELIEFWEB_APPNAME) rather than
+# in a tracked file.
 include: ../base.yaml
 
 sources:
@@ -18,3 +20,6 @@ sources:
     page_size: 100
     max_items: 500
     max_pages: 20
+    # Offset pagination over a mutating index can omit records, so windows are
+    # meant to overlap rather than tile. Re-ingesting is idempotent: bronze is
+    # content-addressed, so a repeated record is skipped, not duplicated.

@@ -4,170 +4,278 @@ Phase 1A adds one real Tier-0 source to the point-in-time ledger, preserving
 every M0 guarantee: availability-based admission, append-only content-addressed
 bronze, strict configuration, and the future-injection gate.
 
-Run everything: `make check` — ruff, mypy, and 380 tests behind an enforced
-coverage floor.
+Run everything: `make check` — ruff, mypy, and 469 offline tests behind an
+enforced coverage floor.
 
 | Suite | Tests | Phase 1A additions |
 | --- | ---: | --- |
-| `tests/unit` | 195 | Connector logic, availability rule, pagination, contract failures, rate limiting |
-| `tests/contracts` | 86 | `ReliefWebSourceConfig` strictness and typo rejection |
+| `tests/unit` | 278 | Connector logic, temporal fidelity, envelope strictness, item-id contract, query semantics, plan redaction, HTTP classification and retry bounds |
+| `tests/contracts` | 92 | `ReliefWebSourceConfig` strictness, single-sourced API version, retry ceiling |
 | `tests/leakage` | 24 | (unchanged; M0 guarantees) |
 | `tests/metamorphic` | 8 | (unchanged; M0 guarantees) |
 | `tests/integration` | 67 | Dry-run purity, ledger provenance, cutoff safety, CLI surface |
-| `tests/network` | 3 | Opt-in live verification (2 ReliefWeb, 1 GDELT) |
+| `tests/network` | 7 | Opt-in live verification (6 ReliefWeb, 1 GDELT) |
 
 ---
 
-## Read this first: what has and has not been verified
+## Read this first: three statuses, and they are not the same thing
 
-This distinction matters more than any test count below.
+This distinction matters more than any test count above. Collapsing any two of
+these is how a verification claim becomes a false one.
 
-| | Status |
+| Status | Value | What it rests on |
+| --- | --- | --- |
+| **Verified against current official documentation** | **YES** — 2026-08-26 | The v2 contract below was read from ReliefWeb's official documentation by external review on that date. The exact pages are listed under "Official documentation consulted". |
+| **Fixture / integration tested** | **YES** | Hand-written synthetic records drive `tests/unit` and `tests/integration` through the real ingest path, ledger and snapshot builder. This proves the connector's *logic*. It is not evidence about the wire format. |
+| **Genuinely live API verified** | **NO** | No response from `api.reliefweb.int` has ever been fetched or parsed in this environment. Its egress policy answers `403` to `CONNECT api.reliefweb.int:443`. |
+
+Machine-readable, in `API_CONTRACT` (`src/pramaanx/ingest/connectors/reliefweb.py`):
+
+```python
+"official_docs_verified": True,
+"official_docs_verified_on": "2026-08-26",
+"fixture_tested": True,
+"live_api_verified": False,
+```
+
+**Fixture tests do not replace a live request.** They can only show that the
+connector handles a shape someone wrote down; they cannot show ReliefWeb sends
+it.
+
+**None of these is a live verification:** a skipped test, an established TLS
+tunnel, an HTTP 403, a successfully constructed URL, or an empty response.
+`tests/network/test_reliefweb_live.py` now *fails* on an origin 403 rather than
+skipping — see §6 — and nothing in the repository flips `live_api_verified`
+automatically. That is a deliberate human edit after reading a passing run.
+
+---
+
+## 1. The v2 contract, from one constant
+
+The official list endpoint is `https://api.reliefweb.int/v2/reports`. Every
+version-bearing string is derived from a single definition,
+`RELIEFWEB_API_VERSION` in `src/pramaanx/config.py`:
+
+| Where | Value |
 | --- | --- |
-| Connector **logic** — pagination, ordering, deduplication, availability rule, contract failure handling | **Fixture-verified.** Hand-written synthetic records, `tests/unit` + `tests/integration`. |
-| Connector **request path** — URL construction, appname resolution, proxy/TLS negotiation, egress error handling | **Executed against the network.** The live test builds the real URL and opens a real TLS tunnel; it reaches ReliefWeb's edge and receives a policy denial from this environment's egress proxy. |
-| **The API contract itself** — that ReliefWeb returns the field names, envelope and pagination this connector assumes | **NOT VERIFIED.** Asserted from prior knowledge, not read from the official documentation, because the development environment had no route to `reliefweb.int` or `apidoc.reliefweb.int`. |
+| `ReliefWebSourceConfig.base_url` | `https://api.reliefweb.int/v2` |
+| `configs/base.yaml` | `https://api.reliefweb.int/v2` |
+| payload `api_version` | `v2` |
+| `RawItem.source_version` / `SourceRecord.source_version` | `reliefweb-v2-reports` |
 
-The assumptions are collected in one place — `API_CONTRACT` in
-`src/pramaanx/ingest/connectors/reliefweb.py` — which carries
-`verified_against_official_docs: False`, and a test asserts that it says so.
-`tests/network/test_reliefweb_live.py` checks every entry against the live
-service and is what converts the assertion into a fact.
+**Accepted when** — `TestApiVersionIsSingleSourced`: the URL, payload and both
+source-version strings agree; `API_VERSION is RELIEFWEB_API_VERSION` (an alias,
+not a second literal); and a tree scan proves no `reliefweb-v1-` or
+`api.reliefweb.int/v1` literal survives in `src/` or `configs/`.
 
-**A skipped live test is not a verification.** The live test skips when it is
-not enabled, when no appname is set, or when egress is blocked, and it fails
-loudly — never passes quietly — if the API shape does not match.
+## 2. Caller identity: mandatory and pre-approved
 
----
+The `appname` is required, travels in the request URL, and since **1 November
+2025 must be approved by ReliefWeb in advance**. It is not a name an operator
+chooses. `.env.example`, `README.md`, `configs/base.yaml` and the connector's
+own error message all say so and point at
+<https://apidoc.reliefweb.int/parameters>.
 
-## 1. Strictly typed configuration
+No appname is committed anywhere: `.env.example` ships the key empty, and a
+contract test fails if any tracked config sets `sources.reliefweb.appname`.
 
-**Implementation** — `ReliefWebSourceConfig` in `src/pramaanx/config.py`,
-registered in `SOURCE_OPTION_MODELS`.
+Whether a given name is *approved* is knowable only to ReliefWeb — an
+unapproved name is well-formed locally and refused at the origin with an HTTP
+403. That is why §6's classification change matters.
 
-Covers identity (`appname`), endpoint, pagination (`page_size`, `max_items`,
-`max_pages`), filters (`languages`, `countries`, `disaster_types`, `formats`),
-and egress (`cache`, `timeout_seconds`, `max_attempts`, `backoff_seconds`,
-`min_interval_seconds`, `proxy`, `trust_env`, `ca_bundle`, `verify`).
-
-**Accepted when** — `tests/contracts/test_source_config.py`:
-
-- `appnmae`, `page_siz`, `countires` are rejected, with the source named in the
-  error;
-- strictness extends to meaning, not only spelling: `countries: ["IN"]` is
-  rejected as not ISO-3166 alpha-3, `languages: ["eng"]` as not ISO-639-1, and
-  `endpoint: disasters` as out of Phase 1A scope;
-- `page_size: 5000` is rejected against the API's own ceiling;
-- every option the connector reads is declared, checked by parsing the module
-  (`TestEveryConsumedOptionIsDeclared`), and no option is read by string key;
-- ReliefWeb options are inside `config_hash`, so a run with a different page
-  size is a different experiment.
-
-## 2. Temporal semantics
-
-**The rule**, implemented in `availability_of` and pinned by
-`tests/unit/test_reliefweb_connector.py::TestAvailabilityRule`:
-
-```
-first_observed_at = max(date.created, date.changed)
-```
-
-Four instants are kept distinct:
+## 3. Temporal fidelity: nothing is substituted
 
 | Instant | Source | Where it goes |
 | --- | --- | --- |
-| Availability | `max(created, changed)` | `first_observed_at` — the only field admission uses |
+| Created | raw `date.created` | `metadata.date_created` |
+| Changed | raw `date.changed`, or **null** | `metadata.date_changed` |
+| Original | raw `date.original`, or **null** | `metadata.date_original` |
+| Availability | `max(created, changed)`, else `created` | `first_observed_at`, `metadata.date_availability` |
 | Publication | `date.original` if present, else `date.created` | `published_at` |
-| Modification | `date.changed` | `metadata.date_changed`, `revised_after_publication` |
 | Retrieval | the ledger's clock | `retrieved_at`, never used for admission |
-| Claimed event time | — | **left unset**: report metadata carries publication dates, not the date of the situation described. Deriving one would be inventing it. |
+| Claimed event time | — | **left unset** |
+
+Three corrections against the previous implementation:
+
+- `published_at` is `date.original` when present, **not** `min(original,
+  created)`. The two agree only while `original` is the earlier of the pair;
+  where it is not, the old code published ReliefWeb's posting date instead of
+  the document's own.
+- `metadata.date_changed` carries the **raw** `date.changed`, or null. It used
+  to carry the computed availability, so a record the API never said was
+  modified looked as though it had been.
+- `revised_after_creation` (renamed from `revised_after_publication`) is
+  `changed > created`, and `False` when `changed` is absent. The absence of a
+  modification timestamp is not evidence of a modification.
+
+An `original` that postdates availability raises `ReliefWebContractError` naming
+the report. Clamping `published_at` down would rewrite what the record says
+about itself; raising availability would import the document's own date into the
+field admission depends on. Both are worse than failing.
 
 **Why the maximum.** The API serves only the current revision; there is no
 version-history endpoint. The body in hand is the revised body, so the earliest
 moment this project can honestly claim to have had *this text* is when it was
 last revised. A report created in 2020 and edited in 2026 enters a 2026
-snapshot, not a 2020 one.
+snapshot. That withholds evidence from early cutoffs a contemporaneous reader
+might really have had, rather than risk attributing to an early cutoff a
+sentence written later.
 
-This is deliberately conservative in a specific direction: it withholds evidence
-from early cutoffs that a contemporaneous reader might really have had, rather
-than risk attributing to an early cutoff a sentence written later. For a system
-whose entire claim rests on not seeing the future, that is the right way to err.
-Recovering the earlier text would need an external archive; until one exists,
-this is the honest bound, and it is stated in the connector docstring, the
-`SourceRecord.notes`, and the README.
+**Accepted when** — `TestTemporalFidelity` and `TestAvailabilityRule` cover
+`original` earlier than `created`; `original` later than `created` but before
+availability; `original` postdating availability (raises); `changed` absent;
+`changed` earlier than `created`; and all three instants written in different
+timezone offsets. Plus the M0 gate tests in `TestCutoffSafety`.
 
-**Accepted when** —
+## 4. The envelope is strict
 
-- a revised report is available only from its revision
-  (`test_revised_report_is_available_only_from_its_revision`);
-- `date.original` never sets availability
-  (`test_original_publication_date_never_sets_availability`);
-- naive timestamps are refused rather than assumed UTC
-  (`test_naive_timestamps_are_refused`) — an assumed offset is an hour of
-  leakage;
-- a report revised after a cutoff cannot enter a snapshot at that cutoff
-  (`test_a_report_revised_after_the_cutoff_cannot_enter_an_earlier_snapshot`);
-- future records do not change a pre-cutoff snapshot hash, with a negative
-  control proving the injection was real
-  (`TestCutoffSafety`).
+The official successful list response carries `totalCount`, `count` and `data`.
+All three are now required, and this fallback is gone:
 
-## 3. Pagination, ordering, deduplication
+```python
+document.get("totalCount", document.get("count", len(data)))   # removed
+```
 
-**Accepted when** — `tests/unit/test_reliefweb_connector.py::TestPagination`:
+It was the most dangerous line in the connector. The pagination loop terminates
+on `offset >= total`, so an envelope missing `totalCount` reported the first
+page's size as the total, stopped after one page, and wrote a truncated window
+into an append-only ledger with no error anywhere.
 
-- offset pagination walks until `totalCount` is reached, or an empty page, or
-  `max_pages` — a mis-specified window cannot walk the archive indefinitely;
-- ordering is total (`date.changed:asc`, then `id:asc`), because a date-only
-  sort repeats or drops records where timestamps collide at a page boundary;
-- a record appearing on two pages is ingested once
-  (`test_duplicate_records_across_pages_are_ingested_once`);
-- `max_items` bounds a first run;
-- `FetchWindow` is half-open while the API's range bounds are inclusive, so the
-  window is re-applied client-side — a record exactly at the end bound is
-  dropped, one at the start bound is kept (`TestWindowBoundaries`).
+`parse_envelope` now requires: `totalCount` and `count` both present,
+non-negative integers, and **not** `bool` (which is an `int` subclass in Python
+and would otherwise sail through `isinstance`); `count == len(data)`;
+`totalCount >= count`; and every item in `data` a JSON object.
 
-## 4. Failing loudly
+**Accepted when** — `TestEnvelopeStrictness` covers `totalCount` absent with
+`count` present, both absent, `count` absent, boolean totals, negative totals,
+non-integer totals, count/data disagreement, `totalCount` below `count`, and a
+non-object item — plus a regression proving the walk aborts on the first bad
+page instead of continuing.
 
-A response shape the connector does not understand raises
-`ReliefWebContractError`. It is never skipped, and never returned as an empty
-page: a silent gap in an append-only ledger later reads as a quiet news week.
+## 5. The item contract and the query
 
-**Accepted when** — `TestContractFailures` covers a missing `data` list, an API
-error envelope, a record with no date object, a naive timestamp, a non-JSON
-body, and a record with no id.
+**Items.** A top-level integer `id` is required, with no fallback to
+`fields.id`. When `fields.id` is present it must be an integer and must equal
+the top-level id. Fixtures model ids as integers, as the official fields table
+specifies.
 
-## 5. Egress
+**Query.** Both operators are stated, never left to a default:
 
-Reuses M0's `HttpClient` unchanged in behaviour, with one addition: HTTP 429 is
-now retried honouring the server's own `Retry-After` (delta-seconds or HTTP
-date), and a persistent 429 raises an actionable `RateLimitError` naming the
-knobs to turn. ReliefWeb rate-limits, and guessing a backoff against a service
-that has just told you the answer is both rude and slower.
+- `filter[operator]=AND` — always emitted, even when the date condition stands
+  alone, so adding a filter later cannot change the query's meaning;
+- `filter[conditions][N][operator]=OR` — whenever a condition carries several
+  values. "Any of these countries" is a union; an implicit AND would ask for a
+  report filed under every listed country at once and quietly return nothing.
 
-**Accepted when** — `tests/unit/test_http_client.py::TestRateLimiting`, and
-`TestEgressConfiguration` in the connector tests proves `proxy`, `ca_bundle`,
-`trust_env`, timeouts, attempts and pacing all reach the client.
+Date ranges use `value[from]` / `value[to]`. The API's bounds are inclusive
+while a `FetchWindow` is half-open, so the window is re-applied client-side.
+Sort is the total order `date.changed:asc`, `id:asc` — both documented sort
+keys. `limit` is bounded by the config at 1–1000. `profile=list` supplies the
+list profile's own fields and `fields[include][]` adds the rest, every one of
+them confirmed in the official fields table.
 
-## 6. `--dry-run` purity
+**Accepted when** — `TestFilterQuerySemantics` asserts on `parse_qs` output, not
+substrings. A substring check passes on malformed nesting; an exact parse does
+not.
 
-**Accepted when** — `TestDryRunPurity`: the planner is handed a fetcher that
-raises on any call, and no request is made; no bronze directory is created; the
-caller identity is redacted from the emitted plan; and a missing appname fails
-*during* the dry run rather than on the first real request.
+## 6. Egress failures are classified, not lumped together
 
-## 7. Credentials and licensed content
+`HttpClient` used to raise `ProxyPolicyError` for every 403. That was unsafe the
+moment appnames became approval-gated:
 
-- The appname is resolved from `PRAMAANX_RELIEFWEB_APPNAME`, or from
-  configuration when an experiment should record the identity it called under.
-  Absent both, the connector raises — calling an API anonymously that asks you
-  not to is not a default anyone should get by omission.
-- The identity is redacted from every persisted payload and from plan output
-  (`test_payload_never_carries_the_caller_identity`).
-- A contract test fails if any committed config sets an appname.
-- Fixtures are hand-written and synthetic; `tests/fixtures/reliefweb/README.md`
-  explains why no real corpus is committed. `data/` remains git-ignored.
+- an unapproved appname causes an **origin** 403;
+- the live test skips on `ProxyPolicyError`;
+- so invalid API access was reported as blocked egress and never failed
+  verification.
 
-## 8. M0 remains intact
+Now:
+
+| Condition | Class | Retried |
+| --- | --- | --- |
+| HTTP 407 response | `ProxyPolicyError` | no |
+| CONNECT-time `httpx.ProxyError` with a denial marker | `ProxyPolicyError` | no |
+| HTTP 401 / 403 response from the destination | `PermanentHttpError` | no |
+
+The 403 message names the appname and its approval requirement. The live test
+fails on an origin 403 and skips **only** on a genuine proxy/CONNECT denial.
+
+**Accepted when** — `TestOriginRefusalIsNotAProxyDenial` proves all three cases
+are distinguishable by type and that a permanent refusal is not retried. GDELT's
+behaviour is unchanged.
+
+## 7. Redaction and bounded retries
+
+**Redaction.** The request URL contains the appname, so `redact_url` /
+`redact_proxy` in `pramaanx.ingest.http` are the single display path for every
+log line, exception message and persisted payload. They redact sensitive query
+values and URL/proxy userinfo, and they never touch the URL actually requested
+or the string the cache is keyed on — redacting those would break the request or
+make two callers collide in one cache entry.
+
+**Accepted when** — `TestRedaction` covers retry logs, rate-limit logs,
+`RateLimitError`, `PermanentHttpError`, `NotFoundError`, `ProxyPolicyError`, the
+final `HttpFetchError`, configured-proxy logging, that the real request URL is
+unaltered, and that two appnames still get distinct cache entries.
+
+**Retries.** `max_retry_after_seconds` (default 60, configurable per source)
+clamps both the delta-seconds and HTTP-date forms of `Retry-After` *and* the
+exponential fallback. A header of 86400 cannot park an ingest for a day inside a
+retry loop nobody is watching.
+
+**Accepted when** — `TestRetryAfterIsBounded` covers an ordinary header honoured,
+an excessive one capped (both forms), negative/past values becoming zero,
+malformed values falling back to bounded backoff, non-finite values capped, and
+a persistent 429 still raising `RateLimitError`. No test sleeps for real: the
+loop is exercised with a stubbed clock.
+
+## 8. Pagination: what the total sort does and does not buy
+
+The total order (`date.changed:asc`, then `id:asc`) stops records with identical
+timestamps reshuffling across a page boundary. It does **not** stop an index
+that mutates mid-walk from omitting a record entirely, and no client-side check
+can detect that — the response is well-formed either way. Deduplication handles
+repeats, which are visible; nothing handles drops, which are not.
+
+No keyset-filter syntax has been invented to work around this. The limitation is
+documented instead, in the connector docstring, `SourceRecord.notes`, the README
+and `API_CONTRACT["pagination"]["residual_limitation"]`, together with the
+operational answer: **overlapping ingestion windows**, which are cheap because
+bronze is content-addressed and re-ingesting is idempotent.
+
+**Accepted when** — `TestPaginationLimitationIsStated` pins the admission in the
+source record a modeller will actually read.
+
+## 9. `--dry-run` purity
+
+The planner is handed a fetcher that raises on any call, and no request is made;
+no bronze directory is created; and a missing appname fails *during* the dry run
+rather than on the first real request.
+
+The plan no longer emits the appname. It emits `appname_configured`,
+`appname_source` (`config` or the environment variable name), and the constant
+marker `<redacted>`. The identity is still resolved, so a missing one still
+fails the dry run.
+
+**Accepted when** — `TestPlanWithholdsTheCallerIdentity` serialises the entire
+plan to JSON and proves the appname appears nowhere in it, for both the
+environment and config paths; the CLI integration test does the same against
+`--dry-run` stdout.
+
+## 10. Licence and terms
+
+`redistributable=False` stays, as a conservative machine-enforced default.
+
+The recorded licence text describes the terms without over-reading them: use is
+subject to personal/non-commercial and no-resale/no-redistribution limitations
+**unless specific permission or material-specific terms provide otherwise**, with
+attribution to the contributing organisation. Which of those applies to a given
+use is a question for a human, and the connector says so rather than converting
+an engineering default into a legal conclusion.
+
+Fixtures are hand-written and synthetic; no real ReliefWeb corpus is committed.
+`data/` remains git-ignored.
+
+## 11. M0 remains intact
 
 The M0 acceptance gate (`tests/leakage`, `tests/metamorphic`,
 `tests/contracts`, then `make demo`) is unchanged and still passes. `make demo`
@@ -175,37 +283,65 @@ does not touch ReliefWeb: it runs on the synthetic world, offline.
 
 ---
 
+## Official documentation consulted
+
+Accessed **2026-08-26** by external review:
+
+- <https://apidoc.reliefweb.int/endpoints>
+- <https://apidoc.reliefweb.int/parameters>
+- <https://apidoc.reliefweb.int/result-structure>
+- <https://apidoc.reliefweb.int/fields-tables>
+- <https://apidoc.reliefweb.int/faq>
+- <https://reliefweb.int/terms-conditions>
+
+Recorded in `API_CONTRACT["official_docs"]` and pinned by a test.
+
 ## What Phase 1A does not do
 
+- **It does not improve forecasting accuracy, and does not claim to.** It
+  creates one trustworthy bronze evidence source. Nothing more follows from it.
+- **ReliefWeb alone cannot support the intended retrospectives.** It is
+  *response-driven* humanitarian reporting: coverage follows operational
+  response, not severity, and a report exists because something is already being
+  responded to. That is structurally the wrong side of the event for the
+  pre-event signal coverage a 26/11, Pahalgam or Kandahar retrospective
+  evaluation would need. Those need sources that emit before a response exists.
 - **No extraction.** ReliefWeb observations reach bronze; nothing turns them
-  into `EventMention`s. Humanitarian prose needs the Phase 2 extraction
-  cascade, so `pramaanx extract` skips them and logs that it did. They are
-  evidence in the ledger, not yet features.
+  into `EventMention`s. Humanitarian prose needs the Phase 2 extraction cascade,
+  so `pramaanx extract` skips them and logs that it did.
 - **No `/disasters`, `/jobs` or `/training`.** Different date semantics; the
   config rejects those endpoints rather than pretending.
 - **No historical reconstruction.** Revised reports are timestamped at their
-  revision, so deep-history backtests over ReliefWeb will under-represent
-  early cutoffs. Quantifying that needs an external archive.
+  revision, so deep-history backtests over ReliefWeb will under-represent early
+  cutoffs. Quantifying that needs an external archive.
 - **No ACLED, no data.gov.in, no frozen news corpus.** Phase 1B.
 
 ## Human actions still required
 
-1. **Allowlist `api.reliefweb.int`** for whatever network runs the ingest. This
-   environment's egress proxy denies it (`403` on CONNECT), which is why the
-   API contract is unverified.
-2. **Run the live test** once egress exists, and read its result:
+1. **Obtain a pre-approved appname** from ReliefWeb. Mandatory since
+   2025-11-01, and not something to choose locally — request one through the
+   process linked from <https://apidoc.reliefweb.int/parameters>, then set
+   `PRAMAANX_RELIEFWEB_APPNAME`. Until then no live call can succeed, and an
+   unapproved name returns an origin 403.
+2. **Allowlist `api.reliefweb.int`** for whatever network runs the ingest. This
+   environment's egress proxy denies it (`403` on CONNECT), which is why
+   `live_api_verified` is false.
+3. **Run the live test** once both exist, and read its result:
    ```bash
-   PRAMAANX_LIVE_RELIEFWEB=1 PRAMAANX_RELIEFWEB_APPNAME=your-app \
+   PRAMAANX_LIVE_RELIEFWEB=1 PRAMAANX_RELIEFWEB_APPNAME=your-approved-app \
      uv run pytest tests/network -m network -v
    ```
-   If it fails, the contract has drifted from reality and both `API_CONTRACT`
-   and the parsing need correcting against <https://apidoc.reliefweb.int/>.
-   Then flip `verified_against_official_docs` to `True` and update the test
-   that asserts it.
-3. **Choose an appname** identifying your deployment.
-4. **Review ReliefWeb's terms** for your intended use. The connector records
-   the licence and marks the source non-redistributable, but whether a
-   particular use is permitted is not a decision code can make.
-5. **Decide whether the conservative availability rule is acceptable** for your
+   A pass is the only thing that justifies setting `live_api_verified: True`,
+   and that edit is deliberate and human. A skip, a 403, or an empty result is
+   not a pass. If it fails, the contract has drifted from reality and both
+   `API_CONTRACT` and the parsing need correcting against
+   <https://apidoc.reliefweb.int/>.
+4. **Review ReliefWeb's terms** for your intended use. The connector records the
+   licence and marks the source non-redistributable, but whether a particular
+   use is permitted is not a decision code can make.
+5. **Decide the ingestion overlap.** Offset pagination can omit records under
+   concurrent mutation (§8); choose a window overlap that suits your tolerance,
+   or build the reconciliation Phase 1A deliberately does not.
+6. **Decide whether the conservative availability rule is acceptable** for your
    backtests, or whether recovering pre-revision text from an archive is worth
    building.

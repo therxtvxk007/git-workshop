@@ -135,7 +135,7 @@ class TestValidConfigurations:
                 "sources": {
                     "reliefweb": {
                         "appname": "pramaanx-test",
-                        "base_url": "https://api.reliefweb.int/v1",
+                        "base_url": "https://api.reliefweb.int/v2",
                         "endpoint": "reports",
                         "page_size": 50,
                         "max_items": 200,
@@ -291,3 +291,49 @@ class TestConfigHash:
                 Settings.model_validate(raw.get("settings", {}))
             else:
                 load_settings(path, environ={})
+
+
+class TestReliefWebVersionAndRetryContract:
+    """The API version has one home, and the retry ceiling is configurable."""
+
+    def test_the_default_base_url_is_built_from_the_version_constant(self) -> None:
+        from pramaanx.config import (
+            RELIEFWEB_API_VERSION,
+            RELIEFWEB_BASE_URL,
+            ReliefWebSourceConfig,
+        )
+
+        assert RELIEFWEB_API_VERSION == "v2"
+        assert f"https://api.reliefweb.int/{RELIEFWEB_API_VERSION}" == RELIEFWEB_BASE_URL
+        assert ReliefWebSourceConfig().base_url == RELIEFWEB_BASE_URL
+
+    def test_the_connector_reads_the_same_constant(self) -> None:
+        from pramaanx.config import RELIEFWEB_API_VERSION
+        from pramaanx.ingest.connectors.reliefweb import API_VERSION
+
+        # An alias, not a second literal: one place to change the version.
+        assert API_VERSION is RELIEFWEB_API_VERSION
+
+    def test_the_shipped_config_targets_the_current_version(self) -> None:
+        from pramaanx.config import RELIEFWEB_API_VERSION, load_settings
+
+        repo_root = Path(__file__).resolve().parents[2]
+        settings = load_settings(repo_root / "configs/base.yaml", environ={})
+        options = settings.source_options("reliefweb")
+        assert options.base_url.endswith(f"/{RELIEFWEB_API_VERSION}")
+
+    def test_the_retry_ceiling_is_a_declared_option(self) -> None:
+        from pramaanx.config import ReliefWebSourceConfig
+
+        assert ReliefWebSourceConfig().max_retry_after_seconds == 60.0
+        assert ReliefWebSourceConfig(max_retry_after_seconds=5.0).max_retry_after_seconds == 5.0
+
+    def test_a_negative_retry_ceiling_is_rejected(self) -> None:
+        from pramaanx.config import ReliefWebSourceConfig
+
+        with pytest.raises(ValidationError):
+            ReliefWebSourceConfig(max_retry_after_seconds=-1.0)
+
+    def test_the_retry_ceiling_typo_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="max_retry_after_second"):
+            Settings.model_validate({"sources": {"reliefweb": {"max_retry_after_second": 10}}})

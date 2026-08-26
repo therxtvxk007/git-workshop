@@ -88,10 +88,13 @@ sources:
     country_filter: []
     event_root_codes: []
   reliefweb:
-    # ReliefWeb requires callers to identify themselves. Leave appname unset
-    # here and the connector reads PRAMAANX_RELIEFWEB_APPNAME; setting it in a
-    # config file commits an identity to version control.
-    base_url: "https://api.reliefweb.int/v1"
+    # ReliefWeb requires every caller to identify itself with an appname, and
+    # since 2025-11-01 that appname must be PRE-APPROVED by ReliefWeb -- it is
+    # not a name an operator can simply pick. Request one via
+    # https://apidoc.reliefweb.int/parameters. Leave appname unset here and the
+    # connector reads PRAMAANX_RELIEFWEB_APPNAME; setting it in a config file
+    # commits an identity to version control.
+    base_url: "https://api.reliefweb.int/v2"
     endpoint: reports
     page_size: 100
     max_items: 0
@@ -107,5 +110,8 @@ sources:
     # ReliefWeb rate-limits; pacing is politeness that also stops retries
     # compounding into a burst.
     min_interval_seconds: 0.5
+    # Ceiling on a server-supplied Retry-After, so a 429 cannot park an ingest
+    # for as long as the header asks.
+    max_retry_after_seconds: 60.0
     trust_env: true
     verify: true

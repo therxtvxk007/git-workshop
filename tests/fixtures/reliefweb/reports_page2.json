@@ -4,9 +4,9 @@
   "count": 2,
   "data": [
     {
-      "id": "900003",
+      "id": 900003,
       "fields": {
-        "id": "900003",
+        "id": 900003,
         "title": "Synthetic situation report 900003",
         "body": "Invented body text for record 900003. Not ReliefWeb content.",
         "url": "https://example.invalid/report/900003",
@@ -41,9 +41,9 @@
       }
     },
     {
-      "id": "900004",
+      "id": 900004,
       "fields": {
-        "id": "900004",
+        "id": 900004,
         "title": "Synthetic situation report 900004",
         "body": "Invented body text for record 900004. Not ReliefWeb content.",
         "url": "https://example.invalid/report/900004",

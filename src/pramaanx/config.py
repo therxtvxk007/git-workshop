@@ -199,19 +199,34 @@ class GdeltSourceConfig(SourceOptions):
     verify: bool = True
 
 
+#: The ReliefWeb API version this project speaks, in ONE place.
+#:
+#: The official documentation's endpoint examples are ``https://api.reliefweb.int/v2/reports``
+#: (apidoc.reliefweb.int/endpoints, verified 2026-08-26). The URL default below, the
+#: ``api_version`` recorded in every payload, and the ``source_version`` stamped on every
+#: record and SourceRecord are all derived from this constant, so they cannot drift apart:
+#: changing the version here changes all four, and a contract test proves no ``v1`` literal
+#: survives anywhere in the tree.
+RELIEFWEB_API_VERSION = "v2"
+RELIEFWEB_BASE_URL = f"https://api.reliefweb.int/{RELIEFWEB_API_VERSION}"
+
+
 class ReliefWebSourceConfig(SourceOptions):
     """Options for the ReliefWeb API connector.
 
-    ReliefWeb requires every caller to identify itself with an ``appname``.
-    Leave it unset here and the connector reads ``PRAMAANX_RELIEFWEB_APPNAME``
-    from the environment; setting it here instead puts it inside the config
-    hash, which is useful when an experiment should record the identity it
-    called under.
+    ReliefWeb requires every caller to identify itself with an ``appname``, and
+    since 1 November 2025 that name must be **pre-approved** by ReliefWeb --
+    it is no longer a string the operator simply picks. Leave it unset here and
+    the connector reads ``PRAMAANX_RELIEFWEB_APPNAME`` from the environment;
+    setting it here instead puts it inside the config hash, which is useful when
+    an experiment should record the identity it called under, and is why no
+    tracked config in this repository sets one.
     """
 
-    #: Caller identity. ``None`` defers to PRAMAANX_RELIEFWEB_APPNAME.
+    #: Caller identity: an appname approved by ReliefWeb. ``None`` defers to
+    #: PRAMAANX_RELIEFWEB_APPNAME.
     appname: str | None = None
-    base_url: str = "https://api.reliefweb.int/v1"
+    base_url: str = RELIEFWEB_BASE_URL
     #: The API resource. Phase 1A ingests reports only; /disasters and /jobs
     #: have different date semantics and are not in scope.
     endpoint: Literal["reports"] = "reports"
@@ -242,6 +257,11 @@ class ReliefWebSourceConfig(SourceOptions):
     #: Minimum spacing between requests. ReliefWeb rate-limits; pacing is
     #: politeness that also keeps retries from compounding.
     min_interval_seconds: float = Field(default=0.5, ge=0.0)
+    #: Ceiling on how long a server-supplied ``Retry-After`` may park the
+    #: process. A 429 is an instruction, but an unbounded one is a denial of
+    #: service by cooperation: without a cap, a header of 86400 stops an
+    #: ingest for a day inside a retry loop nobody is watching.
+    max_retry_after_seconds: float = Field(default=60.0, ge=0.0)
     #: Explicit proxy URL (http://, https:// or socks5://). Overrides the
     #: environment; ``None`` means "use whatever the environment says".
     proxy: str | None = None

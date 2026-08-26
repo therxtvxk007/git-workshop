@@ -18,7 +18,12 @@ from typer.testing import CliRunner
 from pramaanx.config import Settings, StorageConfig
 from pramaanx.hashing import canonical_bytes
 from pramaanx.ingest.base import FetchWindow
-from pramaanx.ingest.connectors.reliefweb import APPNAME_ENV, ReliefWebConnector
+from pramaanx.ingest.connectors.reliefweb import (
+    API_VERSION,
+    APPNAME_ENV,
+    REDACTED_APPNAME,
+    ReliefWebConnector,
+)
 from pramaanx.ingest.ledger import EvidenceLedger
 from pramaanx.timeguard.cutoff import CutoffGuard
 from pramaanx.timeguard.snapshots import SnapshotBuilder
@@ -32,7 +37,7 @@ def page(name: str) -> bytes:
     return (FIXTURES / f"{name}.json").read_bytes()
 
 
-def record(rid: str, changed: str, created: str | None = None) -> dict[str, Any]:
+def record(rid: int, changed: str, created: str | None = None) -> dict[str, Any]:
     return {
         "id": rid,
         "fields": {
@@ -77,11 +82,14 @@ class TestDryRunPurity:
     def test_plan_does_not_leak_the_caller_identity(
         self, rw_settings: Settings, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.setenv(APPNAME_ENV, "pramaanx-test")
+        monkeypatch.setenv(APPNAME_ENV, "secret-caller-identity")
         connector = ReliefWebConnector(rw_settings, {"cache": False}, fetcher=lambda u: b"{}")
         plan = connector.plan(WINDOW)
         assert "appname=REDACTED" in plan["first_request_url"]
         assert "appname" not in plan["options"]
+        # The whole plan, serialised: a leak can hide in any nested value.
+        assert "secret-caller-identity" not in json.dumps(plan)
+        assert plan["appname"] == REDACTED_APPNAME
 
     def test_dry_run_ingest_writes_nothing(
         self, rw_settings: Settings, monkeypatch: pytest.MonkeyPatch
@@ -137,7 +145,7 @@ class TestLedgerIntegration:
             assert observation.published_at <= observation.first_observed_at
 
         sources = {item.source_id: item for item in ledger.read_source_records()}
-        assert sources["reliefweb"].source_version == "reliefweb-v1-reports"
+        assert sources["reliefweb"].source_version == f"reliefweb-{API_VERSION}-reports"
 
     def test_reingesting_the_same_window_writes_nothing_new(
         self, rw_settings: Settings, monkeypatch: pytest.MonkeyPatch
@@ -183,9 +191,9 @@ class TestCutoffSafety:
         window = FetchWindow(datetime(2026, 3, 1, tzinfo=UTC), datetime(2026, 3, 10, tzinfo=UTC))
 
         payload = envelope(
-            record("900100", "2026-03-02T00:00:00+00:00"),
+            record(900100, "2026-03-02T00:00:00+00:00"),
             # created well before the cutoff, revised after it
-            record("900101", "2026-03-06T00:00:00+00:00", created="2026-03-01T00:00:00+00:00"),
+            record(900101, "2026-03-06T00:00:00+00:00", created="2026-03-01T00:00:00+00:00"),
         )
         ledger = EvidenceLedger(rw_settings)
         connector = ReliefWebConnector(rw_settings, {"cache": False}, fetcher=lambda url: payload)
@@ -214,7 +222,7 @@ class TestCutoffSafety:
             connector=ReliefWebConnector(
                 rw_settings,
                 {"cache": False},
-                fetcher=lambda url: envelope(record("900200", "2026-03-02T00:00:00+00:00")),
+                fetcher=lambda url: envelope(record(900200, "2026-03-02T00:00:00+00:00")),
             ),
         )
         builder = SnapshotBuilder(rw_settings, ledger)
@@ -227,8 +235,8 @@ class TestCutoffSafety:
                 rw_settings,
                 {"cache": False},
                 fetcher=lambda url: envelope(
-                    record("900201", "2026-03-07T00:00:00+00:00"),
-                    record("900202", "2026-03-09T00:00:00+00:00"),
+                    record(900201, "2026-03-07T00:00:00+00:00"),
+                    record(900202, "2026-03-09T00:00:00+00:00"),
                 ),
             ),
         )
@@ -251,7 +259,7 @@ class TestCutoffSafety:
             connector=ReliefWebConnector(
                 rw_settings,
                 {"cache": False},
-                fetcher=lambda url: envelope(record("900300", "2026-03-07T00:00:00+00:00")),
+                fetcher=lambda url: envelope(record(900300, "2026-03-07T00:00:00+00:00")),
             ),
         )
         builder = SnapshotBuilder(rw_settings, ledger)
@@ -327,7 +335,12 @@ class TestCliSurface:
         payload = json.loads(result.output.strip().splitlines()[-1])
         assert payload["dry_run"] is True
         assert payload["written"] == 0
-        assert payload["plan"]["appname"] == "pramaanx-cli-test"
+        # The CLI prints the plan to stdout, so it must not carry the identity
+        # even though this workspace configures one.
+        assert payload["plan"]["appname"] == REDACTED_APPNAME
+        assert payload["plan"]["appname_configured"] is True
+        assert payload["plan"]["appname_source"] == "config"
+        assert "pramaanx-cli-test" not in result.output
         assert not (workspace / "data" / "bronze").exists()
 
 

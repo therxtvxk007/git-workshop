@@ -111,17 +111,36 @@ uv run pramaanx ingest --source gdelt \
   --config configs/sources/gdelt_india_unrest.yaml \
   --from 2026-01-01T00:00:00Z --until 2026-01-01T06:00:00Z
 
-# ReliefWeb: curated humanitarian reporting. No key, but callers must identify
-# themselves, so set PRAMAANX_RELIEFWEB_APPNAME first.
-export PRAMAANX_RELIEFWEB_APPNAME=your-deployment-name
+# ReliefWeb: curated humanitarian reporting. No key, but every caller must
+# identify itself with an appname ReliefWeb has APPROVED IN ADVANCE (mandatory
+# since 2025-11-01 -- request one via https://apidoc.reliefweb.int/parameters).
+export PRAMAANX_RELIEFWEB_APPNAME=your-approved-appname
 uv run pramaanx ingest --source reliefweb \
   --config configs/sources/reliefweb_india.yaml \
   --from 2026-03-01 --until 2026-03-02 --dry-run   # plan first; makes no request
 ```
 
-Neither needs an account. The remaining Tier-0 sources (ACLED, data.gov.in)
+Neither needs an account, though ReliefWeb needs an approved appname. Its terms
+restrict use to personal/non-commercial purposes and prohibit resale and
+redistribution unless specific permission or a particular document's own terms
+provide otherwise; the connector marks the source non-redistributable as a
+conservative machine-enforced default, which is not a substitute for reading
+the terms for your use. The remaining Tier-0 sources (ACLED, data.gov.in)
 require registration and licence review and are not built yet — see
 `.env.example`. **No licensed data may be committed to this repository.**
+
+#### ReliefWeb caller identity
+
+The `appname` is **mandatory**, it travels in the request URL, and since
+**1 November 2025 it must be pre-approved by ReliefWeb**. It is not a string you
+pick: request one through the process linked from
+<https://apidoc.reliefweb.int/parameters>. An unapproved or misspelled name is
+refused at the origin with an HTTP 403 — which this client reports as a
+permanent error naming the appname, never as a blocked-egress skip.
+
+Keep it in the environment. It is redacted from every persisted payload, every
+log line, every exception message and from `--dry-run` output, and a contract
+test fails if any tracked config commits one.
 
 #### ReliefWeb availability semantics
 
@@ -135,14 +154,36 @@ That is deliberately conservative: it withholds evidence from early cutoffs that
 a contemporaneous reader might really have had, rather than risk attributing to
 an early cutoff a sentence written later. `claimed_event_time` is left unset,
 because report metadata carries publication dates and not the date of the
-situation described. Details in [docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md).
+situation described.
+
+All three raw instants survive into `metadata` under their own names —
+`date_created`, `date_changed` (null when the API omits it, never back-filled)
+and `date_original` — alongside the derived `date_availability`. `published_at`
+is `date.original` when present, otherwise `date.created`. Details in
+[docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md).
+
+#### ReliefWeb pagination: overlap your windows
+
+Paging walks `offset` under a total sort (`date.changed:asc`, then `id:asc`).
+The total order stops records with identical timestamps reshuffling across a
+page boundary. It does **not** stop an index that mutates mid-walk from omitting
+a record entirely, and no client-side check can detect that — the response is
+well-formed either way. Deduplication handles repeats, which are visible;
+nothing handles drops, which are not.
+
+So treat one pass as a sample, not a proof: re-ingest with overlapping windows.
+Bronze is content-addressed and append-only, so re-ingesting is idempotent.
 
 Behind a proxy, the standard environment is honoured (`HTTPS_PROXY`,
 `ALL_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`), and every part of it is overridable
-per source — `proxy`, `trust_env`, `ca_bundle`, `verify` — including SOCKS. A
-policy denial (403/407) is reported immediately, naming the blocked host,
-instead of being retried; HTTP 429 is retried honouring the server's own
-`Retry-After`. To check egress end to end:
+per source — `proxy`, `trust_env`, `ca_bundle`, `verify` — including SOCKS.
+Egress failures are classified rather than lumped together: an HTTP 407, or a
+CONNECT the proxy refuses, is a **policy denial** reported immediately and
+naming the blocked host; an HTTP 401/403 *from the destination* is a
+**permanent origin refusal**, because a request that was answered is not a
+request that was blocked. Neither is retried. HTTP 429 is retried honouring the
+server's own `Retry-After`, bounded by `max_retry_after_seconds` so a header of
+86400 cannot park an ingest for a day. To check egress end to end:
 
 ```bash
 PRAMAANX_LIVE_GDELT=1 uv run pytest tests/network -m network -v
@@ -258,9 +299,16 @@ chose.
 
 ## Next milestone
 
-Phase 1A (ReliefWeb) is built — see
-[docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md), which is explicit about what is
-fixture-tested and what still needs a live run to confirm.
+Phase 1A (ReliefWeb) is built against the **v2** API — see
+[docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md), which keeps three statuses
+apart: verified against current official documentation (yes, 2026-08-26),
+fixture-tested (yes), and genuinely live-verified (**no** — this environment has
+no egress to `api.reliefweb.int`).
+
+Phase 1A does not improve forecasting accuracy and does not claim to. It adds
+one trustworthy bronze evidence source. ReliefWeb is response-driven
+humanitarian reporting, which by construction cannot alone supply the pre-event
+signal coverage a 26/11, Pahalgam or Kandahar retrospective would need.
 
 Phase 1B continues the point-in-time evidence ledger: ACLED and data.gov.in
 connectors under their access terms, plus a frozen English news corpus for
