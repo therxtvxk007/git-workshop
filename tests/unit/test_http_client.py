@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ssl
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import certifi
@@ -15,6 +16,7 @@ from pramaanx.ingest.http import (
     HttpFetchError,
     NotFoundError,
     ProxyPolicyError,
+    RateLimitError,
     _is_policy_denial,
 )
 
@@ -197,3 +199,68 @@ class TestFetching:
 
         client = self._client(tmp_path, handler)
         assert client.get("https://example.org/flaky") == b"recovered"
+
+
+class TestRateLimiting:
+    """429 is an instruction, not a failure: honour Retry-After when given."""
+
+    def _client(self, tmp_path: Path, handler: object, **kwargs: object) -> HttpClient:
+        kwargs.setdefault("backoff_seconds", 0.0)
+        client = HttpClient(cache_dir=tmp_path, **kwargs)  # type: ignore[arg-type]
+        client._client = httpx.Client(transport=httpx.MockTransport(handler))  # type: ignore[arg-type]
+        return client
+
+    def test_a_429_is_retried_and_can_succeed(self, tmp_path: Path) -> None:
+        attempts = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal attempts
+            attempts += 1
+            if attempts == 1:
+                return httpx.Response(429, headers={"Retry-After": "0"})
+            return httpx.Response(200, content=b"recovered")
+
+        assert (
+            self._client(tmp_path, handler, max_attempts=3).get("https://example.org/x")
+            == b"recovered"
+        )
+        assert attempts == 2
+
+    def test_persistent_429_raises_an_actionable_error(self, tmp_path: Path) -> None:
+        client = self._client(
+            tmp_path,
+            lambda request: httpx.Response(429, headers={"Retry-After": "0"}),
+            max_attempts=2,
+        )
+        with pytest.raises(RateLimitError, match=r"[Ll]ower page_size"):
+            client.get("https://example.org/x")
+
+    def test_retry_after_seconds_is_honoured(self, tmp_path: Path) -> None:
+        client = self._client(tmp_path, lambda request: httpx.Response(200))
+        response = httpx.Response(429, headers={"Retry-After": "7"})
+        assert client._retry_after_seconds(response, attempt=1) == 7.0
+
+    def test_retry_after_http_date_is_honoured(self, tmp_path: Path) -> None:
+        from email.utils import format_datetime
+
+        client = self._client(tmp_path, lambda request: httpx.Response(200))
+        future = datetime.now(UTC) + timedelta(seconds=30)
+        response = httpx.Response(429, headers={"Retry-After": format_datetime(future)})
+        assert 20.0 < client._retry_after_seconds(response, attempt=1) <= 31.0
+
+    def test_a_past_retry_after_date_does_not_sleep_backwards(self, tmp_path: Path) -> None:
+        from email.utils import format_datetime
+
+        client = self._client(tmp_path, lambda request: httpx.Response(200))
+        past = datetime.now(UTC) - timedelta(seconds=60)
+        response = httpx.Response(429, headers={"Retry-After": format_datetime(past)})
+        assert client._retry_after_seconds(response, attempt=1) == 0.0
+
+    def test_a_garbage_retry_after_falls_back_to_backoff(self, tmp_path: Path) -> None:
+        client = self._client(tmp_path, lambda request: httpx.Response(200), backoff_seconds=2.0)
+        response = httpx.Response(429, headers={"Retry-After": "soon"})
+        assert client._retry_after_seconds(response, attempt=2) == 4.0
+
+    def test_no_retry_after_falls_back_to_backoff(self, tmp_path: Path) -> None:
+        client = self._client(tmp_path, lambda request: httpx.Response(200), backoff_seconds=1.5)
+        assert client._retry_after_seconds(httpx.Response(429), attempt=1) == 1.5

@@ -87,3 +87,25 @@ sources:
     max_rows_per_file: 0
     country_filter: []
     event_root_codes: []
+  reliefweb:
+    # ReliefWeb requires callers to identify themselves. Leave appname unset
+    # here and the connector reads PRAMAANX_RELIEFWEB_APPNAME; setting it in a
+    # config file commits an identity to version control.
+    base_url: "https://api.reliefweb.int/v1"
+    endpoint: reports
+    page_size: 100
+    max_items: 0
+    max_pages: 200
+    languages: []
+    countries: []
+    disaster_types: []
+    formats: []
+    cache: true
+    timeout_seconds: 60.0
+    max_attempts: 4
+    backoff_seconds: 2.0
+    # ReliefWeb rate-limits; pacing is politeness that also stops retries
+    # compounding into a burst.
+    min_interval_seconds: 0.5
+    trust_env: true
+    verify: true

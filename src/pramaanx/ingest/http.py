@@ -31,6 +31,8 @@ import ssl
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import httpx
@@ -65,6 +67,23 @@ class CaBundleError(HttpFetchError):
     tells an operator who mistyped ``ca_bundle`` nothing about which file to go
     and look at.
     """
+
+
+class RateLimitError(HttpFetchError):
+    """The server asked the caller to slow down (HTTP 429), and it kept asking.
+
+    Retried with the server's own ``Retry-After`` when it supplies one, because
+    guessing a backoff against a service that has just told you the answer is
+    both rude and slower.
+    """
+
+    def __init__(self, url: str, attempts: int) -> None:
+        super().__init__(
+            f"{url} returned HTTP 429 on {attempts} consecutive attempts. Lower page_size, "
+            "raise min_interval_seconds, or narrow the fetch window."
+        )
+        self.url = url
+        self.attempts = attempts
 
 
 class ProxyPolicyError(HttpFetchError):
@@ -187,6 +206,28 @@ class HttpClient:
         digest = short_hash(hash_text(url), 24)
         return self.cache_dir / digest[:2] / f"{digest}.bin"
 
+    def _retry_after_seconds(self, response: httpx.Response, attempt: int) -> float:
+        """Honour ``Retry-After`` when present, else fall back to the backoff.
+
+        The header comes in two forms -- delta-seconds and an HTTP date -- and
+        both appear in the wild.
+        """
+        raw = response.headers.get("Retry-After", "").strip()
+        fallback = self.backoff_seconds * (2 ** (attempt - 1))
+        if not raw:
+            return fallback
+        try:
+            return max(0.0, float(raw))
+        except ValueError:
+            pass
+        try:
+            target = parsedate_to_datetime(raw)
+        except (TypeError, ValueError):
+            return fallback
+        if target.tzinfo is None:
+            target = target.replace(tzinfo=UTC)
+        return max(0.0, (target - datetime.now(UTC)).total_seconds())
+
     def _pace(self) -> None:
         elapsed = time.monotonic() - self._last_request_at
         if elapsed < self.min_interval_seconds:
@@ -207,6 +248,15 @@ class HttpClient:
                     raise NotFoundError(f"404 for {url}")
                 if response.status_code in {403, 407}:
                     raise ProxyPolicyError(url, f"HTTP {response.status_code}")
+                if response.status_code == 429:
+                    if attempt == self.max_attempts:
+                        raise RateLimitError(url, attempt)
+                    delay = self._retry_after_seconds(response, attempt)
+                    log.warning(
+                        "http.rate_limited", url=url, attempt=attempt, delay=round(delay, 3)
+                    )
+                    time.sleep(delay)
+                    continue
                 response.raise_for_status()
                 data = response.content
                 if cached is not None:
@@ -215,7 +265,7 @@ class HttpClient:
                     tmp.write_bytes(data)
                     tmp.replace(cached)
                 return data
-            except (NotFoundError, ProxyPolicyError):
+            except (NotFoundError, ProxyPolicyError, RateLimitError):
                 raise
             except Exception as error:  # retried below; re-raised as HttpFetchError
                 if _is_policy_denial(error):

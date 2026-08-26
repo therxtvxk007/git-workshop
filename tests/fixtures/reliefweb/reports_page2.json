@@ -1,0 +1,80 @@
+{
+  "time": 2,
+  "totalCount": 5,
+  "count": 2,
+  "data": [
+    {
+      "id": "900003",
+      "fields": {
+        "id": "900003",
+        "title": "Synthetic situation report 900003",
+        "body": "Invented body text for record 900003. Not ReliefWeb content.",
+        "url": "https://example.invalid/report/900003",
+        "date": {
+          "created": "2025-11-04T09:30:00+00:00",
+          "changed": "2026-03-02T06:15:00+00:00",
+          "original": "2025-11-03T00:00:00+00:00"
+        },
+        "language": [
+          {
+            "code": "en",
+            "name": "English"
+          }
+        ],
+        "source": [
+          {
+            "name": "Invented Relief Agency",
+            "shortname": "IRA"
+          }
+        ],
+        "country": [
+          {
+            "iso3": "IND",
+            "name": "Testland"
+          }
+        ],
+        "format": [
+          {
+            "name": "Situation Report"
+          }
+        ]
+      }
+    },
+    {
+      "id": "900004",
+      "fields": {
+        "id": "900004",
+        "title": "Synthetic situation report 900004",
+        "body": "Invented body text for record 900004. Not ReliefWeb content.",
+        "url": "https://example.invalid/report/900004",
+        "date": {
+          "created": "2026-03-03T18:45:00+00:00",
+          "changed": "2026-03-03T18:45:00+00:00"
+        },
+        "language": [
+          {
+            "code": "en",
+            "name": "English"
+          }
+        ],
+        "source": [
+          {
+            "name": "Invented Relief Agency",
+            "shortname": "IRA"
+          }
+        ],
+        "country": [
+          {
+            "iso3": "IND",
+            "name": "Testland"
+          }
+        ],
+        "format": [
+          {
+            "name": "Situation Report"
+          }
+        ]
+      }
+    }
+  ]
+}

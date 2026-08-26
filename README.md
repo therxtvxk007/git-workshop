@@ -54,6 +54,10 @@ worse than a missing one, because it makes a skipped requirement look finished.
 - **One generator.** G1–G7 (CRI rules, neural TKG, analogy, change-point,
   OpenForecaster, causal scenarios, open-set) are not built, so "candidate
   recall" here is a single-branch floor, not a union result.
+- **ReliefWeb evidence is ingested but not extracted.** Phase 1A adds the
+  connector; turning humanitarian prose into `EventMention`s needs the Phase 2
+  extraction cascade, so `pramaanx extract` skips ReliefWeb observations and
+  says so.
 - **No dashboard, API or containers.** Phase 10. A polished interface must not
   hide an unvalidated forecasting core.
 - **No real-world accuracy claim.** The demo runs on a synthetic world with a
@@ -102,23 +106,48 @@ not exist yet.
 ### Real evidence
 
 ```bash
+# GDELT: machine-coded event records, no credential required.
 uv run pramaanx ingest --source gdelt \
   --config configs/sources/gdelt_india_unrest.yaml \
   --from 2026-01-01T00:00:00Z --until 2026-01-01T06:00:00Z
+
+# ReliefWeb: curated humanitarian reporting. No key, but callers must identify
+# themselves, so set PRAMAANX_RELIEFWEB_APPNAME first.
+export PRAMAANX_RELIEFWEB_APPNAME=your-deployment-name
+uv run pramaanx ingest --source reliefweb \
+  --config configs/sources/reliefweb_india.yaml \
+  --from 2026-03-01 --until 2026-03-02 --dry-run   # plan first; makes no request
 ```
 
-GDELT needs no key. Other Tier-0 sources (ACLED, ReliefWeb, data.gov.in) require
-accounts and licence review, which is why they are Phase 1 rather than M0 — see
+Neither needs an account. The remaining Tier-0 sources (ACLED, data.gov.in)
+require registration and licence review and are not built yet — see
 `.env.example`. **No licensed data may be committed to this repository.**
+
+#### ReliefWeb availability semantics
+
+ReliefWeb serves only the *current* revision of a report, with no
+version-history endpoint. So a report's `first_observed_at` is
+**`max(date.created, date.changed)`** — never `date.created` alone, and never
+the document's own `date.original`. A report posted in 2020 and revised in 2026
+enters a 2026 snapshot, because the body in hand is the 2026 body.
+
+That is deliberately conservative: it withholds evidence from early cutoffs that
+a contemporaneous reader might really have had, rather than risk attributing to
+an early cutoff a sentence written later. `claimed_event_time` is left unset,
+because report metadata carries publication dates and not the date of the
+situation described. Details in [docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md).
 
 Behind a proxy, the standard environment is honoured (`HTTPS_PROXY`,
 `ALL_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`), and every part of it is overridable
 per source — `proxy`, `trust_env`, `ca_bundle`, `verify` — including SOCKS. A
 policy denial (403/407) is reported immediately, naming the blocked host,
-instead of being retried. To check egress end to end:
+instead of being retried; HTTP 429 is retried honouring the server's own
+`Retry-After`. To check egress end to end:
 
 ```bash
 PRAMAANX_LIVE_GDELT=1 uv run pytest tests/network -m network -v
+PRAMAANX_LIVE_RELIEFWEB=1 PRAMAANX_RELIEFWEB_APPNAME=your-app \
+  uv run pytest tests/network -m network -v
 ```
 
 That test is opt-in and never runs in ordinary CI: a green build must mean the
@@ -229,11 +258,15 @@ chose.
 
 ## Next milestone
 
-Phase 1 — the point-in-time evidence ledger against real sources: ACLED,
-ReliefWeb/HDX and data.gov.in connectors under their access terms, plus a
-frozen English news corpus for leak-proof backtesting. Its gate is the same as
-M0's: future-document injection must change no pre-cutoff snapshot, and every
-record must carry provenance and a hash.
+Phase 1A (ReliefWeb) is built — see
+[docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md), which is explicit about what is
+fixture-tested and what still needs a live run to confirm.
+
+Phase 1B continues the point-in-time evidence ledger: ACLED and data.gov.in
+connectors under their access terms, plus a frozen English news corpus for
+leak-proof backtesting. The gate stays the same as M0's: future-document
+injection must change no pre-cutoff snapshot, and every record must carry
+provenance and a hash.
 
 ## Licence
 
