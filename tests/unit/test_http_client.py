@@ -5,10 +5,12 @@ from __future__ import annotations
 import ssl
 from pathlib import Path
 
+import certifi
 import httpx
 import pytest
 
 from pramaanx.ingest.http import (
+    CaBundleError,
     HttpClient,
     HttpFetchError,
     NotFoundError,
@@ -40,10 +42,66 @@ class TestProxyConfiguration:
     def test_ca_bundle_becomes_an_ssl_context(self, tmp_path: Path) -> None:
         # httpx deprecated verify=<str>; building the context here also means a
         # bad bundle fails at construction rather than on the first request.
+        #
+        # The fixture bundle comes from certifi, not from
+        # ssl.get_default_verify_paths(). That attribute describes the *host's*
+        # trust configuration, and on a uv-managed standalone CPython -- which is
+        # what CI installs -- its cafile is None. An earlier version of this test
+        # fell back to /dev/null, wrote an empty bundle, and then asserted that a
+        # context built from no certificates was an SSLContext. It passed on a
+        # system interpreter and failed on CI's, which is a test describing its
+        # environment rather than its subject.
         bundle = tmp_path / "ca.pem"
-        bundle.write_bytes(Path(ssl.get_default_verify_paths().cafile or "/dev/null").read_bytes())
+        bundle.write_bytes(Path(certifi.where()).read_bytes())
+        assert b"BEGIN CERTIFICATE" in bundle.read_bytes(), "fixture bundle has no certificates"
+
         client = HttpClient(ca_bundle=str(bundle))
         assert isinstance(client._verify_setting(), ssl.SSLContext)
+
+    def test_the_fixture_bundle_does_not_depend_on_host_trust_config(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The good-path test must not care how the machine is configured.
+
+        Emulates the CI interpreter: no SSL_CERT_FILE, and a default verify path
+        with no cafile at all.
+        """
+        monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+        monkeypatch.delenv("SSL_CERT_DIR", raising=False)
+        monkeypatch.setattr(
+            ssl,
+            "get_default_verify_paths",
+            lambda: ssl.DefaultVerifyPaths(None, None, "", "", "", ""),
+        )
+        bundle = tmp_path / "ca.pem"
+        bundle.write_bytes(Path(certifi.where()).read_bytes())
+        assert isinstance(HttpClient(ca_bundle=str(bundle))._verify_setting(), ssl.SSLContext)
+
+    def test_an_empty_bundle_is_rejected_at_construction(self, tmp_path: Path) -> None:
+        # The failure that actually reached CI. Nothing tested it, because the
+        # good-path test was accidentally exercising it.
+        bundle = tmp_path / "empty.pem"
+        bundle.write_bytes(b"")
+        with pytest.raises(CaBundleError, match="contains no certificates"):
+            HttpClient(ca_bundle=str(bundle))._verify_setting()
+
+    def test_a_malformed_bundle_is_rejected_at_construction(self, tmp_path: Path) -> None:
+        bundle = tmp_path / "junk.pem"
+        bundle.write_text("not a certificate\n")
+        with pytest.raises(CaBundleError, match="contains no certificates"):
+            HttpClient(ca_bundle=str(bundle))._verify_setting()
+
+    def test_a_missing_bundle_is_rejected_at_construction(self, tmp_path: Path) -> None:
+        with pytest.raises(CaBundleError, match="does not exist"):
+            HttpClient(ca_bundle=str(tmp_path / "absent.pem"))._verify_setting()
+
+    def test_the_rejection_names_the_path(self, tmp_path: Path) -> None:
+        # "no certificate or crl found" with no path is what an operator saw
+        # before; it says nothing about which bundle to go and look at.
+        bundle = tmp_path / "empty.pem"
+        bundle.write_bytes(b"")
+        with pytest.raises(CaBundleError, match=str(bundle)):
+            HttpClient(ca_bundle=str(bundle))._verify_setting()
 
     def test_disabling_verification_is_explicit(self) -> None:
         assert HttpClient(verify=False)._verify_setting() is False

@@ -3,19 +3,19 @@
 One milestone, explicit tests, then stop. Each deliverable below names the code
 that implements it and the tests that hold it to account.
 
-Run everything: `make check` — ruff, mypy, and 296 tests with an enforced
+Run everything: `make check` — ruff, mypy, and 301 tests with an enforced
 coverage floor.
 
 | Suite | Tests | What it covers |
 | --- | ---: | --- |
-| `tests/unit` | 139 | Hashing, storage, config, HTTP/proxy, connectors, generator, recency, matcher, metrics, extraction |
+| `tests/unit` | 144 | Hashing, storage, config, HTTP/proxy, connectors, generator, recency, matcher, metrics, extraction |
 | `tests/contracts` | 74 | Schema round-trips, validation, versioning, configuration and source-option typos, packaging metadata |
 | `tests/leakage` | 24 | `CutoffGuard`, snapshot immutability, leakage audit |
 | `tests/metamorphic` | 8 | Future-document injection, determinism, chunk invariance |
 | `tests/integration` | 51 | Full pipeline, outcome isolation, censoring, backtest reproducibility, CLI, `make demo` |
 | `tests/network` | 1 | Live GDELT fetch. Opt-in, excluded from CI (`-m "not network"`) |
 
-Counts are from `pytest --collect-only`; 296 offline plus 1 opt-in network test.
+Counts are from `pytest --collect-only`; 301 offline plus 1 opt-in network test.
 
 ---
 

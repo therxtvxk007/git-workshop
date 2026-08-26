@@ -56,6 +56,17 @@ class NotFoundError(HttpFetchError):
     """
 
 
+class CaBundleError(HttpFetchError):
+    """A configured ``ca_bundle`` cannot be used.
+
+    Raised at client construction rather than on the first request, and always
+    naming the path. OpenSSL's own message for this is
+    ``[X509: NO_CERTIFICATE_OR_CRL_FOUND] no certificate or crl found``, which
+    tells an operator who mistyped ``ca_bundle`` nothing about which file to go
+    and look at.
+    """
+
+
 class ProxyPolicyError(HttpFetchError):
     """An egress proxy refused the destination.
 
@@ -124,7 +135,16 @@ class HttpClient:
             # An SSLContext rather than a path string: httpx deprecated the
             # latter, and building the context here surfaces a bad bundle
             # immediately instead of on the first request.
-            return ssl.create_default_context(cafile=self.ca_bundle)
+            bundle = Path(self.ca_bundle)
+            if not bundle.exists():
+                raise CaBundleError(f"ca_bundle {self.ca_bundle!r} does not exist")
+            try:
+                return ssl.create_default_context(cafile=self.ca_bundle)
+            except ssl.SSLError as error:
+                raise CaBundleError(
+                    f"ca_bundle {self.ca_bundle!r} contains no certificates OpenSSL could "
+                    f"load ({error}). Check the file is a PEM bundle and not empty."
+                ) from error
         return True
 
     def client(self) -> httpx.Client:

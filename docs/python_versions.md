@@ -59,6 +59,30 @@ If a newer 3.14 build is genuinely unobtainable on some machine, the fix is
 `uv self update` — an older `uv` will not offer a Python it does not know about,
 and that absence is not evidence of anything.
 
+## System interpreters and managed interpreters differ
+
+CI installs Python with `uv python install`, which fetches a **standalone**
+build. A standalone CPython has no compiled-in CA file: `ssl.get_default_verify_paths().cafile`
+is `None`, and TLS trust comes from `certifi` or the environment instead. A
+distro interpreter (`/usr/bin/python3.13`) usually does have one.
+
+That difference is invisible until a test reads the host's trust configuration.
+One did, and it passed locally on a system interpreter while failing on both CI
+jobs — see `tests/unit/test_http_client.py`, which now sources its fixture
+bundle from `certifi` and asserts the bundle actually contains a certificate.
+
+When reproducing a CI failure locally, match the interpreter's provenance, not
+just its version:
+
+```bash
+uv python install 3.13                       # a managed, standalone build
+uv sync --frozen --extra dev --managed-python --python 3.13
+env -u SSL_CERT_FILE -u SSL_CERT_DIR CI=true GITHUB_ACTIONS=true uv run pytest
+```
+
+`uv sync --python 3.13` alone may select a system interpreter and hide exactly
+this class of difference.
+
 ## Adding a version
 
 1. `uv python install 3.<n>`
