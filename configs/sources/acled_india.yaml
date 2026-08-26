@@ -1,0 +1,12 @@
+# Credentialed ACLED events for India, admitted by API upload/update timestamp.
+# Layer over the base config:
+#   uv run pramaanx ingest --source acled \
+#     --config configs/sources/acled_india.yaml \
+#     --from 2026-01-01T00:00:00Z --until 2026-02-01T00:00:00Z
+include: ../base.yaml
+
+sources:
+  acled:
+    countries: ["India"]
+    page_size: 5000
+    max_pages: 1000

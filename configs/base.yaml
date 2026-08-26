@@ -87,3 +87,21 @@ sources:
     max_rows_per_file: 0
     country_filter: []
     event_root_codes: []
+  acled:
+    # Current programmatic authentication is OAuth. Credential values are read
+    # only from the named environment variables and never enter config hashes.
+    access_token_env: PRAMAANX_ACLED_ACCESS_TOKEN
+    username_env: PRAMAANX_ACLED_USERNAME
+    password_env: PRAMAANX_ACLED_PASSWORD
+    # Cursor pagination is used now; page pagination is deprecated for ordinary
+    # exports from 2026-10-01.
+    page_size: 5000
+    max_pages: 1000
+    countries: ["India"]
+    event_types: []
+    max_attempts: 4
+    backoff_seconds: 2.0
+    max_retry_after_seconds: 60.0
+    min_interval_seconds: 0.2
+    trust_env: true
+    verify: true

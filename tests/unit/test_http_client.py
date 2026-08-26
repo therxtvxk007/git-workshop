@@ -14,7 +14,9 @@ from pramaanx.ingest.http import (
     HttpClient,
     HttpFetchError,
     NotFoundError,
+    PermanentHttpError,
     ProxyPolicyError,
+    RateLimitError,
     _is_policy_denial,
 )
 
@@ -139,10 +141,18 @@ class TestPolicyDenials:
         # Retrying a policy denial only delays the operator learning about it.
         assert attempts == 1
 
-    def test_403_response_is_a_policy_denial(self, tmp_path: Path) -> None:
+    def test_origin_403_is_a_permanent_http_error_not_a_proxy_claim(self, tmp_path: Path) -> None:
         client = HttpClient(cache_dir=tmp_path, max_attempts=2, backoff_seconds=0.0)
         client._client = httpx.Client(
             transport=httpx.MockTransport(lambda request: httpx.Response(403))
+        )
+        with pytest.raises(PermanentHttpError):
+            client.get("https://example.org/blocked")
+
+    def test_407_response_is_a_policy_denial(self, tmp_path: Path) -> None:
+        client = HttpClient(cache_dir=tmp_path, max_attempts=2, backoff_seconds=0.0)
+        client._client = httpx.Client(
+            transport=httpx.MockTransport(lambda request: httpx.Response(407))
         )
         with pytest.raises(ProxyPolicyError):
             client.get("https://example.org/blocked")
@@ -197,3 +207,45 @@ class TestFetching:
 
         client = self._client(tmp_path, handler)
         assert client.get("https://example.org/flaky") == b"recovered"
+
+    def test_post_form_keeps_secrets_out_of_url_and_cache(self, tmp_path: Path) -> None:
+        captured: httpx.Request | None = None
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal captured
+            captured = request
+            return httpx.Response(200, content=b"token-response")
+
+        client = self._client(tmp_path, handler)
+        assert (
+            client.post_form(
+                "https://example.org/token", {"password": "secret", "username": "user"}
+            )
+            == b"token-response"
+        )
+        assert captured is not None
+        assert "secret" not in str(captured.url)
+        assert not list(tmp_path.rglob("*.bin"))
+
+    def test_persistent_rate_limit_is_distinct(self, tmp_path: Path) -> None:
+        attempts = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal attempts
+            attempts += 1
+            return httpx.Response(429, headers={"Retry-After": "0"})
+
+        client = HttpClient(
+            cache_dir=tmp_path,
+            max_attempts=2,
+            backoff_seconds=0.0,
+            max_retry_after_seconds=0.0,
+            min_interval_seconds=0.0,
+        )
+        client._client = httpx.Client(transport=httpx.MockTransport(handler))
+        with pytest.raises(RateLimitError, match="after 2 attempts"):
+            client.get("https://example.org/rate-limited")
+        assert attempts == 2
+
+    def test_retry_after_is_clamped(self) -> None:
+        assert HttpClient(max_retry_after_seconds=7)._retry_after("86400", 1) == 7

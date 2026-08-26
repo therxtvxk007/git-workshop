@@ -199,12 +199,56 @@ class GdeltSourceConfig(SourceOptions):
     verify: bool = True
 
 
+class AcledSourceConfig(SourceOptions):
+    """Options for the credentialed ACLED event API.
+
+    Credential *values* never belong in configuration: only environment-variable
+    names do.  Operators may inject a short-lived access token, or let the
+    connector perform ACLED's documented OAuth password grant for each ingest.
+    """
+
+    base_url: str = "https://acleddata.com/api/acled/read"
+    token_url: str = "https://acleddata.com/oauth/token"
+    access_token_env: str = Field(
+        default="PRAMAANX_ACLED_ACCESS_TOKEN", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$"
+    )
+    username_env: str = Field(
+        default="PRAMAANX_ACLED_USERNAME", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$"
+    )
+    password_env: str = Field(
+        default="PRAMAANX_ACLED_PASSWORD", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$"
+    )
+    countries: list[str] = Field(default_factory=list)
+    event_types: list[str] = Field(default_factory=list)
+    page_size: int = Field(default=5000, ge=1, le=5000)
+    max_pages: int = Field(default=1000, ge=1)
+
+    # -- egress ----------------------------------------------------------
+    timeout_seconds: float = Field(default=60.0, gt=0.0)
+    max_attempts: int = Field(default=4, ge=1)
+    backoff_seconds: float = Field(default=2.0, ge=0.0)
+    max_retry_after_seconds: float = Field(default=60.0, ge=0.0)
+    min_interval_seconds: float = Field(default=0.2, ge=0.0)
+    proxy: str | None = None
+    trust_env: bool = True
+    ca_bundle: str | None = None
+    verify: bool = True
+
+    @model_validator(mode="after")
+    def _https_only(self) -> AcledSourceConfig:
+        for name, value in (("base_url", self.base_url), ("token_url", self.token_url)):
+            if not value.startswith("https://"):
+                raise ValueError(f"{name} must use https")
+        return self
+
+
 #: The source names this milestone knows about, and the shape of each one's
 #: options. Adding a connector means adding an entry here, which is deliberate:
 #: an unregistered source name is a typo until someone says otherwise.
 SOURCE_OPTION_MODELS: dict[str, type[SourceOptions]] = {
     "synthetic": SyntheticSourceConfig,
     "gdelt": GdeltSourceConfig,
+    "acled": AcledSourceConfig,
 }
 
 

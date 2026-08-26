@@ -112,13 +112,13 @@ class TestBatch:
     def test_unsupported_sources_are_skipped_not_guessed(self, ledger: EvidenceLedger) -> None:
         from pramaanx.extraction.structured import extract_mentions
 
-        assert extract_mentions(ledger, [observation("acled")]) == []
+        assert extract_mentions(ledger, [observation("unsupported")]) == []
 
     def test_strict_mode_refuses_unsupported_sources(self, ledger: EvidenceLedger) -> None:
         from pramaanx.extraction.structured import extract_mentions
 
         with pytest.raises(ExtractionError, match="no extractor registered"):
-            extract_mentions(ledger, [observation("acled")], skip_unknown_sources=False)
+            extract_mentions(ledger, [observation("unsupported")], skip_unknown_sources=False)
 
     def test_extraction_is_deterministic(self, populated_ledger: EvidenceLedger) -> None:
         from pramaanx.extraction.structured import extract_mentions

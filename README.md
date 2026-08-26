@@ -1,7 +1,8 @@
-# PRAMAAN-X Zero-Base — M0
+# PRAMAAN-X Zero-Base — M0 + Phase 1B ACLED connector
 
 A cutoff-safe, open-world future-event forecasting system. **This repository
-currently contains milestone M0 only: the immutable temporal foundation.** It
+contains the immutable M0 temporal foundation plus the isolated Phase 1B ACLED
+evidence connector.** It
 does not forecast anything you should act on, and it makes no accuracy claim.
 
 The scientific decomposition the full system is built around is:
@@ -26,7 +27,7 @@ impressive number.
 | 2 | Five core schemas | `src/pramaanx/schemas/` |
 | 3 | Content-hashed Parquet storage | `src/pramaanx/hashing.py`, `src/pramaanx/storage.py` |
 | 4 | `CutoffGuard` + snapshots + leakage audit | `src/pramaanx/timeguard/` |
-| 5 | Synthetic and GDELT connectors | `src/pramaanx/ingest/connectors/` |
+| 5 | Synthetic, GDELT, and credentialed ACLED connectors | `src/pramaanx/ingest/connectors/` |
 | 6 | Base-rate generator (G0) | `src/pramaanx/generators/base_rate.py` |
 | 7 | Rolling-backtest skeleton | `src/pramaanx/evaluation/` |
 | 8 | Future-leakage tests | `tests/leakage/`, `tests/metamorphic/` |
@@ -107,18 +108,40 @@ uv run pramaanx ingest --source gdelt \
   --from 2026-01-01T00:00:00Z --until 2026-01-01T06:00:00Z
 ```
 
-GDELT needs no key. Other Tier-0 sources (ACLED, ReliefWeb, data.gov.in) require
-accounts and licence review, which is why they are Phase 1 rather than M0 — see
+GDELT needs no key. ACLED is implemented in Phase 1B and requires an account;
+ReliefWeb and data.gov.in remain separate Phase 1 source branches. See
 `.env.example`. **No licensed data may be committed to this repository.**
+
+ACLED programmatic access uses OAuth, not the retired email/API-key query
+parameters. Create a myACLED account, accept the applicable terms, then inject
+either a short-lived bearer token or the username/password used for ACLED's
+documented OAuth password grant:
+
+```bash
+export PRAMAANX_ACLED_ACCESS_TOKEN='short-lived-token'
+uv run pramaanx ingest --source acled \
+  --config configs/sources/acled_india.yaml \
+  --from 2026-01-01T00:00:00Z --until 2026-02-01T00:00:00Z
+```
+
+The connector uses cursor pagination, requires stable totals and query
+restrictions, and writes nothing if a traversal is incomplete. ACLED's
+``timestamp`` controls availability; ``event_date`` remains the claimed event
+date. Because ACLED is a living dataset, a revised row receives the later
+timestamp. Deep-history cutoffs are therefore conservative unless an external
+versioned archive is available. Raw ACLED data are marked non-redistributable
+by default; review the EULA, Content Usage Terms, and Attribution Policy for the
+actual deployment.
 
 Behind a proxy, the standard environment is honoured (`HTTPS_PROXY`,
 `ALL_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`), and every part of it is overridable
 per source — `proxy`, `trust_env`, `ca_bundle`, `verify` — including SOCKS. A
-policy denial (403/407) is reported immediately, naming the blocked host,
+CONNECT/407 policy denial is reported immediately, naming the blocked host,
 instead of being retried. To check egress end to end:
 
 ```bash
 PRAMAANX_LIVE_GDELT=1 uv run pytest tests/network -m network -v
+PRAMAANX_LIVE_ACLED=1 uv run pytest tests/network/test_acled_live.py -m network -v
 ```
 
 That test is opt-in and never runs in ordinary CI: a green build must mean the
@@ -229,7 +252,7 @@ chose.
 
 ## Next milestone
 
-Phase 1 — the point-in-time evidence ledger against real sources: ACLED,
+Phase 1 continues the point-in-time evidence ledger against real sources:
 ReliefWeb/HDX and data.gov.in connectors under their access terms, plus a
 frozen English news corpus for leak-proof backtesting. Its gate is the same as
 M0's: future-document injection must change no pre-cutoff snapshot, and every

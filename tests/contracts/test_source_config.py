@@ -18,6 +18,7 @@ from pydantic import ValidationError
 
 from pramaanx.config import (
     SOURCE_OPTION_MODELS,
+    AcledSourceConfig,
     GdeltSourceConfig,
     Settings,
     SourceOptions,
@@ -48,8 +49,8 @@ class TestTypoRejection:
         with pytest.raises(ValidationError, match=r"invalid options for source 'gdelt'"):
             Settings.model_validate({"sources": {"gdelt": {"publication_lag_minuts": 1}}})
 
-    def test_unknown_source_names_are_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="unknown source 'acled'"):
+    def test_retired_acled_api_key_option_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="api_key"):
             Settings.model_validate({"sources": {"acled": {"api_key": "x"}}})
 
     def test_rejection_happens_at_load_time(self, tmp_path: Path) -> None:
@@ -116,12 +117,38 @@ class TestValidConfigurations:
         assert options.seed == 7
         assert options.noise_per_day == 5.0
 
+    def test_valid_acled_configuration_loads_without_credential_values(self) -> None:
+        settings = Settings.model_validate(
+            {
+                "sources": {
+                    "acled": {
+                        "countries": ["India"],
+                        "event_types": ["Protests"],
+                        "page_size": 1000,
+                        "max_pages": 200,
+                        "access_token_env": "DEPLOYMENT_ACLED_TOKEN",
+                        "max_retry_after_seconds": 30,
+                    }
+                }
+            }
+        )
+        options = settings.source_options("acled")
+        assert isinstance(options, AcledSourceConfig)
+        assert options.page_size == 1000
+        assert options.access_token_env == "DEPLOYMENT_ACLED_TOKEN"
+
+    def test_acled_requires_https_and_bounded_pages(self) -> None:
+        with pytest.raises(ValidationError, match="must use https"):
+            Settings.model_validate({"sources": {"acled": {"base_url": "http://example.test"}}})
+        with pytest.raises(ValidationError):
+            Settings.model_validate({"sources": {"acled": {"page_size": 5001}}})
+
     def test_defaults_apply_when_a_source_is_unconfigured(self) -> None:
         assert Settings().source_options("gdelt").publication_lag_minutes == 15
 
     def test_unknown_source_lookup_raises(self) -> None:
-        with pytest.raises(KeyError, match="unknown source 'acled'"):
-            Settings().source_options("acled")
+        with pytest.raises(KeyError, match="unknown source 'unknown'"):
+            Settings().source_options("unknown")
 
     def test_out_of_range_values_are_rejected(self) -> None:
         # Strictness is about more than spelling.
@@ -166,7 +193,11 @@ def consumed_option_names(module_path: Path) -> set[str]:
 class TestEveryConsumedOptionIsDeclared:
     @pytest.mark.parametrize(
         ("module", "model"),
-        [("gdelt.py", GdeltSourceConfig), ("synthetic.py", SyntheticSourceConfig)],
+        [
+            ("acled.py", AcledSourceConfig),
+            ("gdelt.py", GdeltSourceConfig),
+            ("synthetic.py", SyntheticSourceConfig),
+        ],
     )
     def test_consumed_options_are_declared(self, module: str, model: type[SourceOptions]) -> None:
         declared = set(model.model_fields)
@@ -181,7 +212,7 @@ class TestEveryConsumedOptionIsDeclared:
     def test_no_connector_reads_options_by_string_key(self) -> None:
         # options.get("x") is how the silent-typo bug worked: a string key that
         # nothing validates. Attribute access on a strict model cannot.
-        for module in ("gdelt.py", "synthetic.py"):
+        for module in ("acled.py", "gdelt.py", "synthetic.py"):
             source = (CONNECTOR_DIR / module).read_text(encoding="utf-8")
             assert 'options.get("' not in source, f"{module} still reads options by string key"
 

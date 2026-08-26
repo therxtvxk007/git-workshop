@@ -199,14 +199,18 @@ class EvidenceLedger:
                     plan=plan,
                 )
 
+            # A connector can discover an incomplete traversal only on a later
+            # page.  Finish and validate the entire walk before writing source,
+            # payload, or observation state; otherwise a failed pagination run
+            # leaves a plausible-looking partial bronze partition behind.
+            items = list(conn.guarded_fetch(window))
             source = conn.source_record
-            self.record_source(source)
             observations: list[Observation] = []
-            payload_bytes = 0
-            for item in conn.guarded_fetch(window):
-                payload_bytes += len(item.payload)
+            payload_bytes = sum(len(item.payload) for item in items)
+            for item in items:
                 observations.append(self.observation_from_item(item, source))
 
+            self.record_source(source)
             result = self.observations.append(observations)
             log.info(
                 "ingest.complete",

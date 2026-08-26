@@ -31,6 +31,8 @@ import ssl
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 
 import httpx
@@ -70,9 +72,10 @@ class CaBundleError(HttpFetchError):
 class ProxyPolicyError(HttpFetchError):
     """An egress proxy refused the destination.
 
-    Arrives two ways, because a proxy can refuse at two moments: as a 403/407
-    response to a plain request, or as a failed CONNECT while establishing the
-    tunnel, which httpx surfaces as :class:`httpx.ProxyError`.
+    Arrives as a 407 response from an explicit proxy, or as a failed CONNECT
+    while establishing the tunnel, which httpx surfaces as
+    :class:`httpx.ProxyError`.  Origin 401/403 responses are authorization
+    failures and must never be mislabeled as egress policy.
 
     Never retried either way. A policy denial is not a transient failure, and
     hammering it three more times changes nothing except how long the operator
@@ -87,6 +90,14 @@ class ProxyPolicyError(HttpFetchError):
         )
         self.url = url
         self.detail = detail
+
+
+class PermanentHttpError(HttpFetchError):
+    """The origin rejected a request in a way retries cannot repair."""
+
+
+class RateLimitError(HttpFetchError):
+    """The origin still rate-limited the request after bounded retries."""
 
 
 PROXY_DENIAL_MARKERS = ("403", "407", "forbidden", "proxy authentication")
@@ -108,6 +119,7 @@ class HttpClient:
     timeout_seconds: float = 60.0
     max_attempts: int = 4
     backoff_seconds: float = 2.0
+    max_retry_after_seconds: float = 60.0
     min_interval_seconds: float = 0.2
     user_agent: str = "pramaan-x-zero-base/0.1 (research; contact repository owner)"
     headers: Mapping[str, str] | None = None
@@ -193,8 +205,32 @@ class HttpClient:
             time.sleep(self.min_interval_seconds - elapsed)
         self._last_request_at = time.monotonic()
 
-    def get(self, url: str) -> bytes:
-        cached = self._cache_path(url)
+    def _retry_after(self, value: str | None, fallback: float) -> float:
+        """Parse Retry-After seconds/date and clamp every delay to the configured cap."""
+        delay = fallback
+        if value:
+            try:
+                delay = float(value)
+            except ValueError:
+                try:
+                    target = parsedate_to_datetime(value)
+                    if target.tzinfo is None:
+                        target = target.replace(tzinfo=UTC)
+                    delay = max(0.0, (target - datetime.now(UTC)).total_seconds())
+                except (TypeError, ValueError, OverflowError):
+                    delay = fallback
+        return min(max(delay, 0.0), self.max_retry_after_seconds)
+
+    def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: Mapping[str, str] | None = None,
+        form: Mapping[str, str] | None = None,
+        use_cache: bool = False,
+    ) -> bytes:
+        cached = self._cache_path(url) if use_cache and method == "GET" else None
         if cached is not None and cached.exists():
             return cached.read_bytes()
 
@@ -202,20 +238,32 @@ class HttpClient:
         for attempt in range(1, self.max_attempts + 1):
             self._pace()
             try:
-                response = self.client().get(url)
+                response = self.client().request(method, url, headers=headers, data=form)
                 if response.status_code == 404:
                     raise NotFoundError(f"404 for {url}")
-                if response.status_code in {403, 407}:
-                    raise ProxyPolicyError(url, f"HTTP {response.status_code}")
+                if response.status_code == 407:
+                    raise ProxyPolicyError(url, "HTTP 407")
+                if response.status_code in {400, 401, 403}:
+                    raise PermanentHttpError(f"HTTP {response.status_code} for {url}")
+                if response.status_code == 429:
+                    fallback = self.backoff_seconds * (2 ** (attempt - 1))
+                    delay = self._retry_after(response.headers.get("Retry-After"), fallback)
+                    if attempt == self.max_attempts:
+                        raise RateLimitError(
+                            f"HTTP 429 for {url} after {self.max_attempts} attempts"
+                        )
+                    log.warning("http.rate_limited", url=url, attempt=attempt, delay=delay)
+                    time.sleep(delay)
+                    continue
                 response.raise_for_status()
-                data = response.content
+                payload = response.content
                 if cached is not None:
                     cached.parent.mkdir(parents=True, exist_ok=True)
                     tmp = cached.with_suffix(".tmp")
-                    tmp.write_bytes(data)
+                    tmp.write_bytes(payload)
                     tmp.replace(cached)
-                return data
-            except (NotFoundError, ProxyPolicyError):
+                return payload
+            except (NotFoundError, PermanentHttpError, ProxyPolicyError, RateLimitError):
                 raise
             except Exception as error:  # retried below; re-raised as HttpFetchError
                 if _is_policy_denial(error):
@@ -223,9 +271,20 @@ class HttpClient:
                 last_error = error
                 if attempt == self.max_attempts:
                     break
-                delay = self.backoff_seconds * (2 ** (attempt - 1))
+                fallback = self.backoff_seconds * (2 ** (attempt - 1))
+                delay = self._retry_after(None, fallback)
                 log.warning("http.retry", url=url, attempt=attempt, delay=delay, error=str(error))
                 time.sleep(delay)
         raise HttpFetchError(
             f"failed to fetch {url} after {self.max_attempts} attempts: {last_error}"
         )
+
+    def get(self, url: str, *, headers: Mapping[str, str] | None = None) -> bytes:
+        """GET bytes, using the URL cache when this client has one."""
+        return self._request("GET", url, headers=headers, use_cache=True)
+
+    def post_form(
+        self, url: str, form: Mapping[str, str], *, headers: Mapping[str, str] | None = None
+    ) -> bytes:
+        """POST a form without ever placing its values in logs or cache keys."""
+        return self._request("POST", url, headers=headers, form=form, use_cache=False)
