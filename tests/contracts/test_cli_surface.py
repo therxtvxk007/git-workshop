@@ -31,6 +31,7 @@ EXPECTED_COMMANDS = {
     ("extract",),
     ("ingest",),
     ("outcomes", "build"),
+    ("replay",),
     ("report",),
     ("snapshot", "build"),
     ("snapshot", "list"),

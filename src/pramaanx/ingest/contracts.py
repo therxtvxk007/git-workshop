@@ -349,9 +349,34 @@ def contract_manifest(source_ids: Iterable[str]) -> dict[str, dict[str, Any]]:
     }
 
 
+#: What a manifest records for evidence from a source with no declared contract.
+#: Deliberately conspicuous rather than blank.
+UNDECLARED = "undeclared"
+
+
 def contract_summaries(source_ids: Iterable[str]) -> dict[str, str]:
-    """``{source_id: "source@version/state"}`` -- the compact snapshot form."""
-    return {source_id: contract_for(source_id).summary() for source_id in sorted(set(source_ids))}
+    """``{source_id: "source@version/state"}`` -- the compact snapshot form.
+
+    Unlike :func:`contract_for`, this does not raise on a source it does not
+    know; it records ``"<source>@undeclared"``. The two behaviours are different
+    on purpose.
+
+    Refusing to *ingest* from an undeclared source is right, and CI enforces it:
+    ``tests/contracts/test_source_contracts.py`` fails if any registered
+    connector lacks a contract. Refusing to *describe* evidence already in a
+    ledger is not. A manifest that raises rather than name what it holds makes a
+    ledger containing evidence from a since-removed connector permanently
+    unreadable -- and being able to read old evidence back is the entire point
+    of the thing. So the manifest says what it found, in a form nobody will
+    mistake for a verified source.
+    """
+    summaries: dict[str, str] = {}
+    for source_id in sorted(set(source_ids)):
+        try:
+            summaries[source_id] = contract_for(source_id).summary()
+        except UnknownSourceError:
+            summaries[source_id] = f"{source_id}@{UNDECLARED}"
+    return summaries
 
 
 def unverified(source_ids: Iterable[str] | None = None) -> list[SourceContract]:

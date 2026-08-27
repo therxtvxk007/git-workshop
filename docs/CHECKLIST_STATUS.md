@@ -258,6 +258,54 @@ pin. Capturing the schema needs one live probe.
 Local gate before push: ruff, format, mypy, 664 tests, coverage 92.3% against
 the 88% floor, the M0 acceptance suites, and `make demo` end to end.
 
+### 2026-08-27 — deterministic replay (Stage 2.3)
+
+Bronze is append-only and content-addressed, which makes replay possible but not
+verified. Between an ingestion and a replay a payload can be deleted, its bytes
+can change underneath a reference that still resolves, a source record can go
+missing, or an acquisition can have stopped halfway. Every one of those reads,
+to naive code, as a smaller corpus — and a smaller corpus produces a forecast
+from less evidence than the run it claims to reproduce, while looking exactly
+like a legitimate one.
+
+`src/pramaanx/ingest/replay.py` is therefore a verification pass that returns
+observations, not a read that checks a few things.
+
+- **Fails closed.** `replay()` refuses a corpus with any defect: missing
+  payload, payload-hash mismatch, unknown source, id collision, impossible
+  timeline. `--no-strict` exists for triage on a ledger already known to be
+  damaged, and its manifest still counts the damage.
+- **Reports separately.** `verify()` never raises. Finding out what is wrong
+  with a ledger should not require doing it through an exception.
+- **Pins everything that could change the answer.** Source versions, source
+  contracts, config hash, code hash and the dependency lock hash. A missing
+  `uv.lock` records the literal `"absent"` rather than `None`, because an
+  environment without it genuinely has different provenance — and two
+  incomparable replays must not compare equal.
+- **`pramaanx replay`**, with `--dry-run` for the read-only half.
+
+Verified against the demo's own bronze: 4,927 observations, 0 defects.
+
+The 20 tests cover every case Stage 2.3 names — deleted, revised and delayed
+reports; source outages; partial acquisition; the same wire bytes from two
+sources staying two observations; malformed timestamps — plus the property the
+stage is actually about: **a snapshot built from replayed bronze admits
+byte-identical evidence** to one built from the original ingestion.
+
+Two design corrections made while building it, both caught by the repository's
+own tests rather than by review:
+
+- `contract_summaries` originally raised on a source with no declared contract,
+  which made snapshot building hard-fail for any evidence from a since-removed
+  connector — a ledger that cannot be read back defeats the point. It now
+  records `"<source>@undeclared"`, conspicuously. Refusing to *ingest* from an
+  undeclared source is still enforced, in CI, where it belongs.
+- `replayed_evidence_fingerprint` handed the whole corpus to `CutoffGuard`,
+  which in strict mode *raises* on post-cutoff records rather than filtering
+  them. It now selects candidates by the boundary first, exactly as
+  `SnapshotBuilder` does. The guard decides whether a candidate is admissible;
+  it is not the mechanism for choosing candidates.
+
 ### Stage 2.1 after this pass
 
 | Source | Was | Now |
@@ -268,6 +316,7 @@ the 88% floor, the M0 acceptance suites, and `make demo` end to end.
 | ACLED | unverified, reason in prose | `docs_only`, blocker recorded and machine-readable |
 
 What remains in 2.1 is exactly the credential work, which is §5's business.
+Stage 2.3 is closed.
 
 ### Handover — three things only a person can do
 
