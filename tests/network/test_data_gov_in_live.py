@@ -82,9 +82,7 @@ def test_selected_resource_live_contract() -> None:
     parsed: tuple[list[dict[str, object]], int] | None = None
     contract_failure: str | None = None
     try:
-        parsed = parse_envelope(
-            payload, expected_offset=0, expected_limit=10, expected_total=None
-        )
+        parsed = parse_envelope(payload, expected_offset=0, expected_limit=10, expected_total=None)
     except DataGovInContractError as error:  # pragma: no cover - network dependent
         contract_failure = f"{error}; safe envelope types: {_safe_type_summary(payload)}"
 

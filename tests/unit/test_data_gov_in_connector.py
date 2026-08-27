@@ -193,7 +193,7 @@ class TestEnvelopeContract:
 
     @pytest.mark.parametrize("field", ["limit", "offset"])
     @pytest.mark.parametrize(
-        "bad", [True, -1, 1.5, None, "", " 1", "+1", "01", "1.0", "1e0", "１２"]
+        "bad", [True, -1, 1.5, None, "", " 1", "+1", "01", "1.0", "1e0", "\uff11\uff12"]
     )
     def test_pagination_echoes_reject_ambiguous_values(self, field: str, bad: object) -> None:
         raw = json.loads(envelope([], total=0, offset=0))
