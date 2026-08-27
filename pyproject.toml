@@ -44,6 +44,10 @@ dev = [
   "mypy>=1.11",
   "types-PyYAML",
 ]
+api = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
 
 [project.scripts]
 pramaanx = "pramaanx.cli:main"

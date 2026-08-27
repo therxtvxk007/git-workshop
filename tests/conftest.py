@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 from pramaanx.clock import FixedClock
-from pramaanx.config import Settings, StorageConfig
+from pramaanx.config import GeneratorConfig, Settings, StorageConfig
 from pramaanx.ingest.base import FetchWindow
 from pramaanx.ingest.ledger import EvidenceLedger
 
@@ -29,6 +29,12 @@ def settings(tmp_path: Path) -> Settings:
     return Settings(
         storage=StorageConfig(data_root=tmp_path / "data", run_root=tmp_path / "runs"),
         horizon_days=30,
+        # The fixture world spans 2025-01-01 onward and most tests cut off in
+        # mid-2025, so only ~150 days of evidence exist behind the cutoff. The
+        # default 365-day lookback is not satisfiable there, and the coverage
+        # gate correctly abstains on it. Tests should exercise a configuration
+        # whose evidence actually exists.
+        generators=GeneratorConfig(lookback_days=120),
     )
 
 

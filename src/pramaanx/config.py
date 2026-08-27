@@ -106,6 +106,11 @@ class GeneratorConfig(ConfigModel):
     min_generator_score: float = 0.0
     lookback_days: int = Field(default=365, gt=0)
     recent_activity_days: int = Field(default=30, gt=0)
+    #: Fraction of ``lookback_days`` that must actually be covered by evidence
+    #: before a rate over that window may be estimated. Below it, generators
+    #: abstain. See :mod:`pramaanx.coverage` for why an assumed exposure is a
+    #: silent claim that absent records mean absent events.
+    min_coverage: float = Field(default=0.8, ge=0.0, le=1.0)
 
 
 class AlertPolicyConfig(ConfigModel):

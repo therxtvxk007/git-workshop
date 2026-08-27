@@ -203,6 +203,11 @@ class TestCli:
         config = {
             "storage": {"data_root": str(tmp_path / "data"), "run_root": str(tmp_path / "runs")},
             "horizon_days": 30,
+            # Ingest covers 2025-01-01..2025-06-01 and the cutoff is 2025-05-01,
+            # so ~120 days of evidence exist. Requesting the default 365-day
+            # lookback would ask for a window that was never observed, and the
+            # coverage gate would correctly abstain.
+            "generators": {"lookback_days": 90},
             "sources": {"synthetic": {"seed": 7}},
         }
         (tmp_path / "config.yaml").write_text(yaml.safe_dump(config), encoding="utf-8")

@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 
 from scipy import stats  # type: ignore[import-untyped]
 
+from pramaanx.coverage import EvidenceCoverage, measure_coverage
 from pramaanx.generators.base import (
     BaseGenerator,
     CandidateProposal,
@@ -240,6 +241,7 @@ class BaseRateGenerator(BaseGenerator):
         max_activity_multiplier: float = 3.0,
         source_reliability: Mapping[str, float] | None = None,
         observation_sources: Mapping[str, str] | None = None,
+        coverage: EvidenceCoverage | None = None,
         **options: Any,
     ) -> None:
         super().__init__(**options)
@@ -252,6 +254,10 @@ class BaseRateGenerator(BaseGenerator):
         self.max_activity_multiplier = max_activity_multiplier
         self.source_reliability = dict(source_reliability or {})
         self.observation_sources = dict(observation_sources or {})
+        #: Measured evidence coverage. None means nobody checked, which is the
+        #: pre-coverage behaviour and is kept only so a caller constructing this
+        #: class directly is not forced to measure; the pipeline always passes it.
+        self.coverage = coverage
 
     # -- construction -----------------------------------------------------
     @classmethod
@@ -272,6 +278,12 @@ class BaseRateGenerator(BaseGenerator):
             recent_activity_days=settings.generators.recent_activity_days,
             source_reliability=reliability,
             observation_sources={item.observation_id: item.source_id for item in observations},
+            coverage=measure_coverage(
+                observations,
+                cutoff_at=snapshot.cutoff_at,
+                lookback_days=settings.generators.lookback_days,
+                min_coverage=settings.generators.min_coverage,
+            ),
         )
 
     # -- proposal ---------------------------------------------------------
@@ -340,6 +352,21 @@ class BaseRateGenerator(BaseGenerator):
         return {label: value / total for label, value in masses.items()}
 
     def propose(self, context: ForecastContext) -> list[CandidateProposal]:
+        # The gate. A rate over a window nobody observed is not a weak estimate,
+        # it is a claim that absent records mean absent events - and the error
+        # runs in an unknown direction, so no downstream stage can correct it.
+        # Producing nothing is the honest output, and a caller can act on it.
+        if self.coverage is not None and not self.coverage.sufficient:
+            log.warning(
+                "generator.abstained",
+                generator=self.name,
+                reason=self.coverage.reason(),
+                coverage_ratio=round(self.coverage.coverage_ratio, 4),
+                observed_span_days=round(self.coverage.observed_span_days, 4),
+                requested_lookback_days=self.coverage.requested_lookback_days,
+            )
+            return []
+
         estimates = estimate_rates(
             self.mentions,
             cutoff_at=context.cutoff_at,

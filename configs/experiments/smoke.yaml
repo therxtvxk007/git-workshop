@@ -11,6 +11,12 @@ backtest:
 
 settings:
   generators:
+    # The synthetic world begins 2025-01-01, so a cutoff in mid-2025 has only
+    # ~150 days of evidence behind it. Asking for a 365-day lookback there is
+    # asking for evidence that does not exist, and pramaanx.coverage now
+    # abstains rather than dividing by a window nobody observed. 120 days is
+    # satisfiable at every cutoff this experiment walks.
+    lookback_days: 120
     proposal_budget: 100
   evaluation:
     proposal_budgets: [10, 25, 50]
