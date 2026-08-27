@@ -28,10 +28,12 @@ snapshot_app = typer.Typer(help="Build and inspect point-in-time snapshots.", no
 candidates_app = typer.Typer(help="Candidate generation.", no_args_is_help=True)
 outcomes_app = typer.Typer(help="Outcome registry.", no_args_is_help=True)
 audit_app = typer.Typer(help="Leakage and integrity audits.", no_args_is_help=True)
+replay_app = typer.Typer(help="Verify and restore stored bronze evidence.", no_args_is_help=True)
 app.add_typer(snapshot_app, name="snapshot")
 app.add_typer(candidates_app, name="candidates")
 app.add_typer(outcomes_app, name="outcomes")
 app.add_typer(audit_app, name="audit")
+app.add_typer(replay_app, name="replay")
 
 log = get_logger("pramaanx.cli")
 

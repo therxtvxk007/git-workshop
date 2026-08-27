@@ -12,26 +12,32 @@ The assertions are therefore mostly about *refusal*.
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
 from pramaanx.clock import FixedClock
-from pramaanx.config import Settings
+from pramaanx.config import Settings, StorageConfig
+from pramaanx.hashing import utc_isoformat
+from pramaanx.ingest.base import FetchWindow
 from pramaanx.ingest.ledger import EvidenceLedger
 from pramaanx.ingest.replay import (
     BronzeReplay,
+    ReplayArchiveError,
     ReplayDefect,
     ReplayIntegrityError,
     ReplayManifest,
     dependency_lock_hash,
     replayed_evidence_fingerprint,
+    restore_archive,
 )
 from pramaanx.schemas.observation import Modality, Observation, SourceRecord
 from pramaanx.timeguard.snapshots import SnapshotBuilder
 
 CUTOFF = datetime(2025, 7, 1, tzinfo=UTC)
+WORLD_START = datetime(2025, 1, 1, tzinfo=UTC)
 LATER = datetime(2026, 1, 1, tzinfo=UTC)
 
 
@@ -47,7 +53,10 @@ def _observation(
     content_hash, payload_ref = ledger.payloads.put(payload)
     observed = first_observed_at
     observation = Observation(
-        observation_id=Observation.build_id(source_id, content_hash, observed.isoformat()),
+        # utc_isoformat, matching EvidenceLedger.observation_from_item exactly.
+        # An id built from datetime.isoformat() is one production would never
+        # mint, and a fixture that mints one tests a record that cannot exist.
+        observation_id=Observation.build_id(source_id, content_hash, utc_isoformat(observed)),
         source_id=source_id,
         source_type="test",
         modality=Modality.TEXT,
@@ -209,6 +218,68 @@ class TestFailsClosed:
         assert "unknown_source=1" in message
 
 
+class TestAdoptedChecks:
+    """Checks ported from the parallel Codex implementation.
+
+    Each is strictly stronger than what this module had, and the first two
+    caught real problems: a fixture minting ids production could not produce,
+    and a whole class of partial ingestion nothing here detected.
+    """
+
+    def test_an_id_that_does_not_derive_from_its_content_is_caught(
+        self, settings: Settings, ledger: EvidenceLedger
+    ) -> None:
+        """ID_COLLISION needs two records to disagree; this needs only one.
+
+        A single hand-edited record is invisible to a collision check.
+        """
+        _source(ledger, "synthetic")
+        content_hash, payload_ref = ledger.payloads.put(b"a report")
+        forged = Observation(
+            observation_id="obs_0000000000000000",
+            source_id="synthetic",
+            source_type="test",
+            modality=Modality.TEXT,
+            retrieved_at=LATER,
+            first_observed_at=datetime(2025, 3, 1, tzinfo=UTC),
+            raw_content_hash=content_hash,
+            payload_ref=payload_ref,
+        )
+        ledger.observations.append([forged])
+
+        (finding,) = BronzeReplay(settings, ledger).verify()
+        assert finding.defect is ReplayDefect.NON_REPRODUCIBLE_ID
+
+    def test_a_payload_no_observation_refers_to_is_a_partial_ingestion(
+        self, settings: Settings, ledger: EvidenceLedger
+    ) -> None:
+        """The direction the obvious check misses.
+
+        Bronze is written observations-last, so an acquisition that died between
+        writing bytes and recording them leaves exactly this.
+        """
+        _source(ledger, "synthetic")
+        _observation(ledger, payload=b"recorded")
+        ledger.payloads.put(b"written but never recorded")
+
+        replay = BronzeReplay(settings, ledger)
+        (finding,) = replay.verify()
+        assert finding.defect is ReplayDefect.ORPHANED_PAYLOAD
+        assert finding.observation_id == ""
+        assert finding.payload_ref is not None
+        with pytest.raises(ReplayIntegrityError, match="orphaned_payload"):
+            replay.replay()
+
+    def test_two_source_records_with_one_id_are_refused(
+        self, settings: Settings, ledger: EvidenceLedger
+    ) -> None:
+        findings = BronzeReplay(settings, ledger)._findings_for(
+            [], {"synthetic"}, source_ids=["synthetic", "synthetic", "gdelt"]
+        )
+        assert [finding.defect for finding in findings] == [ReplayDefect.DUPLICATE_SOURCE_RECORD]
+        assert findings[0].source_id == "synthetic"
+
+
 class TestEvidenceLifecycle:
     def test_a_revised_report_is_a_new_observation_not_an_overwrite(
         self, settings: Settings, ledger: EvidenceLedger
@@ -330,7 +401,14 @@ class TestMalformedRecords:
         )
 
         findings = BronzeReplay(settings, ledger)._findings_for([broken], {"synthetic"})
-        assert [finding.defect for finding in findings] == [ReplayDefect.IMPOSSIBLE_TIMELINE]
+        # Both fire, and both should: the id was derived from the timestamp, so
+        # moving the timestamp necessarily orphans the id from its own content.
+        # A record that failed only the timeline check would mean the id had
+        # been rewritten to match the forgery.
+        assert {finding.defect for finding in findings} == {
+            ReplayDefect.IMPOSSIBLE_TIMELINE,
+            ReplayDefect.NON_REPRODUCIBLE_ID,
+        }
 
     def test_findings_are_ordered_the_same_way_every_run(
         self, settings: Settings, ledger: EvidenceLedger
@@ -390,7 +468,160 @@ class TestReplayCommand:
             encoding="utf-8",
         )
 
-        result = CliRunner().invoke(app, ["replay", "--config", str(config), "--dry-run"])
+        result = CliRunner().invoke(app, ["replay", "verify", "--config", str(config), "--dry-run"])
         assert result.exit_code == 0, result.output
         assert "unknown_source" in result.output
         assert not (settings.storage.data_root / "replays").exists()
+
+
+class TestArchiveRestore:
+    """The other half of replay, ported from the parallel Codex implementation.
+
+    ``BronzeReplay`` asks whether the bronze you have is intact. This asks
+    whether an archived bronze can be moved somewhere else and still be the
+    same evidence. Neither subsumes the other.
+    """
+
+    @staticmethod
+    def _archive(tmp_path: Path, clock: FixedClock) -> tuple[Path, Settings]:
+        """A complete bronze archive, and settings pointing somewhere empty."""
+        source_root = tmp_path / "archive"
+        source = Settings(
+            storage=StorageConfig(data_root=source_root, run_root=tmp_path / "runs"),
+            horizon_days=30,
+        )
+        ledger = EvidenceLedger(source, clock=clock)
+        ledger.ingest("synthetic", FetchWindow(WORLD_START, datetime(2025, 5, 1, tzinfo=UTC)))
+        destination = Settings(
+            storage=StorageConfig(data_root=tmp_path / "restored", run_root=tmp_path / "runs"),
+            horizon_days=30,
+        )
+        return source_root, destination
+
+    def test_a_restore_reproduces_the_archive_exactly(
+        self, tmp_path: Path, clock: FixedClock
+    ) -> None:
+        source_root, destination = self._archive(tmp_path, clock)
+        report = restore_archive(destination, source_root)
+
+        assert report.committed
+        assert report.observation_count > 0
+        restored = BronzeReplay(destination, EvidenceLedger(destination)).replay()
+        assert len(restored) == report.observation_count
+
+    def test_dry_run_validates_and_writes_nothing(self, tmp_path: Path, clock: FixedClock) -> None:
+        source_root, destination = self._archive(tmp_path, clock)
+        report = restore_archive(destination, source_root, dry_run=True)
+
+        assert not report.committed
+        assert not destination.storage.data_root.exists()
+
+    def test_restoring_the_same_archive_twice_is_a_no_op(
+        self, tmp_path: Path, clock: FixedClock
+    ) -> None:
+        source_root, destination = self._archive(tmp_path, clock)
+        restore_archive(destination, source_root)
+        second = restore_archive(destination, source_root)
+
+        assert second.already_present
+        assert not second.committed
+
+    def test_a_pinned_hash_refuses_a_different_archive(
+        self, tmp_path: Path, clock: FixedClock
+    ) -> None:
+        source_root, destination = self._archive(tmp_path, clock)
+        with pytest.raises(ReplayArchiveError, match="does not match its pinned hash"):
+            restore_archive(destination, source_root, expected_bronze_hash="sha256:deadbeef")
+
+    def test_a_non_empty_destination_is_never_merged_into(
+        self, tmp_path: Path, clock: FixedClock
+    ) -> None:
+        """A ledger assembled from two archives has provenance from neither."""
+        source_root, destination = self._archive(tmp_path, clock)
+        destination.storage.data_root.mkdir(parents=True)
+        (destination.storage.data_root / "stray.txt").write_text("prior", encoding="utf-8")
+
+        with pytest.raises(ReplayArchiveError, match="not empty"):
+            restore_archive(destination, source_root)
+        assert (destination.storage.data_root / "stray.txt").is_file()
+
+    def test_a_symlink_in_the_archive_is_refused(self, tmp_path: Path, clock: FixedClock) -> None:
+        """Hashing a tree and copying it stop being the same operation."""
+        source_root, destination = self._archive(tmp_path, clock)
+        (source_root / "bronze" / "escape").symlink_to(tmp_path)
+
+        with pytest.raises(ReplayArchiveError, match="symbolic links"):
+            restore_archive(destination, source_root)
+
+    def test_a_missing_dependency_lock_blocks_before_any_write(
+        self, tmp_path: Path, clock: FixedClock
+    ) -> None:
+        source_root, destination = self._archive(tmp_path, clock)
+        with pytest.raises(ReplayArchiveError, match="dependency lock"):
+            restore_archive(destination, source_root, dependency_lock=tmp_path / "absent.lock")
+        assert not destination.storage.data_root.exists()
+
+    def test_source_and_destination_may_not_be_the_same_root(
+        self, tmp_path: Path, clock: FixedClock
+    ) -> None:
+        source_root, _ = self._archive(tmp_path, clock)
+        same = Settings(
+            storage=StorageConfig(data_root=source_root, run_root=tmp_path / "runs"),
+            horizon_days=30,
+        )
+        with pytest.raises(ReplayArchiveError, match="same directory"):
+            restore_archive(same, source_root)
+
+    def test_a_corrupted_archive_is_refused_before_the_destination_is_touched(
+        self, tmp_path: Path, clock: FixedClock
+    ) -> None:
+        source_root, destination = self._archive(tmp_path, clock)
+        payloads = sorted((source_root / "bronze" / "payloads").rglob("*.bin"))
+        payloads[0].write_bytes(b"tampered")
+
+        with pytest.raises(ReplayIntegrityError, match="payload_hash_mismatch"):
+            restore_archive(destination, source_root)
+        assert not destination.storage.data_root.exists()
+
+    def test_restore_never_opens_a_socket(
+        self, tmp_path: Path, clock: FixedClock, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Replay must not be able to quietly become a re-acquisition."""
+        import socket
+
+        def refuse(*args: object, **kwargs: object) -> None:
+            raise AssertionError("replay attempted a network connection")
+
+        source_root, destination = self._archive(tmp_path, clock)
+        monkeypatch.setattr(socket.socket, "connect", refuse)
+        monkeypatch.setattr(socket, "create_connection", refuse)
+
+        assert restore_archive(destination, source_root).committed
+
+    def test_the_restore_command_reports_what_it_committed(
+        self, tmp_path: Path, clock: FixedClock
+    ) -> None:
+        from typer.testing import CliRunner
+
+        from pramaanx.cli._app import app
+
+        source_root, destination = TestArchiveRestore._archive(tmp_path, clock)
+        config = tmp_path / "restore.yaml"
+        config.write_text(
+            "storage:\n"
+            f"  data_root: {destination.storage.data_root}\n"
+            f"  run_root: {destination.storage.run_root}\n",
+            encoding="utf-8",
+        )
+
+        result = CliRunner().invoke(
+            app,
+            ["replay", "restore", "--config", str(config), "--source", str(source_root)],
+        )
+        assert result.exit_code == 0, result.output
+        # The manifest is the last line; structlog writes its own lines before it.
+        emitted = json.loads(result.output.strip().splitlines()[-1])
+        assert emitted["kind"] == "replay.restore"
+        assert emitted["committed"] is True
+        assert emitted["observation_count"] > 0
+        assert (destination.storage.data_root / "bronze").is_dir()

@@ -306,6 +306,45 @@ own tests rather than by review:
   `SnapshotBuilder` does. The guard decides whether a candidate is admissible;
   it is not the mechanism for choosing candidates.
 
+### 2026-08-27 — reconciling two parallel replay implementations
+
+A Codex session built replay in parallel, branching from this branch at
+`4d55354` (`codex/pramaan-x-deterministic-replay`, commit `7cd8c8e`, delivered
+as a bundle whose SHA-256 and size both verify). They turned out to be
+different operations sharing a name, so both were kept:
+
+| Operation | Question | Origin |
+| --- | --- | --- |
+| `replay verify` | Is the bronze in this data root intact? | Track A |
+| `replay restore` | Can this archived bronze move and still be the same evidence? | Codex |
+
+**Three checks came from the Codex side and are strictly stronger** than what
+was here, so they now run in both paths:
+
+- `non_reproducible_id` — recomputes `Observation.build_id` from the record's
+  own content. `id_collision` needs two records to disagree before it fires, so
+  a single hand-edited record was invisible to it.
+- `orphaned_payload` — a stored payload no observation refers to. Bronze is
+  written observations-last, so this is the signature of an acquisition that
+  died between writing bytes and recording them: the "fail closed on incomplete
+  acquisition" item, which the original implementation missed entirely.
+- `duplicate_source_record`.
+
+**The first one found a real defect in this repository's own fixtures.** The
+Track A test helper minted observation ids from `datetime.isoformat()` while
+`EvidenceLedger.observation_from_item` uses `utc_isoformat` — ids production
+could never produce, in tests that had been passing. The helper was wrong, not
+the check.
+
+Also adopted: the whole restore path with its symlink rejection, staging
+directory, re-hash-after-copy and single-rename commit; the dedicated CI gate;
+and `docs/REPLAY_ACCEPTANCE.md`.
+
+One earlier claim in this log was wrong and is corrected here: the Codex report
+cited "Track A CI run 29", which read as a misattribution. It was not — run 29
+is the CI of `4d55354`, the commit its branch was built on. Citing the base
+commit's CI was legitimate.
+
 ### Stage 2.1 after this pass
 
 | Source | Was | Now |

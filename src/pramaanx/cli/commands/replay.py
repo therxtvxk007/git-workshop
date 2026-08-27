@@ -1,8 +1,17 @@
-"""Verify and replay stored bronze evidence."""
+"""Verify stored bronze, and restore an archived copy of it.
+
+Two operations that are easy to conflate and must not be. ``verify`` asks
+whether the bronze in this data root is intact. ``restore`` asks whether an
+archived bronze can be put somewhere else and still be the same evidence.
+Neither answers the other's question, and both refuse rather than degrade.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
+
+import typer
 
 from pramaanx.cli._app import (
     ConfigOption,
@@ -11,23 +20,23 @@ from pramaanx.cli._app import (
     SetOption,
     _emit,
     _settings,
-    app,
+    replay_app,
 )
 
 
-@app.command()
-def replay(
+@replay_app.command("verify")
+def replay_verify(
     config: ConfigOption = Path("configs/base.yaml"),
     set_: SetOption = None,
     dry_run: DryRunOption = False,
     strict: bool = True,
     output: OutputOption = None,
 ) -> None:
-    """Replay bronze, refusing a corpus whose integrity cannot be verified.
+    """Replay bronze in place, refusing a corpus it cannot vouch for.
 
-    ``--dry-run`` reports what is wrong without producing a replay manifest --
-    the read-only half. ``--no-strict`` returns the corpus anyway, for triage on
-    a ledger already known to be damaged; its result must not support a claim.
+    ``--dry-run`` reports defects without producing a manifest. ``--no-strict``
+    returns the corpus anyway, for triage on a ledger already known to be
+    damaged; its result must not support a claim.
     """
     from pramaanx.ingest.ledger import EvidenceLedger
     from pramaanx.ingest.replay import BronzeReplay
@@ -39,7 +48,7 @@ def replay(
         findings = engine.verify()
         _emit(
             {
-                "kind": "replay",
+                "kind": "replay.verify",
                 "dry_run": True,
                 "defects": len(findings),
                 "findings": [finding.model_dump(mode="json") for finding in findings],
@@ -51,7 +60,7 @@ def replay(
     result = engine.replay(strict=strict, persist=True)
     _emit(
         {
-            "kind": "replay",
+            "kind": "replay.verify",
             "dry_run": False,
             "strict": strict,
             "replay_id": result.manifest.replay_id,
@@ -63,3 +72,33 @@ def replay(
         },
         output,
     )
+
+
+@replay_app.command("restore")
+def replay_restore(
+    source: Annotated[Path, typer.Option("--source", help="Data root holding the bronze archive.")],
+    expected_bronze_hash: Annotated[
+        str | None,
+        typer.Option("--expect-hash", help="Refuse any archive that does not hash to this."),
+    ] = None,
+    config: ConfigOption = Path("configs/base.yaml"),
+    set_: SetOption = None,
+    dry_run: DryRunOption = False,
+    output: OutputOption = None,
+) -> None:
+    """Restore an archived bronze into this config's data root, atomically.
+
+    Never merges into a non-empty destination: a ledger assembled from two
+    archives has provenance belonging to neither. Restoring the identical
+    archive twice is a no-op, so the operation is safe to retry.
+    """
+    from pramaanx.ingest.replay import restore_archive
+
+    settings = _settings(config, set_)
+    report = restore_archive(
+        settings,
+        source,
+        expected_bronze_hash=expected_bronze_hash,
+        dry_run=dry_run,
+    )
+    _emit({"kind": "replay.restore", **report.model_dump(mode="json")}, output)

@@ -29,6 +29,8 @@ inspecting it through an exception.
 
 from __future__ import annotations
 
+import shutil
+import tempfile
 from collections.abc import Sequence
 from datetime import datetime
 from enum import StrEnum
@@ -37,8 +39,16 @@ from pathlib import Path
 from pydantic import Field
 
 from pramaanx.clock import Clock, SystemClock
-from pramaanx.config import Settings
-from pramaanx.hashing import hash_bytes, hash_file, hash_object, merkle_root, stable_id
+from pramaanx.config import Settings, StorageConfig
+from pramaanx.hashing import (
+    hash_bytes,
+    hash_file,
+    hash_object,
+    hash_tree,
+    merkle_root,
+    stable_id,
+    utc_isoformat,
+)
 from pramaanx.ingest.contracts import contract_summaries
 from pramaanx.ingest.ledger import EvidenceLedger
 from pramaanx.logging import get_logger
@@ -74,18 +84,38 @@ class ReplayDefect(StrEnum):
     #: ``first_observed_at`` is after ``retrieved_at``: the record claims to
     #: have become available after it was fetched.
     IMPOSSIBLE_TIMELINE = "impossible_timeline"
+    #: The observation id does not derive from this observation's own content.
+    #: Strictly stronger than :attr:`ID_COLLISION`, which needs two records to
+    #: disagree before it fires: a single hand-edited record is invisible to a
+    #: collision check and caught by this one.
+    NON_REPRODUCIBLE_ID = "non_reproducible_id"
+    #: A stored payload no observation refers to. Bronze is written
+    #: observations-last, so a payload without one is the signature of an
+    #: acquisition that died between writing bytes and recording them.
+    ORPHANED_PAYLOAD = "orphaned_payload"
+    #: Two source records claim the same ``source_id``, so which licence, tier
+    #: and version applied to an ingestion is no longer answerable.
+    DUPLICATE_SOURCE_RECORD = "duplicate_source_record"
 
 
 class ReplayFinding(PramaanModel):
     """One defect, attributed to the record it was found in."""
 
     defect: ReplayDefect
-    observation_id: str
     source_id: str
     detail: str
+    #: Empty for a defect that belongs to the corpus rather than to one record
+    #: -- an orphaned payload has no observation to attribute it to, which is
+    #: precisely what is wrong with it.
+    observation_id: str = ""
+    payload_ref: str | None = None
+
+    @property
+    def subject(self) -> str:
+        return self.observation_id or self.payload_ref or "(corpus)"
 
     def __str__(self) -> str:
-        return f"{self.defect.value}: {self.observation_id} ({self.source_id}) -- {self.detail}"
+        return f"{self.defect.value}: {self.subject} ({self.source_id}) -- {self.detail}"
 
 
 class ReplayIntegrityError(RuntimeError):
@@ -210,10 +240,17 @@ class BronzeReplay:
         return self._findings_for(
             self.ledger.read_observations(),
             {record.source_id for record in self.ledger.read_source_records()},
+            source_ids=[record.source_id for record in self.ledger.read_source_records()],
+            check_orphans=True,
         )
 
     def _findings_for(
-        self, observations: Sequence[Observation], known_sources: set[str]
+        self,
+        observations: Sequence[Observation],
+        known_sources: set[str],
+        *,
+        source_ids: Sequence[str] | None = None,
+        check_orphans: bool = False,
     ) -> list[ReplayFinding]:
         """The checks themselves, over an explicit corpus.
 
@@ -250,6 +287,24 @@ class BronzeReplay:
                         detail=(
                             f"stored bytes hash to {actual}, recorded as "
                             f"{observation.raw_content_hash}"
+                        ),
+                    )
+                )
+
+            expected_id = Observation.build_id(
+                observation.source_id,
+                observation.raw_content_hash,
+                utc_isoformat(observation.first_observed_at),
+            )
+            if oid != expected_id:
+                findings.append(
+                    ReplayFinding(
+                        defect=ReplayDefect.NON_REPRODUCIBLE_ID,
+                        observation_id=oid,
+                        source_id=observation.source_id,
+                        detail=(
+                            f"id does not derive from this record's own content; "
+                            f"expected {expected_id}"
                         ),
                     )
                 )
@@ -296,7 +351,60 @@ class BronzeReplay:
                     )
                 )
 
-        return sorted(findings, key=lambda f: (f.observation_id, f.defect.value))
+        if source_ids is not None:
+            counts: dict[str, int] = {}
+            for source_id in source_ids:
+                counts[source_id] = counts.get(source_id, 0) + 1
+            findings.extend(
+                ReplayFinding(
+                    defect=ReplayDefect.DUPLICATE_SOURCE_RECORD,
+                    source_id=source_id,
+                    detail=(
+                        f"{count} source records claim this id; which licence, tier and "
+                        "version applied to an ingestion is no longer answerable"
+                    ),
+                )
+                for source_id, count in sorted(counts.items())
+                if count > 1
+            )
+
+        if check_orphans:
+            findings.extend(self._orphaned_payloads(observations))
+
+        return sorted(findings, key=lambda f: (f.subject, f.defect.value))
+
+    def _orphaned_payloads(self, observations: Sequence[Observation]) -> list[ReplayFinding]:
+        """Stored payloads that no observation refers to.
+
+        This is the direction the obvious check misses. Walking observations
+        finds evidence whose bytes are gone; walking bytes finds an acquisition
+        that wrote payloads and then died before recording the observations that
+        referred to them. Bronze is written observations-last precisely so that
+        failure leaves this signature, and a replay that ignored it would
+        cheerfully reproduce a truncated corpus as though it were complete.
+        """
+        payload_root = self.ledger.payloads.root
+        if not payload_root.is_dir():
+            return []
+        referenced = {observation.payload_ref for observation in observations}
+        stored = {
+            path.relative_to(payload_root).as_posix()
+            for path in payload_root.rglob("*.bin")
+            if path.is_file()
+        }
+        return [
+            ReplayFinding(
+                defect=ReplayDefect.ORPHANED_PAYLOAD,
+                source_id="",
+                payload_ref=payload_ref,
+                detail=(
+                    "stored payload no observation refers to; the acquisition that wrote "
+                    "it did not survive to record the observation, so this corpus is a "
+                    "partial ingestion"
+                ),
+            )
+            for payload_ref in sorted(stored - referenced)
+        ]
 
     def replay(self, *, strict: bool = True, persist: bool = False) -> ReplayResult:
         """Reconstruct the stored corpus, refusing a damaged one.
@@ -410,3 +518,181 @@ def replayed_evidence_fingerprint(
         "observation_hash_root": merkle_root(item.raw_content_hash for item in admitted),
         "source_counts": dict(sorted(counts.items())),
     }
+
+
+class ReplayArchiveError(RuntimeError):
+    """A precondition that stops a restore before it touches the destination.
+
+    Kept apart from :class:`ReplayIntegrityError` because the two are different
+    kinds of "no". An integrity error says the evidence is damaged; this says
+    the restore itself is unsafe to attempt -- the archive is not what it claims
+    to be, or the destination is not somewhere we may write.
+    """
+
+
+def _settings_at(settings: Settings, data_root: Path) -> Settings:
+    """The same settings pointed at a different data root."""
+    storage = settings.storage
+    return settings.model_copy(
+        update={
+            "storage": StorageConfig(
+                data_root=data_root,
+                run_root=storage.run_root,
+                parquet_compression=storage.parquet_compression,
+                payload_shard_depth=storage.payload_shard_depth,
+            )
+        }
+    )
+
+
+def _bronze_tree_hash(bronze: Path) -> str:
+    """Hash of every byte under ``bronze``, not just its Python files."""
+    return hash_tree(bronze, patterns=("**/*",))
+
+
+class ArchiveRestoreReport(PramaanModel):
+    """What a restore did, or would have done."""
+
+    source_root: str
+    destination_root: str
+    bronze_hash: str
+    expected_bronze_hash: str | None
+    observation_count: int
+    payload_bytes: int
+    source_contracts: dict[str, str]
+    dependency_lock_hash: str
+    dry_run: bool
+    committed: bool
+    already_present: bool
+
+
+def restore_archive(
+    settings: Settings,
+    source_root: Path,
+    *,
+    expected_bronze_hash: str | None = None,
+    dependency_lock: Path = Path("uv.lock"),
+    dry_run: bool = False,
+) -> ArchiveRestoreReport:
+    """Validate a bronze archive and restore it atomically, without a network.
+
+    The other half of replay. :class:`BronzeReplay` asks whether the bronze you
+    already have is intact; this asks whether an archived bronze can be put
+    somewhere else and still be the same evidence. Neither subsumes the other,
+    and both share one verification pass so they cannot drift into disagreeing
+    about what "intact" means.
+
+    Nothing is merged into a non-empty destination. A hybrid ledger assembled
+    from two archives has provenance belonging to neither, and no manifest it
+    produced afterwards would be true. Restoring the identical archive twice is
+    an idempotent no-op rather than an error, because that is what makes the
+    operation safe to retry.
+    """
+    source_root = source_root.resolve()
+    destination_root = settings.storage.data_root.resolve()
+    if source_root == destination_root:
+        raise ReplayArchiveError(
+            f"replay source and destination are the same directory: {source_root}"
+        )
+    if not dependency_lock.is_file():
+        raise ReplayArchiveError(
+            f"dependency lock file not found: {dependency_lock}. A restore that cannot "
+            "pin the dependency set cannot claim the restored evidence parses the same way."
+        )
+
+    bronze = source_root / "bronze"
+    if not bronze.is_dir():
+        raise ReplayArchiveError(f"replay source has no bronze directory: {bronze}")
+
+    # A symlink in an archive can point anywhere, so hashing the tree and
+    # copying it are no longer the same operation on the same bytes.
+    links = sorted(
+        path.relative_to(bronze).as_posix() for path in bronze.rglob("*") if path.is_symlink()
+    )
+    if links:
+        raise ReplayArchiveError(f"bronze archive contains symbolic links: {links}")
+
+    bronze_hash = _bronze_tree_hash(bronze)
+    if expected_bronze_hash is not None and bronze_hash != expected_bronze_hash:
+        raise ReplayArchiveError(
+            "bronze archive does not match its pinned hash: "
+            f"expected {expected_bronze_hash}, observed {bronze_hash}. The archive is not "
+            "the one the pin was taken from."
+        )
+
+    source_settings = _settings_at(settings, source_root)
+    try:
+        source_ledger = EvidenceLedger(source_settings)
+        observations = source_ledger.read_observations()
+        source_records = source_ledger.read_source_records()
+    except Exception as exc:
+        raise ReplayArchiveError(f"bronze metadata is malformed: {exc}") from exc
+
+    # The same checks the in-place path runs, so the two can never disagree.
+    findings = BronzeReplay(settings, source_ledger)._findings_for(
+        observations,
+        {record.source_id for record in source_records},
+        source_ids=[record.source_id for record in source_records],
+        check_orphans=True,
+    )
+    if findings:
+        raise ReplayIntegrityError(findings)
+
+    payload_root = source_ledger.payloads.root
+    payload_bytes = sum(
+        path.stat().st_size for path in payload_root.rglob("*.bin") if path.is_file()
+    )
+    contracts = contract_summaries({record.source_id for record in source_records})
+
+    destination_bronze = destination_root / "bronze"
+    already_present = (
+        destination_bronze.is_dir() and _bronze_tree_hash(destination_bronze) == bronze_hash
+    )
+    if destination_root.exists() and not already_present:
+        raise ReplayArchiveError(
+            f"destination is not empty and does not contain this exact bronze archive: "
+            f"{destination_root}. Merging would produce a ledger whose provenance belongs "
+            "to neither archive."
+        )
+
+    report = ArchiveRestoreReport(
+        source_root=source_root.as_posix(),
+        destination_root=destination_root.as_posix(),
+        bronze_hash=bronze_hash,
+        expected_bronze_hash=expected_bronze_hash,
+        observation_count=len(observations),
+        payload_bytes=payload_bytes,
+        source_contracts=contracts,
+        dependency_lock_hash=hash_file(dependency_lock),
+        dry_run=dry_run,
+        committed=False,
+        already_present=already_present,
+    )
+    if dry_run or already_present:
+        return report
+
+    destination_root.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(
+        tempfile.mkdtemp(prefix=f".{destination_root.name}.replay-", dir=destination_root.parent)
+    )
+    try:
+        shutil.copytree(bronze, staging / "bronze", symlinks=False, dirs_exist_ok=True)
+        staged_hash = _bronze_tree_hash(staging / "bronze")
+        if staged_hash != bronze_hash:
+            raise ReplayArchiveError(
+                f"staged bronze changed during copy: {bronze_hash} -> {staged_hash}"
+            )
+        # One rename, so the destination is either the whole archive or absent.
+        # A half-copied ledger that looked complete is the failure this avoids.
+        staging.replace(destination_root)
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+    log.info(
+        "replay.restored",
+        source=source_root.as_posix(),
+        destination=destination_root.as_posix(),
+        observations=len(observations),
+    )
+    return report.model_copy(update={"committed": True})
