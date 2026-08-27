@@ -1,6 +1,7 @@
 # PRAMAAN-X checklist status — what is done, what remains, split two ways
 
-Audit date: **2026-08-27**. Evidence: the GitHub repository state of
+Audit date: **2026-08-27**. A Track A progress log follows the audit; where the
+two disagree, the log is later. Evidence: the GitHub repository state of
 `therxtvxk007/git-workshop` on that date — branch list, pull requests, tags,
 Actions runs 1–25, and the trees of `main`,
 `claude/forecasting-roadmap-completion-pq1tey` and
@@ -16,7 +17,7 @@ executed, it is recorded as **written, unverified** — which is not *done*.
 
 | Fact | Observed value |
 | --- | --- |
-| `main` | `a98fa0d` — PR #1 only. M0 and nothing else. |
+| `main` | `a98fa0d` — PR #1 only. M0 and nothing else. *(superseded: see the progress log.)* |
 | Tags in the repository | **none** |
 | Branch protection on `main` | **off** (`protected: false`) |
 | Open PRs | #2 (Codex plugin), unrelated to PRAMAAN-X |
@@ -190,3 +191,96 @@ These are the real schedule risks, and every one of them needs a person:
 1. Open and merge the Phase 1 PR; tag `M0` and `phase1-integrated`; enable branch protection.
 2. Track A: start the ReliefWeb appname and ACLED credential applications the same day — they have external latency and block Stage 2.1 indefinitely otherwise.
 3. Track B: rebase Phase 2, clear the 10 ruff errors, and run its test suite for the first time. That single step converts ~7,300 lines from *written* to *known*.
+
+
+---
+
+## 7. Track A progress log
+
+Track A is the upstream half of the split in §3: evidence, platform, governance.
+Track B is being worked separately.
+
+### 2026-08-27 — gate zero
+
+- **Phase 1 merged.** [PR #3](https://github.com/therxtvxk007/git-workshop/pull/3)
+  opened from `claude/forecasting-roadmap-completion-pq1tey` and merged.
+  `main` is now `aaec0c2`; all four evidence connectors are registered on one
+  CLI surface. Stage 1.2 closed.
+- **Tags not created.** `M0` at `a98fa0d` and `phase1-integrated` at `aaec0c2`
+  are prepared but could not be pushed: this session's git write policy answers
+  `403` to any ref outside its designated branch, and no tag-creation API is
+  available to it. The two commands are in the handover note below; they are a
+  person's to run.
+- **Branch protection not enabled.** Repository settings, not something a
+  session can reach. Stage 1.1 stays open on both counts.
+
+### 2026-08-27 — GDELT is live-verified
+
+The `live-gdelt` workflow had never run in the repository's history. Dispatched
+against merged `main`:
+[run 33086345335](https://github.com/therxtvxk007/git-workshop/actions/runs/33086345335)
+— `tests/network/test_gdelt_live.py .`, **1 passed**, one export file fetched
+from the origin, unzipped and parsed.
+
+The same run also showed the problem worth fixing: ten of eleven tests skipped
+for want of credentials, and the workflow reported success. A green tick that
+verified one source looked exactly like one that verified four.
+
+### 2026-08-27 — source contracts, and the skip-is-not-a-pass rule
+
+- `src/pramaanx/ingest/contracts.py` — one vocabulary for "has this source's
+  contract ever been answered by the real service?", replacing the three
+  dialects the Phase 1 connectors each invented. A `live_verified` contract
+  that cannot produce a date, a scope and an address for its evidence is
+  rejected at construction; a `docs_only` one that names no blocker is too.
+- The record now reaches artefacts: every ingestion manifest carries the
+  contract its evidence was acquired under, and every `SnapshotManifest`
+  carries `source_contracts`. That field is deliberately **excluded** from
+  `content_fingerprint`, so learning on Tuesday that a source works does not
+  make Monday's snapshot un-reproducible.
+- `tests/contracts/test_source_contracts.py` — 25 tests, including a drift
+  alarm: changing a contract without bumping `contract_version` fails, and so
+  does bumping the version without updating the pinned hashes.
+- `.github/workflows/live-sources.yaml` replaces `live-gdelt.yaml`. One job per
+  source; a weekly schedule that is a real GDELT probe rather than a scheduled
+  skip; and an attempted source whose suite produced no passing test **fails**.
+  Whether a source is attempted follows from whether its credential exists, so
+  adding a secret starts enforcing that source with no workflow edit.
+- `docs/SOURCE_VERIFICATION.md` — the human-readable face of the registry, and
+  the four steps that move a source to verified.
+
+The data.gov.in **resource identifier** is pinned; its **field names are not**.
+The live run recorded that the envelope contract held, not what the records
+contained, and the only data.gov.in records in this repository are openly
+synthetic fixtures. `drift_against` raises rather than compare against an empty
+pin. Capturing the schema needs one live probe.
+
+Local gate before push: ruff, format, mypy, 664 tests, coverage 92.3% against
+the 88% floor, the M0 acceptance suites, and `make demo` end to end.
+
+### Stage 2.1 after this pass
+
+| Source | Was | Now |
+| --- | --- | --- |
+| GDELT | never live-probed | **live_verified**, run 33086345335 |
+| data.gov.in | live-verified, unrecorded in code | **live_verified**, in the registry; resource id pinned, schema pin open |
+| ReliefWeb | unverified, reason in prose | `docs_only`, blocker recorded and machine-readable |
+| ACLED | unverified, reason in prose | `docs_only`, blocker recorded and machine-readable |
+
+What remains in 2.1 is exactly the credential work, which is §5's business.
+
+### Handover — three things only a person can do
+
+```bash
+# 1. The tags this session could not push.
+git tag -a M0 a98fa0d -m "M0: the cutoff-safe temporal foundation"
+git tag -a phase1-integrated aaec0c2 -m "Phase 1 integrated: four evidence connectors"
+git push origin M0 phase1-integrated
+```
+
+2. **Branch protection on `main`** — require both CI jobs on 3.13 and 3.14, and
+   one review for `src/pramaanx/{generators,calibration,evaluation,timeguard}`.
+
+3. **Credentials.** Request the ReliefWeb `appname` and the myACLED account, and
+   issue a data.gov.in key. Add each as a repository secret under the name in
+   `.env.example`; the live workflow enforces that source from the next run.

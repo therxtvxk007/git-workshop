@@ -29,6 +29,7 @@ from pramaanx.hashing import (
     stable_id,
     utc_isoformat,
 )
+from pramaanx.ingest.contracts import contract_summaries
 from pramaanx.ingest.ledger import EvidenceLedger
 from pramaanx.logging import get_logger
 from pramaanx.schemas.base import UtcDatetime, VersionedModel
@@ -57,6 +58,11 @@ class SnapshotManifest(VersionedModel):
     observation_hashes: list[str] = Field(default_factory=list)
     observation_hash_root: str
     source_versions: dict[str, str] = Field(default_factory=dict)
+    #: ``{source_id: "source@version/state"}`` -- which contract each source's
+    #: evidence arrived under, and whether that contract has ever been answered
+    #: by the real service. Deliberately absent from
+    #: :meth:`content_fingerprint`; see the note there.
+    source_contracts: dict[str, str] = Field(default_factory=dict)
     source_counts: dict[str, int] = Field(default_factory=dict)
     earliest_observation_at: UtcDatetime | None = None
     latest_observation_at: UtcDatetime | None = None
@@ -72,6 +78,17 @@ class SnapshotManifest(VersionedModel):
 
         ``created_at`` and ``snapshot_id`` are excluded on purpose: two runs over
         identical evidence must agree, even a week apart.
+
+        ``source_contracts`` is excluded for the same reason, and the reason is
+        worth stating because the instinct is to include it. The snapshot hash
+        identifies *the evidence admitted at a cutoff*. Learning on Tuesday that
+        a source we ingested on Monday does answer its documented contract
+        changes what we know about the source; it changes nothing about what
+        Monday's snapshot contains. If the contract change actually altered
+        parsing, the observations differ and the hash moves anyway -- through
+        the evidence, which is where it belongs. Folding verification status in
+        directly would instead make every historical snapshot un-reproducible
+        the day a credential finally arrives.
         """
         return {
             "cutoff_at": utc_isoformat(self.cutoff_at),
@@ -175,6 +192,7 @@ class SnapshotBuilder:
             observation_hashes=fingerprints,
             observation_hash_root=merkle_root(item.raw_content_hash for item in admitted),
             source_versions=dict(sorted(source_versions.items())),
+            source_contracts=contract_summaries(sources),
             source_counts=dict(sorted(source_counts.items())),
             earliest_observation_at=admitted[0].first_observed_at if admitted else None,
             latest_observation_at=admitted[-1].first_observed_at if admitted else None,

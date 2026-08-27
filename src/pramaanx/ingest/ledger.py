@@ -20,6 +20,7 @@ from pramaanx.clock import Clock, SystemClock
 from pramaanx.config import Settings
 from pramaanx.hashing import utc_isoformat
 from pramaanx.ingest.base import Connector, ConnectorError, FetchWindow, RawItem, build_connector
+from pramaanx.ingest.contracts import contract_for
 from pramaanx.isolation import guard_outcome_access
 from pramaanx.logging import get_logger, log_context
 from pramaanx.schemas.event import EventMention, ResolvedEvent
@@ -129,6 +130,11 @@ class IngestReport:
             "payload_bytes": self.payload_bytes,
             "dry_run": self.dry_run,
             "plan": self.plan,
+            # Which contract this evidence was acquired under, and whether that
+            # contract has ever been answered by the real service. Written even
+            # for a dry run, because "we were about to ingest from a source
+            # nobody has ever called" is exactly what a dry run should reveal.
+            "source_contract": contract_for(self.source_id).manifest_entry(),
         }
 
 
