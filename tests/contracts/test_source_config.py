@@ -18,6 +18,7 @@ from pydantic import ValidationError
 
 from pramaanx.config import (
     SOURCE_OPTION_MODELS,
+    AcledSourceConfig,
     DataGovInSourceConfig,
     GdeltSourceConfig,
     ReliefWebSourceConfig,
@@ -81,8 +82,11 @@ class TestTypoRejection:
             Settings.model_validate({"sources": {"gdelt": {"publication_lag_minuts": 1}}})
 
     def test_unknown_source_names_are_rejected(self) -> None:
-        with pytest.raises(ValidationError, match="unknown source 'acled'"):
-            Settings.model_validate({"sources": {"acled": {"api_key": "x"}}})
+        # Deliberately a source from a later phase rather than one that merely
+        # happens to be unbuilt today: this test must keep testing "unknown"
+        # and not quietly start testing "recently added".
+        with pytest.raises(ValidationError, match="unknown source 'bluesky'"):
+            Settings.model_validate({"sources": {"bluesky": {"api_key": "x"}}})
 
     def test_rejection_happens_at_load_time(self, tmp_path: Path) -> None:
         # Not when ingestion eventually runs: `pramaanx version` should fail.
@@ -103,6 +107,10 @@ class TestTypoRejection:
     def test_data_gov_in_typo_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match="resource_iid"):
             Settings.model_validate({"sources": {"data_gov_in": {"resource_iid": "x"}}})
+
+    def test_retired_acled_api_key_option_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="api_key"):
+            Settings.model_validate({"sources": {"acled": {"api_key": "x"}}})
 
 
 class TestValidConfigurations:
@@ -236,8 +244,8 @@ class TestValidConfigurations:
         assert Settings().source_options("gdelt").publication_lag_minutes == 15
 
     def test_unknown_source_lookup_raises(self) -> None:
-        with pytest.raises(KeyError, match="unknown source 'acled'"):
-            Settings().source_options("acled")
+        with pytest.raises(KeyError, match="unknown source 'bluesky'"):
+            Settings().source_options("bluesky")
 
     def test_out_of_range_values_are_rejected(self) -> None:
         # Strictness is about more than spelling.
@@ -245,6 +253,32 @@ class TestValidConfigurations:
             Settings.model_validate({"sources": {"gdelt": {"max_attempts": 0}}})
         with pytest.raises(ValidationError):
             Settings.model_validate({"sources": {"gdelt": {"publication_lag_minutes": -5}}})
+
+    def test_valid_acled_configuration_loads_without_credential_values(self) -> None:
+        settings = Settings.model_validate(
+            {
+                "sources": {
+                    "acled": {
+                        "countries": ["India"],
+                        "event_types": ["Protests"],
+                        "page_size": 1000,
+                        "max_pages": 200,
+                        "access_token_env": "DEPLOYMENT_ACLED_TOKEN",
+                        "max_retry_after_seconds": 30,
+                    }
+                }
+            }
+        )
+        options = settings.source_options("acled")
+        assert isinstance(options, AcledSourceConfig)
+        assert options.page_size == 1000
+        assert options.access_token_env == "DEPLOYMENT_ACLED_TOKEN"
+
+    def test_acled_requires_https_and_bounded_pages(self) -> None:
+        with pytest.raises(ValidationError, match="must use https"):
+            Settings.model_validate({"sources": {"acled": {"base_url": "http://example.test"}}})
+        with pytest.raises(ValidationError):
+            Settings.model_validate({"sources": {"acled": {"page_size": 5001}}})
 
 
 def consumed_option_names(module_path: Path) -> set[str]:
@@ -283,6 +317,7 @@ class TestEveryConsumedOptionIsDeclared:
     @pytest.mark.parametrize(
         ("module", "model"),
         [
+            ("acled.py", AcledSourceConfig),
             ("data_gov_in.py", DataGovInSourceConfig),
             ("gdelt.py", GdeltSourceConfig),
             ("reliefweb.py", ReliefWebSourceConfig),
@@ -302,7 +337,13 @@ class TestEveryConsumedOptionIsDeclared:
     def test_no_connector_reads_options_by_string_key(self) -> None:
         # options.get("x") is how the silent-typo bug worked: a string key that
         # nothing validates. Attribute access on a strict model cannot.
-        for module in ("data_gov_in.py", "gdelt.py", "reliefweb.py", "synthetic.py"):
+        for module in (
+            "acled.py",
+            "data_gov_in.py",
+            "gdelt.py",
+            "reliefweb.py",
+            "synthetic.py",
+        ):
             source = (CONNECTOR_DIR / module).read_text(encoding="utf-8")
             assert 'options.get("' not in source, f"{module} still reads options by string key"
 

@@ -436,40 +436,62 @@ class HttpClient:
             time.sleep(self.min_interval_seconds - elapsed)
         self._last_request_at = time.monotonic()
 
-    def get(
+    def _request(
         self,
+        method: str,
         url: str,
         *,
+        headers: Mapping[str, str] | None = None,
+        form: Mapping[str, str] | None = None,
+        use_cache: bool = True,
         secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
         accepted_content_types: frozenset[str] | None = None,
     ) -> bytes:
-        """Fetch ``url``, retrying transient failures, never logging secrets.
+        """One request, retried, with every secret kept out of every display path.
+
+        ``form`` values are treated as secret unconditionally. A form body is
+        how a source that refuses URL credentials expects to receive them --
+        ACLED's OAuth password grant is exactly this -- so a password would
+        otherwise reach a log the moment httpx embedded the request in an
+        exception.
 
         ``accepted_content_types`` turns a wrong body type into a permanent
         error rather than a parse failure three frames away: an HTML error page
         served with HTTP 200 is a refusal wearing a success code.
         """
         # Pytest's traceback formatter renders function arguments even without
-        # --showlocals, and this frame necessarily receives the raw URL. Callers
-        # still get the sanitized exception messages built below.
+        # --showlocals, and this frame necessarily receives the raw URL and
+        # form. Callers still get the sanitized exception messages built below.
         __tracebackhide__ = True
         # Every request, not just when client() builds the transport: a test or
         # integration may inject a prebuilt httpx client that this never saw.
         _silence_transport_loggers()
 
         safe_url = redact_url(url, secret_query_parameters=secret_query_parameters)
+        form_secrets = {value for value in (form or {}).values() if value}
 
         def safe(text: str) -> str:
-            return sanitize_error_text(text, url, secret_query_parameters)
+            cleaned = sanitize_error_text(text, url, secret_query_parameters)
+            for value in form_secrets:
+                for representation in {value, quote(value, safe=""), unquote(value)}:
+                    if representation:
+                        cleaned = cleaned.replace(representation, REDACTED)
+            return cleaned
 
-        # Keyed on the redacted URL: a credential does not change the response,
-        # so including it would only fragment the cache when a key is rotated.
-        # The content-type expectation does change what counts as an acceptable
-        # response, so it belongs in the identity.
-        cache_identity = safe_url
-        if accepted_content_types is not None:
-            cache_identity += "|content-types=" + ",".join(sorted(accepted_content_types))
-        cached = self._cache_path(cache_identity)
+        # A POST is never cached. It is not safe to assume it is idempotent,
+        # and its body -- which is what distinguishes two POSTs to one URL --
+        # must not become part of a cache identity.
+        cached = None
+        if use_cache and method == "GET":
+            # Keyed on the REDACTED url plus any content-type expectation. A
+            # credential does not change the response for any source that
+            # carries one, so including it would only fragment the cache when a
+            # key is rotated. The content-type expectation does change what
+            # counts as an acceptable response, so it belongs in the identity.
+            cache_identity = safe_url
+            if accepted_content_types is not None:
+                cache_identity += "|content-types=" + ",".join(sorted(accepted_content_types))
+            cached = self._cache_path(cache_identity)
         if cached is not None and cached.exists():
             return cached.read_bytes()
 
@@ -477,7 +499,7 @@ class HttpClient:
         for attempt in range(1, self.max_attempts + 1):
             self._pace()
             try:
-                response = self.client().get(url)
+                response = self.client().request(method, url, headers=headers, data=form)
                 if response.status_code == 404:
                     raise NotFoundError(f"404 for {safe_url}")
                 if response.status_code == 407:
@@ -542,4 +564,46 @@ class HttpClient:
         detail = safe(str(last_error)) if last_error is not None else "unknown error"
         raise HttpFetchError(
             f"failed to fetch {safe_url} after {self.max_attempts} attempts: {detail}"
+        )
+
+    def get(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str] | None = None,
+        secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+        accepted_content_types: frozenset[str] | None = None,
+    ) -> bytes:
+        """GET bytes, using the URL cache when this client has one."""
+        # This wrapper frame receives the raw url too, and pytest renders a
+        # frame's arguments whether or not the frame it delegates to is hidden.
+        __tracebackhide__ = True
+        return self._request(
+            "GET",
+            url,
+            headers=headers,
+            use_cache=True,
+            secret_query_parameters=secret_query_parameters,
+            accepted_content_types=accepted_content_types,
+        )
+
+    def post_form(
+        self,
+        url: str,
+        form: Mapping[str, str],
+        *,
+        headers: Mapping[str, str] | None = None,
+        secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+        accepted_content_types: frozenset[str] | None = None,
+    ) -> bytes:
+        """POST a form, never placing its values in a log, cache key or error."""
+        __tracebackhide__ = True
+        return self._request(
+            "POST",
+            url,
+            headers=headers,
+            form=form,
+            use_cache=False,
+            secret_query_parameters=secret_query_parameters,
+            accepted_content_types=accepted_content_types,
         )

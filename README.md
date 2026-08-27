@@ -1,7 +1,9 @@
-# PRAMAAN-X Zero-Base — M0 + isolated Phase 1C
+# PRAMAAN-X Zero-Base — M0 + Phase 1 evidence connectors
 
 A cutoff-safe, open-world future-event forecasting system. **This branch
-contains milestone M0 plus a fixture-tested data.gov.in connector.** It
+contains the immutable M0 temporal foundation plus the four Phase 1 evidence
+connectors — GDELT, ReliefWeb, data.gov.in and ACLED — integrated onto one
+shared ingestion surface.** It
 does not forecast anything you should act on, and it makes no accuracy claim.
 
 The scientific decomposition the full system is built around is:
@@ -26,7 +28,7 @@ impressive number.
 | 2 | Five core schemas | `src/pramaanx/schemas/` |
 | 3 | Content-hashed Parquet storage | `src/pramaanx/hashing.py`, `src/pramaanx/storage.py` |
 | 4 | `CutoffGuard` + snapshots + leakage audit | `src/pramaanx/timeguard/` |
-| 5 | Synthetic and GDELT connectors | `src/pramaanx/ingest/connectors/` |
+| 5 | Synthetic, GDELT, and credentialed ACLED connectors | `src/pramaanx/ingest/connectors/` |
 | 6 | Base-rate generator (G0) | `src/pramaanx/generators/base_rate.py` |
 | 7 | Rolling-backtest skeleton | `src/pramaanx/evaluation/` |
 | 8 | Future-leakage tests | `tests/leakage/`, `tests/metamorphic/` |
@@ -129,9 +131,8 @@ restrict use to personal/non-commercial purposes and prohibit resale and
 redistribution unless specific permission or a particular document's own terms
 provide otherwise; the connector marks the source non-redistributable as a
 conservative machine-enforced default, which is not a substitute for reading
-the terms for your use. The remaining Tier-0 sources (ACLED, data.gov.in)
-require registration and licence review and are not built yet — see
-`.env.example`. **No licensed data may be committed to this repository.**
+the terms for your use. The remaining Tier-0 sources require registration and licence review —
+see `.env.example`. **No licensed data may be committed to this repository.**
 
 #### ReliefWeb caller identity
 
@@ -201,6 +202,29 @@ opt-in live contract test described in `docs/M1C_ACCEPTANCE.md`. The table is an
 annual retrospective aggregate published in 2026 about 2023. It can support
 context/base rates; it is not pre-incident evidence and is never back-dated to
 2023.
+
+#### ACLED caller identity and availability
+
+ACLED programmatic access uses OAuth, not the retired email/API-key query
+parameters. Create a myACLED account, accept the applicable terms, then inject
+either a short-lived bearer token or the username/password used for ACLED's
+documented OAuth password grant:
+
+```bash
+export PRAMAANX_ACLED_ACCESS_TOKEN='short-lived-token'
+uv run pramaanx ingest --source acled \
+  --config configs/sources/acled_india.yaml \
+  --from 2026-01-01T00:00:00Z --until 2026-02-01T00:00:00Z
+```
+
+The connector uses cursor pagination, requires stable totals and query
+restrictions, and writes nothing if a traversal is incomplete. ACLED's
+``timestamp`` controls availability; ``event_date`` remains the claimed event
+date. Because ACLED is a living dataset, a revised row receives the later
+timestamp. Deep-history cutoffs are therefore conservative unless an external
+versioned archive is available. Raw ACLED data are marked non-redistributable
+by default; review the EULA, Content Usage Terms, and Attribution Policy for the
+actual deployment.
 
 Behind a proxy, the standard environment is honoured (`HTTPS_PROXY`,
 `ALL_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`), and every part of it is overridable
@@ -327,23 +351,29 @@ chose.
 
 ## Next milestone
 
-Phase 1A (ReliefWeb) is built against the **v2** API — see
-[docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md); Phase 1C (data.gov.in) against
-the resource API — see [docs/M1C_ACCEPTANCE.md](docs/M1C_ACCEPTANCE.md). Each
-acceptance document keeps three statuses apart, and they do not currently agree:
-data.gov.in is genuinely live-verified, ReliefWeb is verified against current
-official documentation and fixture-tested but **not** live-verified.
+All four connectors are now integrated on one shared ingestion surface, so a
+change to retry, redaction or cutoff handling applies to every source at once
+rather than being fixed four times. Each connector keeps its own acceptance
+document, and those documents do not currently agree on verification status:
+
+| Source | Docs-verified | Fixture-tested | Live-verified |
+| --- | --- | --- | --- |
+| GDELT | yes | yes | opt-in, reachable |
+| data.gov.in | yes (2026-08-26) | yes | **yes** (2026-08-27) |
+| ReliefWeb | yes (2026-08-26) | yes | **no** |
+| ACLED | yes | yes | **no** |
 
 None of these connectors improves forecasting accuracy, and none claims to.
 They add trustworthy bronze evidence sources. ReliefWeb is response-driven
-humanitarian reporting and data.gov.in is retrospective administrative
-aggregate, so by construction neither alone supplies the pre-event signal
-coverage a 26/11, Pahalgam or Kandahar retrospective would need.
+humanitarian reporting, data.gov.in is retrospective administrative aggregate,
+and ACLED is hand-coded after the fact — so by construction none of them alone
+supplies the pre-event signal coverage a 26/11, Pahalgam or Kandahar
+retrospective would need.
 
-Still outstanding in Phase 1: the ACLED connector, and a legally frozen English
-news corpus for leak-proof backtesting. The gate stays the same as M0's:
-future-document injection must change no pre-cutoff snapshot, and every
-admitted record must carry provenance and a hash.
+Still outstanding in Phase 1: a legally frozen English news corpus for
+leak-proof backtesting. The gate stays the same as M0's: future-document
+injection must change no pre-cutoff snapshot, and every admitted record must
+carry provenance and a hash.
 
 ## Licence
 

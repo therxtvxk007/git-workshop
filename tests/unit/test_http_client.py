@@ -297,6 +297,36 @@ class TestFetching:
                 accepted_content_types=frozenset({"application/json"}),
             )
 
+    def test_post_form_keeps_secrets_out_of_url_and_cache(self, tmp_path: Path) -> None:
+        captured: httpx.Request | None = None
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal captured
+            captured = request
+            return httpx.Response(200, content=b"token-response")
+
+        client = self._client(tmp_path, handler)
+        assert (
+            client.post_form(
+                "https://example.org/token", {"password": "secret", "username": "user"}
+            )
+            == b"token-response"
+        )
+        assert captured is not None
+        assert "secret" not in str(captured.url)
+        assert not list(tmp_path.rglob("*.bin"))
+
+    def test_post_form_errors_do_not_leak_the_form(self, tmp_path: Path) -> None:
+        # A form body is how a source that refuses URL credentials expects to
+        # receive them, so a transport failure must not print one back.
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("connect failed for password=hunter2")
+
+        client = self._client(tmp_path, handler)
+        with pytest.raises(HttpFetchError) as captured:
+            client.post_form("https://example.org/token", {"password": "hunter2"})
+        assert "hunter2" not in str(captured.value)
+
 
 class TestRateLimiting:
     """429 is an instruction, not a failure: honour Retry-After when given."""
