@@ -9,6 +9,14 @@ keeps the reports from implying evidence that does not exist.
 
 from __future__ import annotations
 
+from pramaanx.evaluation.district import (
+    DistrictArmComparison,
+    DistrictArmMetrics,
+    compare_district_arms,
+)
+
+__all__ = ["DistrictArmComparison", "DistrictArmMetrics", "compare_district_arms"]
+
 from pramaanx.evaluation.backtest import (
     Backtester,
     BacktestReport,

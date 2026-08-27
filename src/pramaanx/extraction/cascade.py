@@ -70,6 +70,9 @@ class MentionCandidate(PramaanModel):
     """
 
     stage_name: str
+    # A verifier that consumes another stage's candidates shares its
+    # independence group and cannot manufacture corroboration by echoing them.
+    independence_group: str | None = None
     span: str
     event_type: str
     subject: str | None = None
@@ -259,7 +262,9 @@ def _consensus(
 
     mentions: list[EventMention] = []
     for (span, event_type), group in sorted(grouped.items()):
-        agreeing_stages = {candidate.stage_name for candidate in group}
+        agreeing_groups = {
+            candidate.independence_group or candidate.stage_name for candidate in group
+        }
         subject, subject_disputed = _reconcile(group, "subject")
         obj, object_disputed = _reconcile(group, "object")
         location, location_disputed = _reconcile(group, "location_text")
@@ -294,7 +299,7 @@ def _consensus(
         explicit -= unresolved
 
         probability = _combine_confidence(
-            group, agreeing_stages=len(agreeing_stages), stage_count=stage_count
+            group, agreeing_stages=len(agreeing_groups), stage_count=stage_count
         )
         if probability < MIN_CANDIDATE_CONFIDENCE:
             continue

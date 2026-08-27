@@ -78,6 +78,21 @@ class TestValidation:
         assert Settings().config_hash == Settings().config_hash
         assert Settings().config_hash != Settings(horizon_days=7).config_hash
 
+    def test_district_track_has_an_independent_horizon(self) -> None:
+        settings = Settings()
+        assert settings.horizon_days == 90
+        assert settings.district_forecasting.horizon_days == 30
+
+        changed = Settings.model_validate({"district_forecasting": {"horizon_days": 14}})
+        assert changed.horizon_days == 90
+        assert changed.district_forecasting.horizon_days == 14
+
+    def test_district_track_rejects_invalid_target_and_windows(self) -> None:
+        with pytest.raises(ValidationError, match="targets"):
+            Settings.model_validate({"district_forecasting": {"targets": ["probability"]}})
+        with pytest.raises(ValidationError, match="sorted and unique"):
+            Settings.model_validate({"district_forecasting": {"history_windows_days": [30, 7, 30]}})
+
 
 class TestLoggingStreams:
     """Reconfiguring logging must never leave a logger holding a dead stream."""

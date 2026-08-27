@@ -34,6 +34,17 @@ from pramaanx.extraction.cascade import (
     register_prose_source,
     resolve_text,
 )
+from pramaanx.extraction.gemini_stage import (
+    GeminiVerificationStage,
+    VerificationBatch,
+    VerifiedMention,
+)
+from pramaanx.extraction.gliner_stage import (
+    GLiNERBackend,
+    GLiNERStage,
+    LiveGLiNERBackend,
+    SpanEntity,
+)
 from pramaanx.extraction.gold import (
     DATE_TOLERANCE,
     FIELD_DEFECTS,
@@ -82,10 +93,17 @@ __all__ = [
     "ExtractionError",
     "ExtractionScore",
     "ExtractionStage",
+    "GLiNERBackend",
+    "GLiNERStage",
+    "GeminiVerificationStage",
     "GoldMention",
     "GoldSet",
+    "LiveGLiNERBackend",
     "MentionCandidate",
     "PatternStage",
+    "SpanEntity",
+    "VerificationBatch",
+    "VerifiedMention",
     "detect_event_types",
     "detect_modality",
     "extract_date",

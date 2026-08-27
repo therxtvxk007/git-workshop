@@ -12,7 +12,7 @@ import os
 from collections.abc import Iterable, Mapping
 from datetime import date, datetime
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, cast
 
 import yaml
 from pydantic import (
@@ -150,6 +150,55 @@ class EvaluationConfig(ConfigModel):
     max_reporting_delay_days: float = Field(default=3.0, ge=0.0)
     reliability_bins: int = Field(default=10, gt=1)
     step_days: int = Field(default=7, gt=0)
+
+
+class DistrictForecastingConfig(ConfigModel):
+    """Configuration for the parallel district-panel forecast track.
+
+    ``Settings.horizon_days`` remains the open-world event horizon. Keeping a
+    second horizon here prevents a district experiment from silently changing
+    the meaning of existing ``ForecastRecord`` outputs.
+    """
+
+    enabled: bool = True
+    horizon_days: int = Field(default=30, gt=0)
+    event_families: list[str] = Field(
+        default_factory=lambda: ["terrorism", "left_wing_extremism", "insurgency"]
+    )
+    targets: list[Literal["occurrence", "count"]] = Field(
+        default_factory=lambda: cast(list[Literal["occurrence", "count"]], ["occurrence", "count"])
+    )
+    history_windows_days: list[int] = Field(default_factory=lambda: [7, 30, 90, 365])
+    neighbour_hops: int = Field(default=1, ge=0, le=3)
+
+    @field_validator("event_families")
+    @classmethod
+    def _check_event_families(cls, value: list[str]) -> list[str]:
+        if not value or any(not item.strip() for item in value):
+            raise ValueError("event_families must contain non-blank values")
+        if len(value) != len(set(value)):
+            raise ValueError("event_families must be unique")
+        return value
+
+    @field_validator("targets")
+    @classmethod
+    def _check_targets(
+        cls, value: list[Literal["occurrence", "count"]]
+    ) -> list[Literal["occurrence", "count"]]:
+        if not value:
+            raise ValueError("at least one district forecast target is required")
+        if len(value) != len(set(value)):
+            raise ValueError("district forecast targets must be unique")
+        return value
+
+    @field_validator("history_windows_days")
+    @classmethod
+    def _check_history_windows(cls, value: list[int]) -> list[int]:
+        if not value or any(window <= 0 for window in value):
+            raise ValueError("history windows must be positive")
+        if value != sorted(set(value)):
+            raise ValueError("history windows must be sorted and unique")
+        return value
 
 
 class SourceOptions(ConfigModel):
@@ -482,6 +531,9 @@ class Settings(ConfigModel):
     generators: GeneratorConfig = Field(default_factory=GeneratorConfig)
     alerting: AlertPolicyConfig = Field(default_factory=AlertPolicyConfig)
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
+    district_forecasting: DistrictForecastingConfig = Field(
+        default_factory=DistrictForecastingConfig
+    )
     #: Per-source options, validated against the model registered for each
     #: source name. Stored as plain mappings so the config hash covers exactly
     #: the values that were written; validation happens in the validator below.

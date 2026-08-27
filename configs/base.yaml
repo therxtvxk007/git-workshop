@@ -6,6 +6,20 @@ horizon_days: 90
 log_level: INFO
 log_format: console
 
+# A parallel track. This does not change the 90-day open-world event forecast.
+district_forecasting:
+  enabled: true
+  horizon_days: 30
+  event_families:
+    - terrorism
+    - left_wing_extremism
+    - insurgency
+  targets:
+    - occurrence
+    - count
+  history_windows_days: [7, 30, 90, 365]
+  neighbour_hops: 1
+
 storage:
   data_root: ./data
   run_root: ./runs

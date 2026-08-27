@@ -17,6 +17,7 @@ from pramaanx.schemas.base import (
     VersionedModel,
     normalised_distribution,
 )
+from pramaanx.schemas.district_risk import DistrictRiskForecast, DistrictRiskTarget
 from pramaanx.schemas.event import (
     EventHypothesis,
     EventMention,
@@ -30,6 +31,7 @@ from pramaanx.schemas.forecast import (
     ForecastRecord,
     ForecastStatus,
 )
+from pramaanx.schemas.geography import DistrictRef
 from pramaanx.schemas.observation import Modality, Observation, SourceRecord
 from pramaanx.schemas.outcome import (
     AdjudicationDecision,
@@ -44,6 +46,9 @@ __all__ = [
     "RETAINED_STATUSES",
     "SCHEMA_VERSION",
     "AdjudicationDecision",
+    "DistrictRef",
+    "DistrictRiskForecast",
+    "DistrictRiskTarget",
     "EventHypothesis",
     "EventMention",
     "EventModality",

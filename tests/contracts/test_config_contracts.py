@@ -16,6 +16,7 @@ from pydantic import ValidationError
 from pramaanx.config import (
     AlertPolicyConfig,
     ConfigModel,
+    DistrictForecastingConfig,
     EvaluationConfig,
     GeneratorConfig,
     Settings,
@@ -30,6 +31,7 @@ CONFIG_BLOCKS = [
     GeneratorConfig,
     AlertPolicyConfig,
     EvaluationConfig,
+    DistrictForecastingConfig,
     Settings,
 ]
 
@@ -39,6 +41,8 @@ NESTED_TYPOS = [
     ("evaluation", "match_min_socre", 0.5),
     ("evaluation", "time_bucket", ["0-1d"]),
     ("evaluation", "max_reporting_delay_day", 3.0),
+    ("district_forecasting", "neighbour_hop", 1),
+    ("district_forecasting", "history_window_days", [7, 30]),
     ("storage", "data_rooot", "/tmp/x"),
     ("storage", "parquet_compresion", "zstd"),
     ("timeguard", "stricct", True),
