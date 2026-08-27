@@ -14,6 +14,7 @@ model non-determinism into a reproducibility test.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from typing import Any
@@ -190,9 +191,67 @@ def extract_gdelt(observation: Observation, payload: dict[str, Any]) -> list[Eve
     ]
 
 
+def extract_acled(observation: Observation, payload: dict[str, Any]) -> list[EventMention]:
+    """Map one already-coded ACLED event onto a deterministic mention."""
+    event = payload.get("event")
+    if not isinstance(event, dict):
+        raise ExtractionError(f"ACLED payload has no event object: {observation.observation_id}")
+
+    event_type = str(event.get("event_type", "")).strip()
+    sub_event_type = str(event.get("sub_event_type", "")).strip()
+    if not event_type or not sub_event_type:
+        raise ExtractionError(f"ACLED payload lacks event taxonomy: {observation.observation_id}")
+    normalized_type = re.sub(r"[^a-z0-9]+", "_", event_type.lower()).strip("_")
+    relation = re.sub(r"[^a-z0-9]+", "_", sub_event_type.lower()).strip("_")
+
+    location = next(
+        (
+            str(event.get(name)).strip()
+            for name in ("location", "admin1", "country")
+            if str(event.get(name, "")).strip()
+        ),
+        None,
+    )
+    subject = str(event.get("actor1", "")).strip() or None
+    obj = str(event.get("actor2", "")).strip() or None
+    event_time = _parse_optional_datetime(event.get("event_date"))
+    unresolved = {
+        name
+        for name, value in (
+            ("subject", subject),
+            ("location", location),
+            ("event_time", event_time),
+        )
+        if value is None
+    }
+    explicit = {"event_type", "subject", "location", "event_time"} - unresolved
+    notes = str(event.get("notes", "")).strip()
+    span = notes or f"{event_type}: {sub_event_type}"
+    return [
+        _mention(
+            observation,
+            subject=subject,
+            relation=relation,
+            obj=obj,
+            event_type=normalized_type,
+            location_text=location,
+            start=event_time,
+            end=event_time,
+            modality="asserted",
+            # This is certainty in copying structured fields, not confidence
+            # that the reported event is ontologically true.
+            probability=1.0,
+            span=span[:512],
+            explicit=explicit,
+            unresolved=unresolved,
+        )
+    ]
+
+
 EXTRACTORS = {
     "synthetic": extract_synthetic,
     "gdelt": extract_gdelt,
+    "acled": extract_acled,
 }
 
 

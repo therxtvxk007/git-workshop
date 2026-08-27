@@ -10,15 +10,16 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable, Mapping
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any, Literal
 
 import yaml
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    StrictInt,
     ValidationError,
     field_validator,
     model_validator,
@@ -199,12 +200,272 @@ class GdeltSourceConfig(SourceOptions):
     verify: bool = True
 
 
+#: The ReliefWeb API version this project speaks, in ONE place.
+#:
+#: The official documentation's endpoint examples are ``https://api.reliefweb.int/v2/reports``
+#: (apidoc.reliefweb.int/endpoints, verified 2026-08-26). The URL default below, the
+#: ``api_version`` recorded in every payload, and the ``source_version`` stamped on every
+#: record and SourceRecord are all derived from this constant, so they cannot drift apart:
+#: changing the version here changes all four, and a contract test proves no ``v1`` literal
+#: survives anywhere in the tree.
+RELIEFWEB_API_VERSION = "v2"
+RELIEFWEB_BASE_URL = f"https://api.reliefweb.int/{RELIEFWEB_API_VERSION}"
+
+
+class ReliefWebSourceConfig(SourceOptions):
+    """Options for the ReliefWeb API connector.
+
+    ReliefWeb requires every caller to identify itself with an ``appname``, and
+    since 1 November 2025 that name must be **pre-approved** by ReliefWeb --
+    it is no longer a string the operator simply picks. Leave it unset here and
+    the connector reads ``PRAMAANX_RELIEFWEB_APPNAME`` from the environment;
+    setting it here instead puts it inside the config hash, which is useful when
+    an experiment should record the identity it called under, and is why no
+    tracked config in this repository sets one.
+    """
+
+    #: Caller identity: an appname approved by ReliefWeb. ``None`` defers to
+    #: PRAMAANX_RELIEFWEB_APPNAME.
+    appname: str | None = None
+    base_url: str = RELIEFWEB_BASE_URL
+    #: The API resource. Phase 1A ingests reports only; /disasters and /jobs
+    #: have different date semantics and are not in scope.
+    endpoint: Literal["reports"] = "reports"
+
+    # -- query shaping ----------------------------------------------------
+    #: Items per request. ReliefWeb caps this; the connector clamps rather
+    #: than letting the API reject the whole page.
+    page_size: int = Field(default=100, ge=1, le=1000)
+    #: 0 means "every page in the window". A cap makes a first run bounded.
+    max_items: int = Field(default=0, ge=0)
+    #: Hard ceiling on pagination requests, so a mis-specified window cannot
+    #: walk the archive indefinitely.
+    max_pages: int = Field(default=200, ge=1)
+    #: ISO-639-1 codes, e.g. ["en"]. Empty means no language filter.
+    languages: list[str] = Field(default_factory=list)
+    #: ISO-3166-1 alpha-3 codes, e.g. ["IND"]. Empty means no country filter.
+    countries: list[str] = Field(default_factory=list)
+    #: ReliefWeb disaster type names, e.g. ["Flood"]. Empty means no filter.
+    disaster_types: list[str] = Field(default_factory=list)
+    #: Report format names, e.g. ["Situation Report"]. Empty means no filter.
+    formats: list[str] = Field(default_factory=list)
+
+    # -- egress -----------------------------------------------------------
+    cache: bool = True
+    timeout_seconds: float = Field(default=60.0, gt=0.0)
+    max_attempts: int = Field(default=4, ge=1)
+    backoff_seconds: float = Field(default=2.0, ge=0.0)
+    #: Minimum spacing between requests. ReliefWeb rate-limits; pacing is
+    #: politeness that also keeps retries from compounding.
+    min_interval_seconds: float = Field(default=0.5, ge=0.0)
+    #: Ceiling on how long a server-supplied ``Retry-After`` may park the
+    #: process. A 429 is an instruction, but an unbounded one is a denial of
+    #: service by cooperation: without a cap, a header of 86400 stops an
+    #: ingest for a day inside a retry loop nobody is watching.
+    max_retry_after_seconds: float = Field(default=60.0, ge=0.0)
+    #: Explicit proxy URL (http://, https:// or socks5://). Overrides the
+    #: environment; ``None`` means "use whatever the environment says".
+    proxy: str | None = None
+    trust_env: bool = True
+    ca_bundle: str | None = None
+    verify: bool = True
+
+    @field_validator("languages")
+    @classmethod
+    def _check_languages(cls, value: list[str]) -> list[str]:
+        for code in value:
+            if len(code) != 2 or not code.isalpha():
+                raise ValueError(
+                    f"language {code!r} is not an ISO-639-1 two-letter code (e.g. 'en')"
+                )
+        return [code.lower() for code in value]
+
+    @field_validator("countries")
+    @classmethod
+    def _check_countries(cls, value: list[str]) -> list[str]:
+        for code in value:
+            if len(code) != 3 or not code.isalpha():
+                raise ValueError(f"country {code!r} is not an ISO-3166-1 alpha-3 code (e.g. 'IND')")
+        return [code.upper() for code in value]
+
+
+class DataGovInSourceConfig(SourceOptions):
+    """Options for one data.gov.in resource profile.
+
+    The portal exposes heterogeneous tables behind one resource endpoint.  The
+    connector is therefore generic, while each YAML profile records the exact
+    resource semantics and its independently established availability time.
+    Credentials are deliberately absent from this model and come only from
+    ``PRAMAANX_DATA_GOV_IN_API_KEY``.
+    """
+
+    base_url: str = "https://api.data.gov.in/resource"
+    resource_id: str = ""
+    resource_title: str = "Unconfigured data.gov.in resource"
+    resource_page_url: str = "https://www.data.gov.in/"
+    organization: str = "Government of India"
+    sector: str = ""
+    update_frequency: str = ""
+    profile_role: Literal["context_base_rate_only"] = "context_base_rate_only"
+    #: The portal shows date precision for the selected resource, not a
+    #: timestamp. Preserve those dates rather than manufacturing exact times.
+    portal_published_date: date | None = None
+    portal_updated_date: date | None = None
+    #: A conservative, operator-recorded instant at which this exact resource
+    #: version is known to have been available. Required before fetching.
+    available_at: datetime | None = None
+    #: Optional only for resources with an unambiguous, timezone-aware instant
+    #: in every record. Aggregate/year fields must not be placed here.
+    claimed_event_time_field: str | None = None
+    #: Where a resource has no durable row identifier, the canonical record
+    #: hash is the documented stable identity strategy.
+    stable_id_fields: list[str] = Field(default_factory=list)
+    licence: str = "Government Open Data License - India"
+    licence_url: str = "https://www.data.gov.in/government-open-data-license-india"
+    redistributable: bool = False
+
+    page_size: Annotated[StrictInt, Field(ge=1, le=1000)] = 100
+    max_pages: Annotated[StrictInt, Field(ge=1, le=10000)] = 100
+    max_items: Annotated[StrictInt, Field(ge=1, le=1_000_000)] = 10_000
+
+    cache: bool = True
+    timeout_seconds: float = Field(default=60.0, gt=0.0)
+    max_attempts: Annotated[StrictInt, Field(ge=1, le=10)] = 4
+    backoff_seconds: float = Field(default=2.0, ge=0.0)
+    max_retry_after_seconds: float = Field(default=60.0, ge=0.0, le=3600.0)
+    proxy: str | None = None
+    trust_env: bool = True
+    ca_bundle: str | None = None
+    verify: bool = True
+
+    @field_validator("base_url")
+    @classmethod
+    def _https_base_url(cls, value: str) -> str:
+        from urllib.parse import urlsplit
+
+        normalized = value.rstrip("/")
+        parsed = urlsplit(normalized)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != "api.data.gov.in"
+            or parsed.path != "/resource"
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(
+                "base_url must be exactly the documented https://api.data.gov.in/resource endpoint"
+            )
+        return normalized
+
+    @field_validator("proxy")
+    @classmethod
+    def _proxy_has_no_inline_credentials(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        from urllib.parse import urlsplit
+
+        parsed = urlsplit(value)
+        if parsed.username is not None or parsed.password is not None:
+            raise ValueError(
+                "proxy credentials must use the environment or external secret manager, "
+                "not source config"
+            )
+        return value
+
+    @field_validator("resource_id")
+    @classmethod
+    def _resource_uuid(cls, value: str) -> str:
+        import uuid
+
+        if not value:
+            return value
+        try:
+            parsed = uuid.UUID(value)
+        except ValueError as error:
+            raise ValueError("resource_id must be a UUID") from error
+        if str(parsed) != value.lower():
+            raise ValueError("resource_id must be a canonical UUID")
+        return value.lower()
+
+    @field_validator("available_at")
+    @classmethod
+    def _availability_is_aware(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            raise ValueError("available_at must be timezone-aware")
+        return value
+
+    @field_validator("stable_id_fields")
+    @classmethod
+    def _stable_fields_are_unique(cls, value: list[str]) -> list[str]:
+        cleaned = [field.strip() for field in value]
+        if any(not field for field in cleaned):
+            raise ValueError("stable_id_fields cannot contain blank names")
+        if len(set(cleaned)) != len(cleaned):
+            raise ValueError("stable_id_fields cannot contain duplicates")
+        return cleaned
+
+    @field_validator("claimed_event_time_field")
+    @classmethod
+    def _claimed_field_is_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("claimed_event_time_field cannot be blank")
+        return value.strip() if value is not None else None
+
+
+class AcledSourceConfig(SourceOptions):
+    """Options for the credentialed ACLED event API.
+
+    Credential *values* never belong in configuration: only environment-variable
+    names do.  Operators may inject a short-lived access token, or let the
+    connector perform ACLED's documented OAuth password grant for each ingest.
+    """
+
+    base_url: str = "https://acleddata.com/api/acled/read"
+    token_url: str = "https://acleddata.com/oauth/token"
+    access_token_env: str = Field(
+        default="PRAMAANX_ACLED_ACCESS_TOKEN", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$"
+    )
+    username_env: str = Field(
+        default="PRAMAANX_ACLED_USERNAME", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$"
+    )
+    password_env: str = Field(
+        default="PRAMAANX_ACLED_PASSWORD", pattern=r"^[A-Za-z_][A-Za-z0-9_]*$"
+    )
+    countries: list[str] = Field(default_factory=list)
+    event_types: list[str] = Field(default_factory=list)
+    page_size: int = Field(default=5000, ge=1, le=5000)
+    max_pages: int = Field(default=1000, ge=1)
+
+    # -- egress ----------------------------------------------------------
+    timeout_seconds: float = Field(default=60.0, gt=0.0)
+    max_attempts: int = Field(default=4, ge=1)
+    backoff_seconds: float = Field(default=2.0, ge=0.0)
+    max_retry_after_seconds: float = Field(default=60.0, ge=0.0)
+    min_interval_seconds: float = Field(default=0.2, ge=0.0)
+    proxy: str | None = None
+    trust_env: bool = True
+    ca_bundle: str | None = None
+    verify: bool = True
+
+    @model_validator(mode="after")
+    def _https_only(self) -> AcledSourceConfig:
+        for name, value in (("base_url", self.base_url), ("token_url", self.token_url)):
+            if not value.startswith("https://"):
+                raise ValueError(f"{name} must use https")
+        return self
+
+
 #: The source names this milestone knows about, and the shape of each one's
 #: options. Adding a connector means adding an entry here, which is deliberate:
 #: an unregistered source name is a typo until someone says otherwise.
 SOURCE_OPTION_MODELS: dict[str, type[SourceOptions]] = {
     "synthetic": SyntheticSourceConfig,
     "gdelt": GdeltSourceConfig,
+    "reliefweb": ReliefWebSourceConfig,
+    "acled": AcledSourceConfig,
+    "data_gov_in": DataGovInSourceConfig,
 }
 
 

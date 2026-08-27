@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "success": true,
+  "last_update": 4,
+  "count": 0,
+  "total_count": 0,
+  "messages": [],
+  "filename": "synthetic.json",
+  "data_query_restrictions": {"countries": ["India"], "data_recency": "synthetic"},
+  "next_cursor": null,
+  "data": []
+}
