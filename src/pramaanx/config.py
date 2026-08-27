@@ -10,15 +10,16 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterable, Mapping
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 import yaml
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    StrictInt,
     ValidationError,
     field_validator,
     model_validator,
@@ -288,6 +289,131 @@ class ReliefWebSourceConfig(SourceOptions):
         return [code.upper() for code in value]
 
 
+class DataGovInSourceConfig(SourceOptions):
+    """Options for one data.gov.in resource profile.
+
+    The portal exposes heterogeneous tables behind one resource endpoint.  The
+    connector is therefore generic, while each YAML profile records the exact
+    resource semantics and its independently established availability time.
+    Credentials are deliberately absent from this model and come only from
+    ``PRAMAANX_DATA_GOV_IN_API_KEY``.
+    """
+
+    base_url: str = "https://api.data.gov.in/resource"
+    resource_id: str = ""
+    resource_title: str = "Unconfigured data.gov.in resource"
+    resource_page_url: str = "https://www.data.gov.in/"
+    organization: str = "Government of India"
+    sector: str = ""
+    update_frequency: str = ""
+    profile_role: Literal["context_base_rate_only"] = "context_base_rate_only"
+    #: The portal shows date precision for the selected resource, not a
+    #: timestamp. Preserve those dates rather than manufacturing exact times.
+    portal_published_date: date | None = None
+    portal_updated_date: date | None = None
+    #: A conservative, operator-recorded instant at which this exact resource
+    #: version is known to have been available. Required before fetching.
+    available_at: datetime | None = None
+    #: Optional only for resources with an unambiguous, timezone-aware instant
+    #: in every record. Aggregate/year fields must not be placed here.
+    claimed_event_time_field: str | None = None
+    #: Where a resource has no durable row identifier, the canonical record
+    #: hash is the documented stable identity strategy.
+    stable_id_fields: list[str] = Field(default_factory=list)
+    licence: str = "Government Open Data License - India"
+    licence_url: str = "https://www.data.gov.in/government-open-data-license-india"
+    redistributable: bool = False
+
+    page_size: Annotated[StrictInt, Field(ge=1, le=1000)] = 100
+    max_pages: Annotated[StrictInt, Field(ge=1, le=10000)] = 100
+    max_items: Annotated[StrictInt, Field(ge=1, le=1_000_000)] = 10_000
+
+    cache: bool = True
+    timeout_seconds: float = Field(default=60.0, gt=0.0)
+    max_attempts: Annotated[StrictInt, Field(ge=1, le=10)] = 4
+    backoff_seconds: float = Field(default=2.0, ge=0.0)
+    max_retry_after_seconds: float = Field(default=60.0, ge=0.0, le=3600.0)
+    proxy: str | None = None
+    trust_env: bool = True
+    ca_bundle: str | None = None
+    verify: bool = True
+
+    @field_validator("base_url")
+    @classmethod
+    def _https_base_url(cls, value: str) -> str:
+        from urllib.parse import urlsplit
+
+        normalized = value.rstrip("/")
+        parsed = urlsplit(normalized)
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != "api.data.gov.in"
+            or parsed.path != "/resource"
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError(
+                "base_url must be exactly the documented https://api.data.gov.in/resource endpoint"
+            )
+        return normalized
+
+    @field_validator("proxy")
+    @classmethod
+    def _proxy_has_no_inline_credentials(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        from urllib.parse import urlsplit
+
+        parsed = urlsplit(value)
+        if parsed.username is not None or parsed.password is not None:
+            raise ValueError(
+                "proxy credentials must use the environment or external secret manager, "
+                "not source config"
+            )
+        return value
+
+    @field_validator("resource_id")
+    @classmethod
+    def _resource_uuid(cls, value: str) -> str:
+        import uuid
+
+        if not value:
+            return value
+        try:
+            parsed = uuid.UUID(value)
+        except ValueError as error:
+            raise ValueError("resource_id must be a UUID") from error
+        if str(parsed) != value.lower():
+            raise ValueError("resource_id must be a canonical UUID")
+        return value.lower()
+
+    @field_validator("available_at")
+    @classmethod
+    def _availability_is_aware(cls, value: datetime | None) -> datetime | None:
+        if value is not None and value.tzinfo is None:
+            raise ValueError("available_at must be timezone-aware")
+        return value
+
+    @field_validator("stable_id_fields")
+    @classmethod
+    def _stable_fields_are_unique(cls, value: list[str]) -> list[str]:
+        cleaned = [field.strip() for field in value]
+        if any(not field for field in cleaned):
+            raise ValueError("stable_id_fields cannot contain blank names")
+        if len(set(cleaned)) != len(cleaned):
+            raise ValueError("stable_id_fields cannot contain duplicates")
+        return cleaned
+
+    @field_validator("claimed_event_time_field")
+    @classmethod
+    def _claimed_field_is_not_blank(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("claimed_event_time_field cannot be blank")
+        return value.strip() if value is not None else None
+
+
 #: The source names this milestone knows about, and the shape of each one's
 #: options. Adding a connector means adding an entry here, which is deliberate:
 #: an unregistered source name is a typo until someone says otherwise.
@@ -295,6 +421,7 @@ SOURCE_OPTION_MODELS: dict[str, type[SourceOptions]] = {
     "synthetic": SyntheticSourceConfig,
     "gdelt": GdeltSourceConfig,
     "reliefweb": ReliefWebSourceConfig,
+    "data_gov_in": DataGovInSourceConfig,
 }
 
 

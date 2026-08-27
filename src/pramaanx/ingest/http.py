@@ -27,6 +27,7 @@ explicit ``verify: false`` and logs a warning every time a client is built.
 
 from __future__ import annotations
 
+import logging
 import math
 import re
 import ssl
@@ -36,7 +37,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit, urlunsplit
 
 import httpx
 
@@ -54,25 +55,110 @@ REDACTED = "REDACTED"
 #: persisted or put in an exception message. ``appname`` is ReliefWeb's required
 #: caller identity and it travels in the URL, so every display path has to strip
 #: it -- an exception string is as public as a log line.
-SENSITIVE_QUERY_KEYS = ("appname", "api_key", "apikey", "key", "token", "access_token")
+SENSITIVE_QUERY_KEYS = (
+    "appname",
+    "api-key",
+    "api_key",
+    "apikey",
+    "key",
+    "token",
+    "access_token",
+)
+
+DEFAULT_SECRET_QUERY_PARAMETERS = frozenset(SENSITIVE_QUERY_KEYS)
+"""The default set :func:`redact_url` and :func:`sanitize_error_text` strip.
+
+A connector whose credential travels under a name not listed here passes its
+own set rather than editing this one, so one source widening the default
+cannot quietly change what another source logs."""
 
 _SENSITIVE_QUERY = re.compile(
     r"(?i)\b(" + "|".join(re.escape(name) for name in SENSITIVE_QUERY_KEYS) + r")=[^&#]*"
 )
 
 
-def redact_url(url: str) -> str:
+def redact_url(
+    url: str,
+    *,
+    secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+) -> str:
     """The display form of a URL: no caller identity, no credentials.
 
     Used for every log line, exception message and persisted provenance record.
-    It never touches the URL that is actually requested or the string the cache
-    is keyed on -- redacting those would either break the request or make two
-    different callers collide in one cache entry.
+    It never touches the URL that is actually requested -- redacting that would
+    break the request.
+
+    Parameter names are matched case-insensitively. A connector whose secret
+    travels under a name outside the default set passes ``secret_query_parameters``
+    rather than relying on the default.
     """
     if not url:
         return url
-    redacted = _SENSITIVE_QUERY.sub(lambda match: f"{match.group(1)}={REDACTED}", url)
-    return _redact_userinfo(redacted)
+    secrets = {name.casefold() for name in secret_query_parameters}
+    try:
+        parts = urlsplit(url)
+    except ValueError:  # pragma: no cover - urlsplit is very forgiving
+        return "<redacted-url>"
+    if parts.query:
+        query = [
+            (name, REDACTED if name.casefold() in secrets else value)
+            for name, value in parse_qsl(parts.query, keep_blank_values=True)
+        ]
+        url = urlunsplit(
+            (parts.scheme, parts.netloc, parts.path, urlencode(query, doseq=True), parts.fragment)
+        )
+    else:
+        # No query string to parse, but a bare token can still appear in a path
+        # or in an error string that was passed here rather than a real URL.
+        url = _SENSITIVE_QUERY.sub(lambda match: f"{match.group(1)}={REDACTED}", url)
+    # A newline in a redacted URL would let a malformed value forge a second
+    # entry in a line-oriented log.
+    return _redact_userinfo(url).replace("\r", "").replace("\n", "")
+
+
+def _secret_values(url: str, secret_query_parameters: frozenset[str]) -> set[str]:
+    """The literal secret values carried in ``url``'s query string."""
+    secrets = {name.casefold() for name in secret_query_parameters}
+    try:
+        return {
+            value
+            for name, value in parse_qsl(urlsplit(url).query, keep_blank_values=True)
+            if name.casefold() in secrets and value
+        }
+    except (TypeError, ValueError):
+        return set()
+
+
+def sanitize_error_text(
+    text: str,
+    url: str,
+    secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+) -> str:
+    """Strip a URL's secrets out of arbitrary error text.
+
+    Redacting the URL is not enough on its own. A transport exception embeds
+    whatever string it was constructed with, which may be the raw URL, a
+    percent-encoded form of it, or the bare credential on its own -- so every
+    representation of each secret value is replaced, not just the tidy one.
+    """
+    safe = text
+    for value in _secret_values(url, secret_query_parameters):
+        for representation in {value, quote(value, safe=""), unquote(value)}:
+            if representation:
+                safe = safe.replace(representation, REDACTED)
+    safe = safe.replace(url, redact_url(url, secret_query_parameters=secret_query_parameters))
+    return safe.replace("\r", "\\r").replace("\n", "\\n")
+
+
+def _silence_transport_loggers() -> None:
+    """Stop httpx and httpcore logging raw, query-authenticated request lines.
+
+    Their INFO request line contains the complete query string, so a source
+    whose credential travels in the URL would leak it through a dependency's
+    logger no matter how careful this module is.
+    """
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 def _redact_userinfo(url: str) -> str:
@@ -350,8 +436,40 @@ class HttpClient:
             time.sleep(self.min_interval_seconds - elapsed)
         self._last_request_at = time.monotonic()
 
-    def get(self, url: str) -> bytes:
-        cached = self._cache_path(url)
+    def get(
+        self,
+        url: str,
+        *,
+        secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+        accepted_content_types: frozenset[str] | None = None,
+    ) -> bytes:
+        """Fetch ``url``, retrying transient failures, never logging secrets.
+
+        ``accepted_content_types`` turns a wrong body type into a permanent
+        error rather than a parse failure three frames away: an HTML error page
+        served with HTTP 200 is a refusal wearing a success code.
+        """
+        # Pytest's traceback formatter renders function arguments even without
+        # --showlocals, and this frame necessarily receives the raw URL. Callers
+        # still get the sanitized exception messages built below.
+        __tracebackhide__ = True
+        # Every request, not just when client() builds the transport: a test or
+        # integration may inject a prebuilt httpx client that this never saw.
+        _silence_transport_loggers()
+
+        safe_url = redact_url(url, secret_query_parameters=secret_query_parameters)
+
+        def safe(text: str) -> str:
+            return sanitize_error_text(text, url, secret_query_parameters)
+
+        # Keyed on the redacted URL: a credential does not change the response,
+        # so including it would only fragment the cache when a key is rotated.
+        # The content-type expectation does change what counts as an acceptable
+        # response, so it belongs in the identity.
+        cache_identity = safe_url
+        if accepted_content_types is not None:
+            cache_identity += "|content-types=" + ",".join(sorted(accepted_content_types))
+        cached = self._cache_path(cache_identity)
         if cached is not None and cached.exists():
             return cached.read_bytes()
 
@@ -361,28 +479,38 @@ class HttpClient:
             try:
                 response = self.client().get(url)
                 if response.status_code == 404:
-                    raise NotFoundError(f"404 for {redact_url(url)}")
+                    raise NotFoundError(f"404 for {safe_url}")
                 if response.status_code == 407:
                     # Proxy authentication required: the proxy answered, so the
                     # request never reached the destination.
-                    raise ProxyPolicyError(url, "HTTP 407")
-                if response.status_code in {401, 403}:
-                    # The ORIGIN answered and refused. Not a proxy denial: a
-                    # proxy that refuses cannot return the destination's status.
-                    raise PermanentHttpError(url, response.status_code)
+                    raise ProxyPolicyError(safe_url, "HTTP 407")
                 if response.status_code == 429:
                     if attempt == self.max_attempts:
                         raise RateLimitError(url, attempt)
                     delay = self._retry_after_seconds(response, attempt)
                     log.warning(
                         "http.rate_limited",
-                        url=redact_url(url),
+                        url=safe_url,
                         attempt=attempt,
                         delay=round(delay, 3),
                     )
                     time.sleep(delay)
                     continue
+                if 400 <= response.status_code < 500 and response.status_code != 408:
+                    # The ORIGIN answered and refused, and a retry will not
+                    # change that. Not a proxy denial: a proxy that refuses
+                    # cannot return the destination's status. 408 is excluded
+                    # because a request timeout genuinely is worth retrying.
+                    raise PermanentHttpError(url, response.status_code)
                 response.raise_for_status()
+                if accepted_content_types is not None:
+                    content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip()
+                    if content_type not in accepted_content_types:
+                        raise PermanentHttpError(
+                            url,
+                            response.status_code,
+                            f"unexpected Content-Type {content_type or '<missing>'!r}",
+                        )
                 data = response.content
                 if cached is not None:
                     cached.parent.mkdir(parents=True, exist_ok=True)
@@ -394,20 +522,24 @@ class HttpClient:
                 raise
             except Exception as error:  # retried below; re-raised as HttpFetchError
                 if _is_policy_denial(error):
-                    raise ProxyPolicyError(url, str(error)) from error
+                    # from None, not from error: the chained traceback would
+                    # print the original exception's raw URL.
+                    raise ProxyPolicyError(safe_url, safe(str(error))) from None
                 last_error = error
                 if attempt == self.max_attempts:
                     break
                 delay = self._backoff_seconds_for(attempt)
+                if isinstance(error, httpx.HTTPStatusError):
+                    delay = self._retry_after_seconds(error.response, attempt)
                 log.warning(
                     "http.retry",
-                    url=redact_url(url),
+                    url=safe_url,
                     attempt=attempt,
                     delay=delay,
-                    error=redact_url(str(error)),
+                    error=safe(str(error)),
                 )
                 time.sleep(delay)
+        detail = safe(str(last_error)) if last_error is not None else "unknown error"
         raise HttpFetchError(
-            f"failed to fetch {redact_url(url)} after {self.max_attempts} attempts: "
-            f"{redact_url(str(last_error))}"
+            f"failed to fetch {safe_url} after {self.max_attempts} attempts: {detail}"
         )

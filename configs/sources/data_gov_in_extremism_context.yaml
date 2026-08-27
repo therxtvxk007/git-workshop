@@ -1,0 +1,40 @@
+# Official retrospective aggregate for contextual/base-rate use only.
+# Checked 2026-08-26:
+# https://www.data.gov.in/resource/attacker-wise-incidents-violence-extremists-insurgents-terrorists-during-2023
+#
+# The portal displays publication/update date 2026-02-13 without a time. The
+# conservative availability boundary below is the start of the following UTC
+# day. It is an operator policy, not a claimed source timestamp.
+include: ../base.yaml
+
+sources:
+  data_gov_in:
+    resource_id: "869c674d-59a4-4de3-8b09-f2b709983f51"
+    resource_title: "Attacker-wise Incidents of Violence by Extremists/Insurgents/Terrorists during 2023"
+    resource_page_url: "https://www.data.gov.in/resource/attacker-wise-incidents-violence-extremists-insurgents-terrorists-during-2023"
+    organization: "National Crime Records Bureau, Ministry of Home Affairs"
+    sector: "Home Affairs"
+    update_frequency: "Annual"
+    profile_role: "context_base_rate_only"
+    portal_published_date: 2026-02-13
+    portal_updated_date: 2026-02-13
+    available_at: "2026-02-14T00:00:00Z"
+    # The API panel does not advertise a durable row ID for this table.
+    # Canonical row hashes are used and duplicates fail.
+    stable_id_fields: []
+    claimed_event_time_field: null
+    licence: "Government Open Data License - India"
+    licence_url: "https://www.data.gov.in/government-open-data-license-india"
+    redistributable: false
+    # The portal's sample key is documented as limited to 10 rows. A user-issued
+    # key is still required; no sample credential is embedded.
+    page_size: 10
+    max_pages: 1000
+    max_items: 10000
+    cache: true
+    timeout_seconds: 60.0
+    max_attempts: 4
+    backoff_seconds: 2.0
+    max_retry_after_seconds: 60.0
+    trust_env: true
+    verify: true

@@ -1,7 +1,7 @@
-# PRAMAAN-X Zero-Base — M0
+# PRAMAAN-X Zero-Base — M0 + isolated Phase 1C
 
-A cutoff-safe, open-world future-event forecasting system. **This repository
-currently contains milestone M0 only: the immutable temporal foundation.** It
+A cutoff-safe, open-world future-event forecasting system. **This branch
+contains milestone M0 plus a fixture-tested data.gov.in connector.** It
 does not forecast anything you should act on, and it makes no accuracy claim.
 
 The scientific decomposition the full system is built around is:
@@ -34,6 +34,10 @@ impressive number.
 | 10 | Setup and architecture documentation | this file, `docs/` |
 
 Acceptance criteria and the test that proves each one: **[docs/M0_ACCEPTANCE.md](docs/M0_ACCEPTANCE.md)**.
+
+Phase 1C adds one strict data.gov.in resource connector. It is evidence
+acquisition infrastructure, not a forecasting model or a real-data performance
+result. See **[docs/M1C_ACCEPTANCE.md](docs/M1C_ACCEPTANCE.md)**.
 
 ## What M0 deliberately does **not** contain
 
@@ -181,6 +185,23 @@ Bronze is content-addressed and append-only, so re-ingesting is idempotent.
 Detectable truncation is not treated as a sample: an unexpectedly empty page or
 an exhausted `max_pages` bound raises and commits no partial bronze records.
 
+#### data.gov.in: contextual evidence only
+
+The data.gov.in profile is deliberately contextual only:
+
+```bash
+export PRAMAANX_DATA_GOV_IN_API_KEY='<user-issued-key>'
+uv run pramaanx ingest --source data_gov_in \
+  --config configs/sources/data_gov_in_extremism_context.yaml \
+  --from 2026-02-13T00:00:00Z --until 2026-02-15T00:00:00Z --dry-run
+```
+
+Remove `--dry-run` only after reviewing the resource terms and running the
+opt-in live contract test described in `docs/M1C_ACCEPTANCE.md`. The table is an
+annual retrospective aggregate published in 2026 about 2023. It can support
+context/base rates; it is not pre-incident evidence and is never back-dated to
+2023.
+
 Behind a proxy, the standard environment is honoured (`HTTPS_PROXY`,
 `ALL_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`), and every part of it is overridable
 per source — `proxy`, `trust_env`, `ca_bundle`, `verify` — including SOCKS.
@@ -307,21 +328,22 @@ chose.
 ## Next milestone
 
 Phase 1A (ReliefWeb) is built against the **v2** API — see
-[docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md), which keeps three statuses
-apart: verified against current official documentation (yes, 2026-08-26),
-fixture-tested (yes), and genuinely live-verified (**no** — this environment has
-no egress to `api.reliefweb.int`).
+[docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md); Phase 1C (data.gov.in) against
+the resource API — see [docs/M1C_ACCEPTANCE.md](docs/M1C_ACCEPTANCE.md). Each
+acceptance document keeps three statuses apart, and they do not currently agree:
+data.gov.in is genuinely live-verified, ReliefWeb is verified against current
+official documentation and fixture-tested but **not** live-verified.
 
-Phase 1A does not improve forecasting accuracy and does not claim to. It adds
-one trustworthy bronze evidence source. ReliefWeb is response-driven
-humanitarian reporting, which by construction cannot alone supply the pre-event
-signal coverage a 26/11, Pahalgam or Kandahar retrospective would need.
+None of these connectors improves forecasting accuracy, and none claims to.
+They add trustworthy bronze evidence sources. ReliefWeb is response-driven
+humanitarian reporting and data.gov.in is retrospective administrative
+aggregate, so by construction neither alone supplies the pre-event signal
+coverage a 26/11, Pahalgam or Kandahar retrospective would need.
 
-Phase 1B continues the point-in-time evidence ledger: ACLED and data.gov.in
-connectors under their access terms, plus a frozen English news corpus for
-leak-proof backtesting. The gate stays the same as M0's: future-document
-injection must change no pre-cutoff snapshot, and every record must carry
-provenance and a hash.
+Still outstanding in Phase 1: the ACLED connector, and a legally frozen English
+news corpus for leak-proof backtesting. The gate stays the same as M0's:
+future-document injection must change no pre-cutoff snapshot, and every
+admitted record must carry provenance and a hash.
 
 ## Licence
 

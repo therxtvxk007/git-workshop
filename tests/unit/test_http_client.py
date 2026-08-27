@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import ssl
+import subprocess
+import sys
+import textwrap
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 import certifi
 import httpx
 import pytest
 
 from pramaanx.ingest.http import (
+    REDACTED,
     CaBundleError,
     HttpClient,
     HttpFetchError,
@@ -279,6 +284,19 @@ class TestFetching:
         client = self._client(tmp_path, handler)
         assert client.get("https://example.org/flaky") == b"recovered"
 
+    def test_unexpected_content_type_is_permanent(self, tmp_path: Path) -> None:
+        client = self._client(
+            tmp_path,
+            lambda request: httpx.Response(
+                200, content=b"{}", headers={"Content-Type": "text/html"}
+            ),
+        )
+        with pytest.raises(PermanentHttpError, match="unexpected Content-Type"):
+            client.get(
+                "https://example.org/data",
+                accepted_content_types=frozenset({"application/json"}),
+            )
+
 
 class TestRateLimiting:
     """429 is an instruction, not a failure: honour Retry-After when given."""
@@ -414,7 +432,10 @@ class TestRedaction:
         client.get(SECRET_URL)
         assert "secret-identity" in seen[0]
 
-    def test_cache_identity_still_separates_two_callers(self, tmp_path: Path) -> None:
+    def test_distinct_cache_identities_get_distinct_paths(self, tmp_path: Path) -> None:
+        # About _cache_path, not about what get() chooses to key on: get()
+        # keys on the REDACTED url, so two callers separated only by their
+        # credential deliberately share an entry. See HttpClient.get.
         client = HttpClient(cache_dir=tmp_path)
         first = client._cache_path("https://x/y?appname=one")
         second = client._cache_path("https://x/y?appname=two")
@@ -621,3 +642,99 @@ class TestReliefWebPassesItsRetryCeiling:
         )
         client = connector._client_for().__self__  # type: ignore[attr-defined]
         assert client.max_retry_after_seconds == 12.5
+
+
+class TestSecretRedaction:
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://example.org/x?api-key=topsecret&x=1",
+            "https://example.org/x?API-KEY=topsecret&api-key=second",
+            "https://example.org/x?x=1&api-key=a%2Fb%3Fc#frag",
+            "https://example.org/x?api-key=line%0Abreak",
+        ],
+    )
+    def test_query_secret_is_removed(self, url: str) -> None:
+        safe = redact_url(url)
+        assert "topsecret" not in safe
+        assert "second" not in safe
+        assert "a%2Fb%3Fc" not in safe
+        assert "line%0Abreak" not in safe
+        assert REDACTED in safe or quote(REDACTED) in safe
+        assert "\n" not in safe
+
+    def test_proxy_userinfo_is_removed(self) -> None:
+        safe = redact_url("https://user:password@proxy.example:8443/path")
+        assert "user" not in safe
+        assert "password" not in safe
+        assert safe == f"https://{REDACTED}@proxy.example:8443/path"
+
+    def test_cache_identity_does_not_contain_or_depend_on_key(self, tmp_path: Path) -> None:
+        client = HttpClient(cache_dir=tmp_path)
+        first = client._cache_path(redact_url("https://example.org/x?api-key=one&offset=0"))
+        second = client._cache_path(redact_url("https://example.org/x?api-key=two&offset=0"))
+        assert first == second
+        assert first is not None
+        assert "one" not in str(first)
+        assert "two" not in str(first)
+
+    def test_transport_exception_is_sanitized(self, tmp_path: Path) -> None:
+        secret = "transport-secret"
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError(f"failed opening {request.url}")
+
+        client = HttpClient(
+            cache_dir=tmp_path,
+            max_attempts=1,
+            min_interval_seconds=0.0,
+        )
+        client._client = httpx.Client(transport=httpx.MockTransport(handler))
+        with pytest.raises(HttpFetchError) as captured:
+            client.get(f"https://example.org/x?api-key={secret}")
+        assert secret not in str(captured.value)
+
+    def test_failing_pytest_traceback_does_not_render_query_secret(self, tmp_path: Path) -> None:
+        """Protect the complete rendered failure, not only exception text.
+
+        Pytest includes function argument values in long tracebacks.  A live
+        probe exposed a key through the raw ``HttpClient.get(url=...)`` frame
+        even though ``PermanentHttpError`` itself contained a redacted URL.
+        """
+        sentinel = "sentinel-traceback-api-key"
+        probe = tmp_path / "test_secret_traceback.py"
+        probe.write_text(
+            textwrap.dedent(
+                f"""
+                import httpx
+
+                from pramaanx.ingest.http import HttpClient, PermanentHttpError
+
+                SECRET = {sentinel!r}
+
+
+                def test_deliberate_origin_rejection() -> None:
+                    client = HttpClient(cache_dir=None, max_attempts=1)
+                    client._client = httpx.Client(
+                        transport=httpx.MockTransport(
+                            lambda request: httpx.Response(403, request=request)
+                        )
+                    )
+                    try:
+                        client.get(f"https://example.org/x?api-key={{SECRET}}")
+                    finally:
+                        client.close()
+                """
+            ),
+            encoding="utf-8",
+        )
+        completed = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", str(probe)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        rendered = completed.stdout + completed.stderr
+        assert completed.returncode == 1
+        assert sentinel not in rendered
+        assert f"api-key={REDACTED}" in rendered or f"api-key={quote(REDACTED)}" in rendered

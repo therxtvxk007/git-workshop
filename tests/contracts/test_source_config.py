@@ -18,6 +18,7 @@ from pydantic import ValidationError
 
 from pramaanx.config import (
     SOURCE_OPTION_MODELS,
+    DataGovInSourceConfig,
     GdeltSourceConfig,
     ReliefWebSourceConfig,
     Settings,
@@ -98,6 +99,10 @@ class TestTypoRejection:
 
         with pytest.raises(ValidationError, match="publication_lag_minuts"):
             GdeltConnector(Settings(), {"publication_lag_minuts": 999})
+
+    def test_data_gov_in_typo_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="resource_iid"):
+            Settings.model_validate({"sources": {"data_gov_in": {"resource_iid": "x"}}})
 
 
 class TestValidConfigurations:
@@ -187,6 +192,46 @@ class TestValidConfigurations:
         assert options.seed == 7
         assert options.noise_per_day == 5.0
 
+    def test_valid_data_gov_in_configuration_loads(self) -> None:
+        settings = Settings.model_validate(
+            {
+                "sources": {
+                    "data_gov_in": {
+                        "resource_id": "869c674d-59a4-4de3-8b09-f2b709983f51",
+                        "available_at": "2026-02-14T00:00:00Z",
+                        "page_size": 10,
+                    }
+                }
+            }
+        )
+        options = settings.source_options("data_gov_in")
+        assert isinstance(options, DataGovInSourceConfig)
+        assert options.page_size == 10
+
+    @pytest.mark.parametrize("field", ["page_size", "max_pages", "max_items", "max_attempts"])
+    def test_data_gov_in_integer_bounds_reject_bool(self, field: str) -> None:
+        with pytest.raises(ValidationError, match=field):
+            Settings.model_validate({"sources": {"data_gov_in": {field: True}}})
+
+    def test_data_gov_in_rejects_inline_proxy_credentials(self) -> None:
+        with pytest.raises(ValidationError, match="proxy credentials"):
+            Settings.model_validate(
+                {"sources": {"data_gov_in": {"proxy": "https://user:secret@proxy.test"}}}
+            )
+
+    @pytest.mark.parametrize(
+        "base_url",
+        [
+            "http://api.data.gov.in/resource",
+            "https://example.org/resource",
+            "https://api.data.gov.in/resource?api-key=embedded",
+            "https://user@api.data.gov.in/resource",
+        ],
+    )
+    def test_data_gov_in_rejects_noncanonical_endpoint(self, base_url: str) -> None:
+        with pytest.raises(ValidationError, match="documented"):
+            Settings.model_validate({"sources": {"data_gov_in": {"base_url": base_url}}})
+
     def test_defaults_apply_when_a_source_is_unconfigured(self) -> None:
         assert Settings().source_options("gdelt").publication_lag_minutes == 15
 
@@ -238,9 +283,10 @@ class TestEveryConsumedOptionIsDeclared:
     @pytest.mark.parametrize(
         ("module", "model"),
         [
+            ("data_gov_in.py", DataGovInSourceConfig),
             ("gdelt.py", GdeltSourceConfig),
-            ("synthetic.py", SyntheticSourceConfig),
             ("reliefweb.py", ReliefWebSourceConfig),
+            ("synthetic.py", SyntheticSourceConfig),
         ],
     )
     def test_consumed_options_are_declared(self, module: str, model: type[SourceOptions]) -> None:
@@ -256,7 +302,7 @@ class TestEveryConsumedOptionIsDeclared:
     def test_no_connector_reads_options_by_string_key(self) -> None:
         # options.get("x") is how the silent-typo bug worked: a string key that
         # nothing validates. Attribute access on a strict model cannot.
-        for module in ("gdelt.py", "synthetic.py", "reliefweb.py"):
+        for module in ("data_gov_in.py", "gdelt.py", "reliefweb.py", "synthetic.py"):
             source = (CONNECTOR_DIR / module).read_text(encoding="utf-8")
             assert 'options.get("' not in source, f"{module} still reads options by string key"
 
