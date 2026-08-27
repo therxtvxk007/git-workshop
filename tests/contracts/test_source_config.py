@@ -19,6 +19,7 @@ from pydantic import ValidationError
 from pramaanx.config import (
     SOURCE_OPTION_MODELS,
     GdeltSourceConfig,
+    ReliefWebSourceConfig,
     Settings,
     SourceOptions,
     SyntheticSourceConfig,
@@ -37,6 +38,36 @@ class TestTypoRejection:
     def test_country_filer_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match="country_filer"):
             Settings.model_validate({"sources": {"gdelt": {"country_filer": ["IN"]}}})
+
+    def test_reliefweb_appname_typo_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="appnmae"):
+            Settings.model_validate({"sources": {"reliefweb": {"appnmae": "x"}}})
+
+    def test_reliefweb_page_size_typo_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="page_siz"):
+            Settings.model_validate({"sources": {"reliefweb": {"page_siz": 50}}})
+
+    def test_reliefweb_countries_typo_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="countires"):
+            Settings.model_validate({"sources": {"reliefweb": {"countires": ["IND"]}}})
+
+    def test_reliefweb_rejects_a_wrong_shaped_country_code(self) -> None:
+        # Strictness is about meaning, not only spelling: ISO-3166 alpha-3.
+        with pytest.raises(ValidationError, match="alpha-3"):
+            Settings.model_validate({"sources": {"reliefweb": {"countries": ["IN"]}}})
+
+    def test_reliefweb_rejects_a_wrong_shaped_language_code(self) -> None:
+        with pytest.raises(ValidationError, match="ISO-639-1"):
+            Settings.model_validate({"sources": {"reliefweb": {"languages": ["eng"]}}})
+
+    def test_reliefweb_rejects_an_out_of_scope_endpoint(self) -> None:
+        # /disasters and /jobs have different date semantics; Phase 1A is reports.
+        with pytest.raises(ValidationError):
+            Settings.model_validate({"sources": {"reliefweb": {"endpoint": "disasters"}}})
+
+    def test_reliefweb_rejects_an_oversized_page(self) -> None:
+        with pytest.raises(ValidationError):
+            Settings.model_validate({"sources": {"reliefweb": {"page_size": 5000}}})
 
     def test_synthetic_typo_is_rejected(self) -> None:
         with pytest.raises(ValidationError, match="noise_per_dayy"):
@@ -97,6 +128,46 @@ class TestValidConfigurations:
         assert isinstance(options, GdeltSourceConfig)
         assert options.publication_lag_minutes == 30
         assert options.proxy == "socks5://127.0.0.1:1080"
+
+    def test_valid_reliefweb_configuration_loads(self) -> None:
+        settings = Settings.model_validate(
+            {
+                "sources": {
+                    "reliefweb": {
+                        "appname": "pramaanx-test",
+                        "base_url": "https://api.reliefweb.int/v2",
+                        "endpoint": "reports",
+                        "page_size": 50,
+                        "max_items": 200,
+                        "max_pages": 10,
+                        "languages": ["en"],
+                        "countries": ["IND"],
+                        "disaster_types": ["Flood"],
+                        "formats": ["Situation Report"],
+                        "cache": False,
+                        "timeout_seconds": 30.0,
+                        "max_attempts": 2,
+                        "backoff_seconds": 1.0,
+                        "min_interval_seconds": 1.0,
+                        "proxy": "socks5://127.0.0.1:1080",
+                        "trust_env": False,
+                        "ca_bundle": "/etc/ssl/corp.pem",
+                        "verify": True,
+                    }
+                }
+            }
+        )
+        options = settings.source_options("reliefweb")
+        assert isinstance(options, ReliefWebSourceConfig)
+        assert options.countries == ["IND"]
+        assert options.min_interval_seconds == 1.0
+
+    def test_reliefweb_defaults_are_conservative(self) -> None:
+        options = Settings().source_options("reliefweb")
+        assert options.appname is None  # identity comes from the environment
+        assert options.max_pages == 200  # bounded walk
+        assert options.min_interval_seconds > 0  # paced by default
+        assert options.verify is True
 
     def test_valid_synthetic_configuration_loads(self) -> None:
         settings = Settings.model_validate(
@@ -166,7 +237,11 @@ def consumed_option_names(module_path: Path) -> set[str]:
 class TestEveryConsumedOptionIsDeclared:
     @pytest.mark.parametrize(
         ("module", "model"),
-        [("gdelt.py", GdeltSourceConfig), ("synthetic.py", SyntheticSourceConfig)],
+        [
+            ("gdelt.py", GdeltSourceConfig),
+            ("synthetic.py", SyntheticSourceConfig),
+            ("reliefweb.py", ReliefWebSourceConfig),
+        ],
     )
     def test_consumed_options_are_declared(self, module: str, model: type[SourceOptions]) -> None:
         declared = set(model.model_fields)
@@ -181,7 +256,7 @@ class TestEveryConsumedOptionIsDeclared:
     def test_no_connector_reads_options_by_string_key(self) -> None:
         # options.get("x") is how the silent-typo bug worked: a string key that
         # nothing validates. Attribute access on a strict model cannot.
-        for module in ("gdelt.py", "synthetic.py"):
+        for module in ("gdelt.py", "synthetic.py", "reliefweb.py"):
             source = (CONNECTOR_DIR / module).read_text(encoding="utf-8")
             assert 'options.get("' not in source, f"{module} still reads options by string key"
 
@@ -192,6 +267,11 @@ class TestEveryConsumedOptionIsDeclared:
 
 
 class TestConfigHash:
+    def test_reliefweb_options_are_part_of_the_config_hash(self) -> None:
+        base = Settings()
+        changed = Settings(sources={"reliefweb": {"page_size": 25}})
+        assert base.config_hash != changed.config_hash
+
     def test_source_options_are_part_of_the_config_hash(self) -> None:
         # An experiment run with a different publication lag is a different
         # experiment, and the manifest has to say so.
@@ -211,3 +291,49 @@ class TestConfigHash:
                 Settings.model_validate(raw.get("settings", {}))
             else:
                 load_settings(path, environ={})
+
+
+class TestReliefWebVersionAndRetryContract:
+    """The API version has one home, and the retry ceiling is configurable."""
+
+    def test_the_default_base_url_is_built_from_the_version_constant(self) -> None:
+        from pramaanx.config import (
+            RELIEFWEB_API_VERSION,
+            RELIEFWEB_BASE_URL,
+            ReliefWebSourceConfig,
+        )
+
+        assert RELIEFWEB_API_VERSION == "v2"
+        assert f"https://api.reliefweb.int/{RELIEFWEB_API_VERSION}" == RELIEFWEB_BASE_URL
+        assert ReliefWebSourceConfig().base_url == RELIEFWEB_BASE_URL
+
+    def test_the_connector_reads_the_same_constant(self) -> None:
+        from pramaanx.config import RELIEFWEB_API_VERSION
+        from pramaanx.ingest.connectors.reliefweb import API_VERSION
+
+        # An alias, not a second literal: one place to change the version.
+        assert API_VERSION is RELIEFWEB_API_VERSION
+
+    def test_the_shipped_config_targets_the_current_version(self) -> None:
+        from pramaanx.config import RELIEFWEB_API_VERSION, load_settings
+
+        repo_root = Path(__file__).resolve().parents[2]
+        settings = load_settings(repo_root / "configs/base.yaml", environ={})
+        options = settings.source_options("reliefweb")
+        assert options.base_url.endswith(f"/{RELIEFWEB_API_VERSION}")
+
+    def test_the_retry_ceiling_is_a_declared_option(self) -> None:
+        from pramaanx.config import ReliefWebSourceConfig
+
+        assert ReliefWebSourceConfig().max_retry_after_seconds == 60.0
+        assert ReliefWebSourceConfig(max_retry_after_seconds=5.0).max_retry_after_seconds == 5.0
+
+    def test_a_negative_retry_ceiling_is_rejected(self) -> None:
+        from pramaanx.config import ReliefWebSourceConfig
+
+        with pytest.raises(ValidationError):
+            ReliefWebSourceConfig(max_retry_after_seconds=-1.0)
+
+    def test_the_retry_ceiling_typo_is_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="max_retry_after_second"):
+            Settings.model_validate({"sources": {"reliefweb": {"max_retry_after_second": 10}}})

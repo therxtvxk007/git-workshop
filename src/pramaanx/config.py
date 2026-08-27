@@ -12,7 +12,7 @@ import os
 from collections.abc import Iterable, Mapping
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import (
@@ -199,12 +199,102 @@ class GdeltSourceConfig(SourceOptions):
     verify: bool = True
 
 
+#: The ReliefWeb API version this project speaks, in ONE place.
+#:
+#: The official documentation's endpoint examples are ``https://api.reliefweb.int/v2/reports``
+#: (apidoc.reliefweb.int/endpoints, verified 2026-08-26). The URL default below, the
+#: ``api_version`` recorded in every payload, and the ``source_version`` stamped on every
+#: record and SourceRecord are all derived from this constant, so they cannot drift apart:
+#: changing the version here changes all four, and a contract test proves no ``v1`` literal
+#: survives anywhere in the tree.
+RELIEFWEB_API_VERSION = "v2"
+RELIEFWEB_BASE_URL = f"https://api.reliefweb.int/{RELIEFWEB_API_VERSION}"
+
+
+class ReliefWebSourceConfig(SourceOptions):
+    """Options for the ReliefWeb API connector.
+
+    ReliefWeb requires every caller to identify itself with an ``appname``, and
+    since 1 November 2025 that name must be **pre-approved** by ReliefWeb --
+    it is no longer a string the operator simply picks. Leave it unset here and
+    the connector reads ``PRAMAANX_RELIEFWEB_APPNAME`` from the environment;
+    setting it here instead puts it inside the config hash, which is useful when
+    an experiment should record the identity it called under, and is why no
+    tracked config in this repository sets one.
+    """
+
+    #: Caller identity: an appname approved by ReliefWeb. ``None`` defers to
+    #: PRAMAANX_RELIEFWEB_APPNAME.
+    appname: str | None = None
+    base_url: str = RELIEFWEB_BASE_URL
+    #: The API resource. Phase 1A ingests reports only; /disasters and /jobs
+    #: have different date semantics and are not in scope.
+    endpoint: Literal["reports"] = "reports"
+
+    # -- query shaping ----------------------------------------------------
+    #: Items per request. ReliefWeb caps this; the connector clamps rather
+    #: than letting the API reject the whole page.
+    page_size: int = Field(default=100, ge=1, le=1000)
+    #: 0 means "every page in the window". A cap makes a first run bounded.
+    max_items: int = Field(default=0, ge=0)
+    #: Hard ceiling on pagination requests, so a mis-specified window cannot
+    #: walk the archive indefinitely.
+    max_pages: int = Field(default=200, ge=1)
+    #: ISO-639-1 codes, e.g. ["en"]. Empty means no language filter.
+    languages: list[str] = Field(default_factory=list)
+    #: ISO-3166-1 alpha-3 codes, e.g. ["IND"]. Empty means no country filter.
+    countries: list[str] = Field(default_factory=list)
+    #: ReliefWeb disaster type names, e.g. ["Flood"]. Empty means no filter.
+    disaster_types: list[str] = Field(default_factory=list)
+    #: Report format names, e.g. ["Situation Report"]. Empty means no filter.
+    formats: list[str] = Field(default_factory=list)
+
+    # -- egress -----------------------------------------------------------
+    cache: bool = True
+    timeout_seconds: float = Field(default=60.0, gt=0.0)
+    max_attempts: int = Field(default=4, ge=1)
+    backoff_seconds: float = Field(default=2.0, ge=0.0)
+    #: Minimum spacing between requests. ReliefWeb rate-limits; pacing is
+    #: politeness that also keeps retries from compounding.
+    min_interval_seconds: float = Field(default=0.5, ge=0.0)
+    #: Ceiling on how long a server-supplied ``Retry-After`` may park the
+    #: process. A 429 is an instruction, but an unbounded one is a denial of
+    #: service by cooperation: without a cap, a header of 86400 stops an
+    #: ingest for a day inside a retry loop nobody is watching.
+    max_retry_after_seconds: float = Field(default=60.0, ge=0.0)
+    #: Explicit proxy URL (http://, https:// or socks5://). Overrides the
+    #: environment; ``None`` means "use whatever the environment says".
+    proxy: str | None = None
+    trust_env: bool = True
+    ca_bundle: str | None = None
+    verify: bool = True
+
+    @field_validator("languages")
+    @classmethod
+    def _check_languages(cls, value: list[str]) -> list[str]:
+        for code in value:
+            if len(code) != 2 or not code.isalpha():
+                raise ValueError(
+                    f"language {code!r} is not an ISO-639-1 two-letter code (e.g. 'en')"
+                )
+        return [code.lower() for code in value]
+
+    @field_validator("countries")
+    @classmethod
+    def _check_countries(cls, value: list[str]) -> list[str]:
+        for code in value:
+            if len(code) != 3 or not code.isalpha():
+                raise ValueError(f"country {code!r} is not an ISO-3166-1 alpha-3 code (e.g. 'IND')")
+        return [code.upper() for code in value]
+
+
 #: The source names this milestone knows about, and the shape of each one's
 #: options. Adding a connector means adding an entry here, which is deliberate:
 #: an unregistered source name is a typo until someone says otherwise.
 SOURCE_OPTION_MODELS: dict[str, type[SourceOptions]] = {
     "synthetic": SyntheticSourceConfig,
     "gdelt": GdeltSourceConfig,
+    "reliefweb": ReliefWebSourceConfig,
 }
 
 

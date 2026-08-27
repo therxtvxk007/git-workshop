@@ -1,0 +1,15 @@
+{
+  "totalCount": 1,
+  "count": 1,
+  "data": [
+    {
+      "id": 900011,
+      "fields": {
+        "title": "Naive",
+        "date": {
+          "created": "2026-03-01 08:00:00"
+        }
+      }
+    }
+  ]
+}
