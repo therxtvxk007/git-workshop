@@ -19,6 +19,7 @@ from pramaanx.ingest.connectors.data_gov_in import (
     DataGovInCredentialError,
     parse_envelope,
 )
+from pramaanx.ingest.http import PermanentHttpError, ProxyPolicyError
 from pramaanx.ingest.ledger import EvidenceLedger
 
 RESOURCE_ID = "869c674d-59a4-4de3-8b09-f2b709983f51"
@@ -308,3 +309,23 @@ class TestTraversalAndItems:
         message = str(captured.value)
         assert TEST_KEY not in message
         assert "\\n" in message
+
+    @pytest.mark.parametrize(
+        "error",
+        [
+            ProxyPolicyError("https://api.data.gov.in/resource/x", "HTTP 407"),
+            PermanentHttpError("origin returned HTTP 403"),
+        ],
+    )
+    def test_http_failure_class_survives_connector_boundary(self, error: Exception) -> None:
+        def fail(url: str) -> bytes:
+            raise error
+
+        target = DataGovInConnector(
+            Settings(),
+            options(),
+            fetcher=fail,
+            environ={API_KEY_ENV: TEST_KEY},
+        )
+        with pytest.raises(type(error)):
+            list(target.guarded_fetch(WINDOW))

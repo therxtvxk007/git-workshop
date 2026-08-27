@@ -30,7 +30,7 @@ from pramaanx.ingest.base import (
     RawItem,
     register_connector,
 )
-from pramaanx.ingest.http import HttpClient, sanitize_error_text
+from pramaanx.ingest.http import HttpClient, HttpFetchError, sanitize_error_text
 from pramaanx.schemas.observation import Modality, SourceRecord
 
 API_KEY_ENV: Final = "PRAMAANX_DATA_GOV_IN_API_KEY"
@@ -320,7 +320,12 @@ class DataGovInConnector(Connector):
             try:
                 payload = self._fetcher(url)
             except Exception as error:
-                if isinstance(error, ConnectorError):
+                # Shared HTTP failures are already sanitized and carry the
+                # operator-relevant distinction between origin refusal and
+                # proxy policy. Preserve those subclasses across the connector
+                # boundary; only unknown injected/transport exceptions need
+                # conversion and URL-secret scrubbing here.
+                if isinstance(error, (ConnectorError, HttpFetchError)):
                     raise
                 safe = sanitize_error_text(str(error), url, SECRET_QUERY_PARAMETERS)
                 raise ConnectorError(f"data.gov.in request failed: {safe}") from None

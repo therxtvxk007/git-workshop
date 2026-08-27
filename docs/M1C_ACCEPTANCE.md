@@ -110,7 +110,10 @@ Origin 400/401/403 responses are permanent API/auth failures. Only proxy 407 or
 a CONNECT-time proxy refusal is classified as egress policy. HTTP 429 and
 transient failures retry within configured attempts; delta-seconds and HTTP-date
 `Retry-After` values are clamped to `max_retry_after_seconds`. Contract and
-authentication failures are never retried.
+authentication failures are never retried. Those shared HTTP exception classes
+remain intact across the production connector boundary, so operator handling
+cannot accidentally turn an origin rejection or a proxy-policy refusal into an
+undifferentiated connector failure.
 
 ## License and redistribution boundary
 
