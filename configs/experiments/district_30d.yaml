@@ -1,0 +1,9 @@
+include: ../base.yaml
+horizon_days: 30
+district_forecasting:
+  enabled: true
+  event_families: [terrorism, left_wing_extremism, insurgency]
+  history_windows_days: [7, 30, 90, 365]
+  neighbour_hops: 1
+  spatial_models: [historical_rate, recency, logistic, gradient_boosting]
+  semantic_model: gemini_six_expert
