@@ -154,10 +154,13 @@ $env:PRAMAANX_LIVE_DATA_GOV_IN = "1"
 uv run pytest tests/network/test_data_gov_in_live.py -m network -v
 ```
 
-The live test skips before network only when opt-in or the credential is
-missing. A CONNECT/proxy policy refusal may skip with the host named. Origin
-authentication, authorization, rate, content-type, schema or pagination
-failures fail.
+The live tests skip before network only when opt-in or the credential is
+missing. The first probe validates the raw first-page envelope. The second
+walks every page through the production connector, requires a positive total,
+reconciles emitted items exactly to that total, and verifies strictly increasing
+unique offsets. A CONNECT/proxy policy refusal may skip with the host named.
+Origin authentication, authorization, rate, content-type, schema, pagination
+or terminal-reconciliation failures fail without rendering credentials.
 
 ## Scope boundary and human actions
 
