@@ -13,6 +13,7 @@ import pytest
 from pramaanx.config import Settings, StorageConfig
 from pramaanx.ingest.base import FetchWindow
 from pramaanx.ingest.connectors.data_gov_in import (
+    API_CONTRACT,
     API_KEY_ENV,
     DataGovInConnector,
     DataGovInContractError,
@@ -140,6 +141,11 @@ class TestPlanningAndRequests:
 
 
 class TestEnvelopeContract:
+    def test_contract_records_completed_live_verification(self) -> None:
+        assert API_CONTRACT["genuinely_live_api_verified"] is True
+        assert API_CONTRACT["live_verified_at"] == "2026-08-27"
+        assert "forced multi-page" in API_CONTRACT["live_verification_scope"]
+
     def test_valid_page(self) -> None:
         records, total = parse_envelope(
             envelope([{"row": 1}], total=1, offset=0),

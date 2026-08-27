@@ -41,7 +41,11 @@ SOURCE_VERSION: Final = "data-gov-in-resource-api@2026-08-26"
 API_CONTRACT: Final[dict[str, Any]] = {
     "verified_against_current_official_docs": True,
     "verified_at": "2026-08-26",
-    "genuinely_live_api_verified": False,
+    "genuinely_live_api_verified": True,
+    "live_verified_at": "2026-08-27",
+    "live_verification_scope": (
+        "selected resource; raw first page plus forced multi-page terminal traversal"
+    ),
     "resource_api": "https://api.data.gov.in/resource/{resource_id}",
     "auth": {"location": "query", "parameter": API_KEY_PARAMETER},
     "format": "json",
@@ -49,7 +53,10 @@ API_CONTRACT: Final[dict[str, Any]] = {
         "kind": "offset_limit",
         "fields": ["offset", "limit"],
         "response_echo_encoding": "integer_or_canonical_decimal_string",
-        "live_observation": {"limit": "canonical_decimal_string", "offset": "pending"},
+        "live_observation": {
+            "limit": "canonical_decimal_string",
+            "offset": "accepted_across_forced_multi_page_traversal",
+        },
     },
     "required_envelope_fields": ["status", "total", "count", "limit", "offset", "records"],
     "success_status": "ok",

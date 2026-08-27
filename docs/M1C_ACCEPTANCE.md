@@ -2,8 +2,9 @@
 
 Phase 1C adds a strict resource-profile connector to the M0 temporal
 foundation. It is production-oriented acquisition code within the tested
-boundaries below; it is not a complete forecasting product and has not yet been
-validated against a genuine live API response.
+boundaries below; it is not a complete forecasting product. The selected
+resource contract and terminal traversal have been validated against the live
+API.
 
 ## Verification status
 
@@ -11,7 +12,7 @@ validated against a genuine live API response.
 | --- | --- | --- | --- |
 | `verified_against_current_official_docs` | `true` | 2026-08-26 UTC | Current resource API panel, portal help, terms and Government Open Data License pages were inspected. |
 | `fixture_and_integration_tested` | `true` | 2026-08-26 UTC | Hand-written synthetic pages exercise strict parsing, pagination, ledger writes, cutoff exclusion, deterministic hashing and failure containment. |
-| `genuinely_live_api_verified` | `false` | 2026-08-27 UTC | A credentialed Windows probe now reached the origin and received a JSON success envelope without exposing the replacement key. Parsing established that all required fields exist, `status` is `ok`, and `total`/`count` are JSON integers; it then found the live `limit` echo encoded as the canonical decimal string `"10"`. The parser now normalizes canonical decimal strings only for `limit`/`offset`, while authoritative counts remain strict integers. A complete live pass is still required before this flag changes. |
+| `genuinely_live_api_verified` | `true` | 2026-08-27 UTC | On Windows with CPython 3.14.7 and pytest 9.1.1, the credentialed raw-envelope probe and forced multi-page production traversal both passed (`2 passed in 2.54s`). The origin returned JSON successfully; the first page satisfied the strict envelope contract; page size 1 forced traversal beyond offset 0; offsets were unique and increasing; and the emitted item count exactly matched the stable positive total. The replacement credential was not rendered. This verification is scoped to the selected resource and observed contract, not every data.gov.in dataset. |
 
 These booleans are independent. A green offline suite or documentation check
 does not change `genuinely_live_api_verified`.
@@ -168,9 +169,10 @@ Evidence reaches bronze only. Phase 1C adds no retrieval, graph, learned
 extraction, adjudication, calibration, conformal risk control, service,
 dashboard, container or deployment work. Phase 1D was not started.
 
-Before calling the source live-ready, a human must obtain a user-issued key,
-approve the selected resource and its role, review license/attribution terms,
-allowlist `api.data.gov.in` if needed, execute the live test, and record a real
-passing response. Before any release, all isolated source branches must be
+The selected resource now has a recorded live passing response. Remaining human
+operational duties are to keep the user-issued key outside files and logs,
+approve the selected resource's contextual-only role, review its
+license/attribution terms, and rerun the live contract probes periodically or
+after portal changes. Before any release, all isolated source branches must be
 integrated deliberately and real-data rolling backtests must beat preregistered
 baselines without leakage.
