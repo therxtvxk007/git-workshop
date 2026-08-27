@@ -229,6 +229,16 @@ class BaseRateGenerator(BaseGenerator):
     name = "base_rate"
     VERSION = "0.1.0"
 
+    #: This generator counts EventMention rows derived one-to-one from GDELT
+    #: CAMEO codes: undeduplicated article-derived mentions over a
+    #: protest/demand/coerce/assault ontology. Under the frozen prediction
+    #: contract those are not target outcomes, so this path may not issue a
+    #: contract forecast. It remains the M0 floor and still runs in the
+    #: synthetic demo, which is a mechanism exercise rather than a forecast.
+    #: See pramaanx.contract.NON_CONFORMING_PATHS.
+    contract_path = "base_rate/event_mention"
+    contract_conforming = False
+
     def __init__(
         self,
         mentions: Sequence[EventMention],
