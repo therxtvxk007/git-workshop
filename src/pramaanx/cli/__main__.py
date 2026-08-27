@@ -10,4 +10,9 @@ from __future__ import annotations
 
 from pramaanx.cli import main
 
-main()
+# Guarded, even though this file exists to be executed: when run via -m the
+# guard passes, but anything that merely *imports* the package tree -- a
+# package walker, a docs build, an import check -- would otherwise launch the
+# CLI as a side effect and hang or exit on a caller that only wanted imports.
+if __name__ == "__main__":
+    main()
