@@ -76,11 +76,11 @@ class TestGuardedFetch:
 
 
 class TestRegistry:
-    def test_m0_registers_exactly_two_connectors(self) -> None:
-        assert sorted(available_connectors()) == ["gdelt", "synthetic"]
+    def test_phase1c_registers_exactly_three_connectors(self) -> None:
+        assert sorted(available_connectors()) == ["data_gov_in", "gdelt", "synthetic"]
 
     def test_unknown_connector_names_the_known_ones(self) -> None:
-        with pytest.raises(KeyError, match="registered: gdelt, synthetic"):
+        with pytest.raises(KeyError, match="registered: data_gov_in, gdelt, synthetic"):
             get_connector_class("acled")
 
     def test_build_connector_passes_validated_source_options(self) -> None:

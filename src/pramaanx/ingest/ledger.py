@@ -200,13 +200,17 @@ class EvidenceLedger:
                 )
 
             source = conn.source_record
-            self.record_source(source)
             observations: list[Observation] = []
             payload_bytes = 0
             for item in conn.guarded_fetch(window):
                 payload_bytes += len(item.payload)
                 observations.append(self.observation_from_item(item, source))
 
+            # Source provenance becomes durable only after the connector has
+            # completed successfully. This matters for connectors that buffer a
+            # pagination traversal: a later-page contract failure must leave no
+            # misleading record suggesting the source was ingested.
+            self.record_source(source)
             result = self.observations.append(observations)
             log.info(
                 "ingest.complete",

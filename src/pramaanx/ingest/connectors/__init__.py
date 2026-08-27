@@ -1,4 +1,4 @@
-"""Connectors shipped with M0.
+"""Evidence connectors available on this Phase 1C branch.
 
 Two, on purpose:
 
@@ -7,8 +7,9 @@ Two, on purpose:
 * :mod:`~pramaanx.ingest.connectors.gdelt` -- one real Tier-0 source, so the
   ledger is exercised against evidence nobody in this repository controls.
 
-Importing this package registers both connectors. The remaining Tier-0 and
-Tier-1 sources in the build plan (ACLED, ReliefWeb, data.gov.in, Bluesky,
+Importing this package registers the M0 connectors and the isolated Phase 1C
+data.gov.in connector. The remaining Tier-0 and Tier-1 sources in the build
+plan (ACLED, ReliefWeb, Bluesky,
 FIRMS, Copernicus, OpenSky, Global Fishing Watch) are Phase 1 work and are
 deliberately absent rather than stubbed: an empty connector is indistinguishable
 from a quiet source, and that confusion would corrupt base rates.
@@ -16,7 +17,8 @@ from a quiet source, and that confusion would corrupt base rates.
 
 from __future__ import annotations
 
+from pramaanx.ingest.connectors.data_gov_in import DataGovInConnector
 from pramaanx.ingest.connectors.gdelt import GdeltConnector
 from pramaanx.ingest.connectors.synthetic import SyntheticConnector
 
-__all__ = ["GdeltConnector", "SyntheticConnector"]
+__all__ = ["DataGovInConnector", "GdeltConnector", "SyntheticConnector"]

@@ -1,7 +1,7 @@
-# PRAMAAN-X Zero-Base — M0
+# PRAMAAN-X Zero-Base — M0 + isolated Phase 1C
 
-A cutoff-safe, open-world future-event forecasting system. **This repository
-currently contains milestone M0 only: the immutable temporal foundation.** It
+A cutoff-safe, open-world future-event forecasting system. **This branch
+contains milestone M0 plus a fixture-tested data.gov.in connector.** It
 does not forecast anything you should act on, and it makes no accuracy claim.
 
 The scientific decomposition the full system is built around is:
@@ -34,6 +34,10 @@ impressive number.
 | 10 | Setup and architecture documentation | this file, `docs/` |
 
 Acceptance criteria and the test that proves each one: **[docs/M0_ACCEPTANCE.md](docs/M0_ACCEPTANCE.md)**.
+
+Phase 1C adds one strict data.gov.in resource connector. It is evidence
+acquisition infrastructure, not a forecasting model or a real-data performance
+result. See **[docs/M1C_ACCEPTANCE.md](docs/M1C_ACCEPTANCE.md)**.
 
 ## What M0 deliberately does **not** contain
 
@@ -111,11 +115,27 @@ GDELT needs no key. Other Tier-0 sources (ACLED, ReliefWeb, data.gov.in) require
 accounts and licence review, which is why they are Phase 1 rather than M0 — see
 `.env.example`. **No licensed data may be committed to this repository.**
 
+The Phase 1C data.gov.in profile is deliberately contextual only:
+
+```bash
+export PRAMAANX_DATA_GOV_IN_API_KEY='<user-issued-key>'
+uv run pramaanx ingest --source data_gov_in \
+  --config configs/sources/data_gov_in_extremism_context.yaml \
+  --from 2026-02-13T00:00:00Z --until 2026-02-15T00:00:00Z --dry-run
+```
+
+Remove `--dry-run` only after reviewing the resource terms and running the
+opt-in live contract test described in `docs/M1C_ACCEPTANCE.md`. The table is an
+annual retrospective aggregate published in 2026 about 2023. It can support
+context/base rates; it is not pre-incident evidence and is never back-dated to
+2023.
+
 Behind a proxy, the standard environment is honoured (`HTTPS_PROXY`,
 `ALL_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`), and every part of it is overridable
 per source — `proxy`, `trust_env`, `ca_bundle`, `verify` — including SOCKS. A
-policy denial (403/407) is reported immediately, naming the blocked host,
-instead of being retried. To check egress end to end:
+CONNECT refusal or proxy 407 is reported as an egress-policy denial. An origin
+400/401/403 is a permanent source/authentication failure and is never
+misreported as a proxy problem. To check GDELT egress end to end:
 
 ```bash
 PRAMAANX_LIVE_GDELT=1 uv run pytest tests/network -m network -v
@@ -229,11 +249,11 @@ chose.
 
 ## Next milestone
 
-Phase 1 — the point-in-time evidence ledger against real sources: ACLED,
-ReliefWeb/HDX and data.gov.in connectors under their access terms, plus a
-frozen English news corpus for leak-proof backtesting. Its gate is the same as
-M0's: future-document injection must change no pre-cutoff snapshot, and every
-record must carry provenance and a hash.
+Phase 1C remains unmerged until review and genuine live verification. The next
+separately authorized phase is a legally frozen English news corpus; integration
+of ReliefWeb, ACLED, data.gov.in and that corpus happens only after each isolated
+source branch is accepted. Future-document injection must change no pre-cutoff
+snapshot, and every admitted record must carry provenance and a hash.
 
 ## Licence
 
