@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import ssl
+import subprocess
+import sys
+import textwrap
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
 from pathlib import Path
@@ -334,3 +337,48 @@ class TestSecretRedaction:
         with pytest.raises(HttpFetchError) as captured:
             client.get(f"https://example.org/x?api-key={secret}")
         assert secret not in str(captured.value)
+
+    def test_failing_pytest_traceback_does_not_render_query_secret(self, tmp_path: Path) -> None:
+        """Protect the complete rendered failure, not only exception text.
+
+        Pytest includes function argument values in long tracebacks.  A live
+        probe exposed a key through the raw ``HttpClient.get(url=...)`` frame
+        even though ``PermanentHttpError`` itself contained a redacted URL.
+        """
+        sentinel = "sentinel-traceback-api-key"
+        probe = tmp_path / "test_secret_traceback.py"
+        probe.write_text(
+            textwrap.dedent(
+                f"""
+                import httpx
+
+                from pramaanx.ingest.http import HttpClient, PermanentHttpError
+
+                SECRET = {sentinel!r}
+
+
+                def test_deliberate_origin_rejection() -> None:
+                    client = HttpClient(cache_dir=None, max_attempts=1)
+                    client._client = httpx.Client(
+                        transport=httpx.MockTransport(
+                            lambda request: httpx.Response(403, request=request)
+                        )
+                    )
+                    try:
+                        client.get(f"https://example.org/x?api-key={{SECRET}}")
+                    finally:
+                        client.close()
+                """
+            ),
+            encoding="utf-8",
+        )
+        completed = subprocess.run(
+            [sys.executable, "-m", "pytest", "-q", str(probe)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        rendered = completed.stdout + completed.stderr
+        assert completed.returncode == 1
+        assert sentinel not in rendered
+        assert "api-key=%3Credacted%3E" in rendered

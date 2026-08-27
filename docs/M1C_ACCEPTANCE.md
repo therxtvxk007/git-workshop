@@ -11,7 +11,7 @@ validated against a genuine live API response.
 | --- | --- | --- | --- |
 | `verified_against_current_official_docs` | `true` | 2026-08-26 UTC | Current resource API panel, portal help, terms and Government Open Data License pages were inspected. |
 | `fixture_and_integration_tested` | `true` | 2026-08-26 UTC | Hand-written synthetic pages exercise strict parsing, pagination, ledger writes, cutoff exclusion, deterministic hashing and failure containment. |
-| `genuinely_live_api_verified` | `false` | 2026-08-26 UTC | The runtime intermediary returned `502 Bad Gateway` / connection refused and no user-issued API key was available. The API origin was not proven reached. |
+| `genuinely_live_api_verified` | `false` | 2026-08-27 UTC | A credentialed Windows probe received HTTP 403, so no response envelope was available and the API contract was not verified. The first failure traceback exposed the raw query credential through pytest's rendered `HttpClient.get(url=...)` argument even though the exception message was redacted. That credential must be revoked. The HTTP frame is now hidden from pytest, the live probe converts request errors into sanitized traceback-free failures, and a subprocess regression test asserts the complete rendered failure excludes a sentinel key. A new credential must not be tried until this correction is installed. |
 
 These booleans are independent. A green offline suite or documentation check
 does not change `genuinely_live_api_verified`.

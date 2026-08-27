@@ -106,6 +106,12 @@ DEFAULT_SECRET_QUERY_PARAMETERS = frozenset(
 )
 
 
+def _silence_transport_loggers() -> None:
+    """Prevent dependencies from logging raw, query-authenticated URLs."""
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+
 def redact_url(
     url: str, *, secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS
 ) -> str:
@@ -241,8 +247,7 @@ class HttpClient:
             # query-authenticated API would therefore bypass our redaction even
             # when every project log is safe. Keep transport libraries quiet;
             # project-owned retry/error logs below contain sanitized URLs.
-            logging.getLogger("httpx").setLevel(logging.WARNING)
-            logging.getLogger("httpcore").setLevel(logging.WARNING)
+            _silence_transport_loggers()
             self._client = httpx.Client(
                 timeout=self.timeout_seconds,
                 follow_redirects=True,
@@ -295,6 +300,16 @@ class HttpClient:
         secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
         accepted_content_types: frozenset[str] | None = None,
     ) -> bytes:
+        # Pytest's long traceback formatter renders function arguments even
+        # when ``--showlocals`` is disabled.  This frame necessarily receives
+        # the raw request URL, which can contain query credentials.  Keep it
+        # out of pytest tracebacks; callers still receive the deliberately
+        # sanitized exception classes and messages below.
+        __tracebackhide__ = True
+        # Do this for every request, not only when ``client()`` constructs the
+        # transport. Tests and integrations may inject a prebuilt httpx client,
+        # and its INFO request line contains the complete query string.
+        _silence_transport_loggers()
         safe_url = redact_url(url, secret_query_parameters=secret_query_parameters)
         cache_identity = safe_url
         if accepted_content_types is not None:

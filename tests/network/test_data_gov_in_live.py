@@ -13,7 +13,7 @@ from pramaanx.ingest.connectors.data_gov_in import (
     DataGovInConnector,
     parse_envelope,
 )
-from pramaanx.ingest.http import HttpClient, ProxyPolicyError
+from pramaanx.ingest.http import HttpClient, ProxyPolicyError, sanitize_error_text
 
 pytestmark = pytest.mark.network
 
@@ -36,18 +36,28 @@ def test_selected_resource_live_contract() -> None:
             "cache": False,
         },
     )
-    url = connector.page_url(offset=0)
     client = HttpClient(cache_dir=None, max_attempts=2, max_retry_after_seconds=10.0)
+    failure_message: str | None = None
     try:
         payload = client.get(
-            url,
+            connector.page_url(offset=0),
             secret_query_parameters=SECRET_QUERY_PARAMETERS,
             accepted_content_types=frozenset({"application/json"}),
         )
     except ProxyPolicyError as error:  # pragma: no cover - network dependent
         pytest.skip(f"CONNECT/proxy policy blocked the live host: {error}")
+    except Exception as error:  # pragma: no cover - network dependent
+        # Never let pytest render the secret-bearing HTTP stack or arguments.
+        # Build the sanitized message while handling the error, then raise the
+        # traceback-free failure after leaving the exception context.
+        failure_message = sanitize_error_text(
+            str(error), connector.page_url(offset=0), SECRET_QUERY_PARAMETERS
+        )
     finally:
         client.close()
+
+    if failure_message is not None:  # pragma: no cover - network dependent
+        pytest.fail(f"live data.gov.in request failed: {failure_message}", pytrace=False)
 
     records, total = parse_envelope(
         payload, expected_offset=0, expected_limit=10, expected_total=None
