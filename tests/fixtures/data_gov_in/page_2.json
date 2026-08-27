@@ -1,0 +1,10 @@
+{
+  "status": "ok",
+  "total": 3,
+  "count": 1,
+  "limit": 2,
+  "offset": 2,
+  "records": [
+    {"row_id": "synthetic-03", "region": "Example East", "incidents": 0}
+  ]
+}

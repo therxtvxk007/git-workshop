@@ -27,11 +27,17 @@ explicit ``verify: false`` and logs a warning every time a client is built.
 
 from __future__ import annotations
 
+import logging
+import math
+import re
 import ssl
 import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit, urlunsplit
 
 import httpx
 
@@ -42,6 +48,141 @@ log = get_logger(__name__)
 
 Fetcher = Callable[[str], bytes]
 """Anything that turns a URL into bytes. Injected in tests to stay offline."""
+
+REDACTED = "REDACTED"
+
+#: Query parameters whose *values* identify the caller and must never be logged,
+#: persisted or put in an exception message. ``appname`` is ReliefWeb's required
+#: caller identity and it travels in the URL, so every display path has to strip
+#: it -- an exception string is as public as a log line.
+SENSITIVE_QUERY_KEYS = (
+    "appname",
+    "api-key",
+    "api_key",
+    "apikey",
+    "key",
+    "token",
+    "access_token",
+)
+
+DEFAULT_SECRET_QUERY_PARAMETERS = frozenset(SENSITIVE_QUERY_KEYS)
+"""The default set :func:`redact_url` and :func:`sanitize_error_text` strip.
+
+A connector whose credential travels under a name not listed here passes its
+own set rather than editing this one, so one source widening the default
+cannot quietly change what another source logs."""
+
+_SENSITIVE_QUERY = re.compile(
+    r"(?i)\b(" + "|".join(re.escape(name) for name in SENSITIVE_QUERY_KEYS) + r")=[^&#]*"
+)
+
+
+def redact_url(
+    url: str,
+    *,
+    secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+) -> str:
+    """The display form of a URL: no caller identity, no credentials.
+
+    Used for every log line, exception message and persisted provenance record.
+    It never touches the URL that is actually requested -- redacting that would
+    break the request.
+
+    Parameter names are matched case-insensitively. A connector whose secret
+    travels under a name outside the default set passes ``secret_query_parameters``
+    rather than relying on the default.
+    """
+    if not url:
+        return url
+    secrets = {name.casefold() for name in secret_query_parameters}
+    try:
+        parts = urlsplit(url)
+    except ValueError:  # pragma: no cover - urlsplit is very forgiving
+        return "<redacted-url>"
+    if parts.query:
+        query = [
+            (name, REDACTED if name.casefold() in secrets else value)
+            for name, value in parse_qsl(parts.query, keep_blank_values=True)
+        ]
+        url = urlunsplit(
+            (parts.scheme, parts.netloc, parts.path, urlencode(query, doseq=True), parts.fragment)
+        )
+    else:
+        # No query string to parse, but a bare token can still appear in a path
+        # or in an error string that was passed here rather than a real URL.
+        url = _SENSITIVE_QUERY.sub(lambda match: f"{match.group(1)}={REDACTED}", url)
+    # A newline in a redacted URL would let a malformed value forge a second
+    # entry in a line-oriented log.
+    return _redact_userinfo(url).replace("\r", "").replace("\n", "")
+
+
+def _secret_values(url: str, secret_query_parameters: frozenset[str]) -> set[str]:
+    """The literal secret values carried in ``url``'s query string."""
+    secrets = {name.casefold() for name in secret_query_parameters}
+    try:
+        return {
+            value
+            for name, value in parse_qsl(urlsplit(url).query, keep_blank_values=True)
+            if name.casefold() in secrets and value
+        }
+    except (TypeError, ValueError):
+        return set()
+
+
+def sanitize_error_text(
+    text: str,
+    url: str,
+    secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+) -> str:
+    """Strip a URL's secrets out of arbitrary error text.
+
+    Redacting the URL is not enough on its own. A transport exception embeds
+    whatever string it was constructed with, which may be the raw URL, a
+    percent-encoded form of it, or the bare credential on its own -- so every
+    representation of each secret value is replaced, not just the tidy one.
+    """
+    safe = text
+    for value in _secret_values(url, secret_query_parameters):
+        for representation in {value, quote(value, safe=""), unquote(value)}:
+            if representation:
+                safe = safe.replace(representation, REDACTED)
+    safe = safe.replace(url, redact_url(url, secret_query_parameters=secret_query_parameters))
+    return safe.replace("\r", "\\r").replace("\n", "\\n")
+
+
+def _silence_transport_loggers() -> None:
+    """Stop httpx and httpcore logging raw, query-authenticated request lines.
+
+    Their INFO request line contains the complete query string, so a source
+    whose credential travels in the URL would leak it through a dependency's
+    logger no matter how careful this module is.
+    """
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+
+
+def _redact_userinfo(url: str) -> str:
+    """``https://user:pass@host/x`` -> ``https://REDACTED@host/x``."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:  # pragma: no cover - urlsplit is very forgiving
+        return url
+    if not parts.hostname or "@" not in parts.netloc:
+        return url
+    host = parts.hostname
+    if ":" in host:  # IPv6 literal
+        host = f"[{host}]"
+    netloc = f"{REDACTED}@{host}"
+    if parts.port:
+        netloc = f"{netloc}:{parts.port}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+
+
+def redact_proxy(proxy: str | None) -> str | None:
+    """A proxy URL safe to log. ``socks5://user:pass@host`` hides the userinfo."""
+    if not proxy:
+        return proxy
+    return _redact_userinfo(proxy)
 
 
 class HttpFetchError(RuntimeError):
@@ -67,12 +208,65 @@ class CaBundleError(HttpFetchError):
     """
 
 
-class ProxyPolicyError(HttpFetchError):
-    """An egress proxy refused the destination.
+class RateLimitError(HttpFetchError):
+    """The server asked the caller to slow down (HTTP 429), and it kept asking.
 
-    Arrives two ways, because a proxy can refuse at two moments: as a 403/407
-    response to a plain request, or as a failed CONNECT while establishing the
-    tunnel, which httpx surfaces as :class:`httpx.ProxyError`.
+    Retried with the server's own ``Retry-After`` when it supplies one, because
+    guessing a backoff against a service that has just told you the answer is
+    both rude and slower.
+    """
+
+    def __init__(self, url: str, attempts: int) -> None:
+        super().__init__(
+            f"{redact_url(url)} returned HTTP 429 on {attempts} consecutive attempts. Lower "
+            "page_size, raise min_interval_seconds, or narrow the fetch window."
+        )
+        self.url = redact_url(url)
+        self.attempts = attempts
+
+
+class PermanentHttpError(HttpFetchError):
+    """The destination answered, and the answer will not change on a retry.
+
+    HTTP 401 and 403 *from the origin*: the request was delivered and refused.
+    Kept distinct from :class:`ProxyPolicyError` because the two have opposite
+    meanings and opposite remedies. A proxy denial means the request never left
+    the network and the host needs allowlisting; an origin 403 means the
+    destination rejected the caller. Source-specific remediation belongs in the
+    connector or its live test; this shared client is also used by GDELT and
+    future sources.
+
+    Conflating them is not cosmetic. The live test skips on a proxy denial, so
+    an origin 403 filed under the same class would turn "ReliefWeb rejected our
+    identity" into "verification skipped", and the run would look clean.
+    """
+
+    def __init__(self, url: str, status_code: int, detail: str = "") -> None:
+        remedy = {
+            401: "The API rejected the caller's credentials.",
+            403: "The destination refused this caller or request.",
+        }.get(status_code, "The server refused this request and a retry will not change that.")
+        super().__init__(
+            f"{redact_url(url)} returned HTTP {status_code}. {remedy}"
+            + (f" ({detail})" if detail else "")
+        )
+        self.url = redact_url(url)
+        self.status_code = status_code
+        self.detail = detail
+
+
+class ProxyPolicyError(HttpFetchError):
+    """An egress proxy refused to carry the request.
+
+    Two shapes, both of which mean the request never reached the destination:
+    an HTTP 407 (proxy authentication required) response, or a failed CONNECT
+    while establishing the tunnel, which httpx surfaces as
+    :class:`httpx.ProxyError`.
+
+    An ordinary 403 *response* is deliberately NOT one of these -- that is an
+    answer from the origin, and it is :class:`PermanentHttpError`. A proxy that
+    denies at CONNECT time cannot produce an HTTP response at all, which is why
+    its denial arrives as a transport error rather than a status code.
 
     Never retried either way. A policy denial is not a transient failure, and
     hammering it three more times changes nothing except how long the operator
@@ -81,12 +275,12 @@ class ProxyPolicyError(HttpFetchError):
 
     def __init__(self, url: str, detail: str) -> None:
         super().__init__(
-            f"egress proxy refused {url} ({detail}). The destination host is not permitted "
-            "by this network's policy. Ask for the host to be allowlisted; do not route "
-            "around it or disable certificate verification."
+            f"egress proxy refused {redact_url(url)} ({redact_url(detail)}). The destination "
+            "host is not permitted by this network's policy. Ask for the host to be "
+            "allowlisted; do not route around it or disable certificate verification."
         )
-        self.url = url
-        self.detail = detail
+        self.url = redact_url(url)
+        self.detail = redact_url(detail)
 
 
 PROXY_DENIAL_MARKERS = ("403", "407", "forbidden", "proxy authentication")
@@ -109,6 +303,12 @@ class HttpClient:
     max_attempts: int = 4
     backoff_seconds: float = 2.0
     min_interval_seconds: float = 0.2
+    #: Ceiling on a server-supplied ``Retry-After``. A 429 is an instruction,
+    #: but an unbounded one is a denial of service by cooperation: a header of
+    #: 86400 would park an ingest for a day inside a retry loop nobody watches.
+    #: Applies to both the delta-seconds and the HTTP-date form, and to the
+    #: exponential fallback, so no path can sleep longer than this.
+    max_retry_after_seconds: float = 60.0
     user_agent: str = "pramaan-x-zero-base/0.1 (research; contact repository owner)"
     headers: Mapping[str, str] | None = None
     #: Explicit proxy URL (``http://``, ``https://``, ``socks5://``). Overrides
@@ -164,7 +364,11 @@ class HttpClient:
             )
             log.debug(
                 "http.client_built",
-                proxy=self.proxy or "<from environment>" if self.trust_env else "<none>",
+                # Never the raw proxy URL: a proxy string routinely carries
+                # userinfo credentials, and a debug log is not a secret store.
+                proxy=redact_proxy(self.proxy) or "<from environment>"
+                if self.trust_env
+                else "<none>",
                 trust_env=self.trust_env,
                 ca_bundle=self.ca_bundle,
             )
@@ -187,14 +391,107 @@ class HttpClient:
         digest = short_hash(hash_text(url), 24)
         return self.cache_dir / digest[:2] / f"{digest}.bin"
 
+    def _clamp_delay(self, seconds: float) -> float:
+        """Never negative, never longer than ``max_retry_after_seconds``.
+
+        Every delay this client sleeps for goes through here, including the
+        exponential fallback: a cap that only covers the header would still let
+        a long backoff on a high attempt number park the process.
+        """
+        if not math.isfinite(seconds):
+            return self.max_retry_after_seconds
+        return min(max(0.0, seconds), self.max_retry_after_seconds)
+
+    def _backoff_seconds_for(self, attempt: int) -> float:
+        return self._clamp_delay(self.backoff_seconds * (2 ** (attempt - 1)))
+
+    def _retry_after_seconds(self, response: httpx.Response, attempt: int) -> float:
+        """Honour ``Retry-After`` when present, else fall back to the backoff.
+
+        The header comes in two forms -- delta-seconds and an HTTP date -- and
+        both appear in the wild. Both are clamped: the server is telling us how
+        long *it* wants to wait, which is not the same as how long this process
+        may block, and the header is attacker-influenced on any hop that can
+        rewrite responses.
+        """
+        raw = response.headers.get("Retry-After", "").strip()
+        fallback = self._backoff_seconds_for(attempt)
+        if not raw:
+            return fallback
+        try:
+            return self._clamp_delay(float(raw))
+        except ValueError:
+            pass
+        try:
+            target = parsedate_to_datetime(raw)
+        except (TypeError, ValueError):
+            return fallback
+        if target.tzinfo is None:
+            target = target.replace(tzinfo=UTC)
+        return self._clamp_delay((target - datetime.now(UTC)).total_seconds())
+
     def _pace(self) -> None:
         elapsed = time.monotonic() - self._last_request_at
         if elapsed < self.min_interval_seconds:
             time.sleep(self.min_interval_seconds - elapsed)
         self._last_request_at = time.monotonic()
 
-    def get(self, url: str) -> bytes:
-        cached = self._cache_path(url)
+    def _request(
+        self,
+        method: str,
+        url: str,
+        *,
+        headers: Mapping[str, str] | None = None,
+        form: Mapping[str, str] | None = None,
+        use_cache: bool = True,
+        secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+        accepted_content_types: frozenset[str] | None = None,
+    ) -> bytes:
+        """One request, retried, with every secret kept out of every display path.
+
+        ``form`` values are treated as secret unconditionally. A form body is
+        how a source that refuses URL credentials expects to receive them --
+        ACLED's OAuth password grant is exactly this -- so a password would
+        otherwise reach a log the moment httpx embedded the request in an
+        exception.
+
+        ``accepted_content_types`` turns a wrong body type into a permanent
+        error rather than a parse failure three frames away: an HTML error page
+        served with HTTP 200 is a refusal wearing a success code.
+        """
+        # Pytest's traceback formatter renders function arguments even without
+        # --showlocals, and this frame necessarily receives the raw URL and
+        # form. Callers still get the sanitized exception messages built below.
+        __tracebackhide__ = True
+        # Every request, not just when client() builds the transport: a test or
+        # integration may inject a prebuilt httpx client that this never saw.
+        _silence_transport_loggers()
+
+        safe_url = redact_url(url, secret_query_parameters=secret_query_parameters)
+        form_secrets = {value for value in (form or {}).values() if value}
+
+        def safe(text: str) -> str:
+            cleaned = sanitize_error_text(text, url, secret_query_parameters)
+            for value in form_secrets:
+                for representation in {value, quote(value, safe=""), unquote(value)}:
+                    if representation:
+                        cleaned = cleaned.replace(representation, REDACTED)
+            return cleaned
+
+        # A POST is never cached. It is not safe to assume it is idempotent,
+        # and its body -- which is what distinguishes two POSTs to one URL --
+        # must not become part of a cache identity.
+        cached = None
+        if use_cache and method == "GET":
+            # Keyed on the REDACTED url plus any content-type expectation. A
+            # credential does not change the response for any source that
+            # carries one, so including it would only fragment the cache when a
+            # key is rotated. The content-type expectation does change what
+            # counts as an acceptable response, so it belongs in the identity.
+            cache_identity = safe_url
+            if accepted_content_types is not None:
+                cache_identity += "|content-types=" + ",".join(sorted(accepted_content_types))
+            cached = self._cache_path(cache_identity)
         if cached is not None and cached.exists():
             return cached.read_bytes()
 
@@ -202,12 +499,40 @@ class HttpClient:
         for attempt in range(1, self.max_attempts + 1):
             self._pace()
             try:
-                response = self.client().get(url)
+                response = self.client().request(method, url, headers=headers, data=form)
                 if response.status_code == 404:
-                    raise NotFoundError(f"404 for {url}")
-                if response.status_code in {403, 407}:
-                    raise ProxyPolicyError(url, f"HTTP {response.status_code}")
+                    raise NotFoundError(f"404 for {safe_url}")
+                if response.status_code == 407:
+                    # Proxy authentication required: the proxy answered, so the
+                    # request never reached the destination.
+                    raise ProxyPolicyError(safe_url, "HTTP 407")
+                if response.status_code == 429:
+                    if attempt == self.max_attempts:
+                        raise RateLimitError(url, attempt)
+                    delay = self._retry_after_seconds(response, attempt)
+                    log.warning(
+                        "http.rate_limited",
+                        url=safe_url,
+                        attempt=attempt,
+                        delay=round(delay, 3),
+                    )
+                    time.sleep(delay)
+                    continue
+                if 400 <= response.status_code < 500 and response.status_code != 408:
+                    # The ORIGIN answered and refused, and a retry will not
+                    # change that. Not a proxy denial: a proxy that refuses
+                    # cannot return the destination's status. 408 is excluded
+                    # because a request timeout genuinely is worth retrying.
+                    raise PermanentHttpError(url, response.status_code)
                 response.raise_for_status()
+                if accepted_content_types is not None:
+                    content_type = response.headers.get("Content-Type", "").split(";", 1)[0].strip()
+                    if content_type not in accepted_content_types:
+                        raise PermanentHttpError(
+                            url,
+                            response.status_code,
+                            f"unexpected Content-Type {content_type or '<missing>'!r}",
+                        )
                 data = response.content
                 if cached is not None:
                     cached.parent.mkdir(parents=True, exist_ok=True)
@@ -215,17 +540,70 @@ class HttpClient:
                     tmp.write_bytes(data)
                     tmp.replace(cached)
                 return data
-            except (NotFoundError, ProxyPolicyError):
+            except (NotFoundError, PermanentHttpError, ProxyPolicyError, RateLimitError):
                 raise
             except Exception as error:  # retried below; re-raised as HttpFetchError
                 if _is_policy_denial(error):
-                    raise ProxyPolicyError(url, str(error)) from error
+                    # from None, not from error: the chained traceback would
+                    # print the original exception's raw URL.
+                    raise ProxyPolicyError(safe_url, safe(str(error))) from None
                 last_error = error
                 if attempt == self.max_attempts:
                     break
-                delay = self.backoff_seconds * (2 ** (attempt - 1))
-                log.warning("http.retry", url=url, attempt=attempt, delay=delay, error=str(error))
+                delay = self._backoff_seconds_for(attempt)
+                if isinstance(error, httpx.HTTPStatusError):
+                    delay = self._retry_after_seconds(error.response, attempt)
+                log.warning(
+                    "http.retry",
+                    url=safe_url,
+                    attempt=attempt,
+                    delay=delay,
+                    error=safe(str(error)),
+                )
                 time.sleep(delay)
+        detail = safe(str(last_error)) if last_error is not None else "unknown error"
         raise HttpFetchError(
-            f"failed to fetch {url} after {self.max_attempts} attempts: {last_error}"
+            f"failed to fetch {safe_url} after {self.max_attempts} attempts: {detail}"
+        )
+
+    def get(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str] | None = None,
+        secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+        accepted_content_types: frozenset[str] | None = None,
+    ) -> bytes:
+        """GET bytes, using the URL cache when this client has one."""
+        # This wrapper frame receives the raw url too, and pytest renders a
+        # frame's arguments whether or not the frame it delegates to is hidden.
+        __tracebackhide__ = True
+        return self._request(
+            "GET",
+            url,
+            headers=headers,
+            use_cache=True,
+            secret_query_parameters=secret_query_parameters,
+            accepted_content_types=accepted_content_types,
+        )
+
+    def post_form(
+        self,
+        url: str,
+        form: Mapping[str, str],
+        *,
+        headers: Mapping[str, str] | None = None,
+        secret_query_parameters: frozenset[str] = DEFAULT_SECRET_QUERY_PARAMETERS,
+        accepted_content_types: frozenset[str] | None = None,
+    ) -> bytes:
+        """POST a form, never placing its values in a log, cache key or error."""
+        __tracebackhide__ = True
+        return self._request(
+            "POST",
+            url,
+            headers=headers,
+            form=form,
+            use_cache=False,
+            secret_query_parameters=secret_query_parameters,
+            accepted_content_types=accepted_content_types,
         )

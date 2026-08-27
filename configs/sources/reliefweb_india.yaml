@@ -1,0 +1,25 @@
+# ReliefWeb, narrowed to English reporting on India.
+#
+# Layer over the base config:
+#   uv run pramaanx ingest --config configs/sources/reliefweb_india.yaml \
+#     --source reliefweb --from 2026-03-01 --until 2026-03-02
+#
+# The caller identity is NOT set here. ReliefWeb requires every caller to
+# identify itself with an appname it has approved in advance (mandatory since
+# 2025-11-01, requested via https://apidoc.reliefweb.int/parameters), and that
+# identity belongs in the environment (PRAMAANX_RELIEFWEB_APPNAME) rather than
+# in a tracked file.
+include: ../base.yaml
+
+sources:
+  reliefweb:
+    countries: ["IND"]
+    languages: ["en"]
+    formats: ["Situation Report"]
+    # Bounded first run: raise once the window and volume are understood.
+    page_size: 100
+    max_items: 500
+    max_pages: 20
+    # Offset pagination over a mutating index can omit records, so windows are
+    # meant to overlap rather than tile. Re-ingesting is idempotent: bronze is
+    # content-addressed, so a repeated record is skipped, not duplicated.

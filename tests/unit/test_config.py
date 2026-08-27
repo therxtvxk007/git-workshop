@@ -46,10 +46,10 @@ class TestLayering:
         assert settings.log_level == "DEBUG"
 
     def test_source_credentials_are_not_settings(self, tmp_path: Path) -> None:
-        # PRAMAANX_ACLED_API_KEY is read by a connector, not folded into config,
+        # PRAMAANX_ACLED_ACCESS_TOKEN is read by a connector, not folded into config,
         # so a credential can never end up inside a config hash.
         config = write(tmp_path / "base.yaml", "horizon_days: 90\n")
-        settings = load_settings(config, environ={"PRAMAANX_ACLED_API_KEY": "secret"})
+        settings = load_settings(config, environ={"PRAMAANX_ACLED_ACCESS_TOKEN": "secret"})
         assert "secret" not in settings.model_dump_json()
 
 

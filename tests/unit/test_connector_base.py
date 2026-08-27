@@ -76,12 +76,28 @@ class TestGuardedFetch:
 
 
 class TestRegistry:
-    def test_m0_registers_exactly_two_connectors(self) -> None:
-        assert sorted(available_connectors()) == ["gdelt", "synthetic"]
+    def test_the_registry_holds_exactly_the_built_connectors(self) -> None:
+        # Pinned, not just non-empty: a connector appearing here that nobody
+        # meant to build is as much a problem as one going missing. M0 built
+        # synthetic and gdelt; Phase 1A added reliefweb, 1B acled, 1C data_gov_in.
+        assert sorted(available_connectors()) == [
+            "acled",
+            "data_gov_in",
+            "gdelt",
+            "reliefweb",
+            "synthetic",
+        ]
+
+    def test_every_registered_connector_is_declared_in_the_config_registry(self) -> None:
+        from pramaanx.config import SOURCE_OPTION_MODELS
+
+        assert set(available_connectors()) <= set(SOURCE_OPTION_MODELS)
 
     def test_unknown_connector_names_the_known_ones(self) -> None:
-        with pytest.raises(KeyError, match="registered: gdelt, synthetic"):
-            get_connector_class("acled")
+        with pytest.raises(
+            KeyError, match="registered: acled, data_gov_in, gdelt, reliefweb, synthetic"
+        ):
+            get_connector_class("unknown")
 
     def test_build_connector_passes_validated_source_options(self) -> None:
         settings = Settings(sources={"synthetic": {"seed": 7}})

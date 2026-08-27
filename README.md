@@ -1,7 +1,9 @@
-# PRAMAAN-X Zero-Base — M0
+# PRAMAAN-X Zero-Base — M0 + Phase 1 evidence connectors
 
-A cutoff-safe, open-world future-event forecasting system. **This repository
-currently contains milestone M0 only: the immutable temporal foundation.** It
+A cutoff-safe, open-world future-event forecasting system. **This branch
+contains the immutable M0 temporal foundation plus the four Phase 1 evidence
+connectors — GDELT, ReliefWeb, data.gov.in and ACLED — integrated onto one
+shared ingestion surface.** It
 does not forecast anything you should act on, and it makes no accuracy claim.
 
 The scientific decomposition the full system is built around is:
@@ -26,7 +28,7 @@ impressive number.
 | 2 | Five core schemas | `src/pramaanx/schemas/` |
 | 3 | Content-hashed Parquet storage | `src/pramaanx/hashing.py`, `src/pramaanx/storage.py` |
 | 4 | `CutoffGuard` + snapshots + leakage audit | `src/pramaanx/timeguard/` |
-| 5 | Synthetic and GDELT connectors | `src/pramaanx/ingest/connectors/` |
+| 5 | Synthetic, GDELT, and credentialed ACLED connectors | `src/pramaanx/ingest/connectors/` |
 | 6 | Base-rate generator (G0) | `src/pramaanx/generators/base_rate.py` |
 | 7 | Rolling-backtest skeleton | `src/pramaanx/evaluation/` |
 | 8 | Future-leakage tests | `tests/leakage/`, `tests/metamorphic/` |
@@ -34,6 +36,10 @@ impressive number.
 | 10 | Setup and architecture documentation | this file, `docs/` |
 
 Acceptance criteria and the test that proves each one: **[docs/M0_ACCEPTANCE.md](docs/M0_ACCEPTANCE.md)**.
+
+Phase 1C adds one strict data.gov.in resource connector. It is evidence
+acquisition infrastructure, not a forecasting model or a real-data performance
+result. See **[docs/M1C_ACCEPTANCE.md](docs/M1C_ACCEPTANCE.md)**.
 
 ## What M0 deliberately does **not** contain
 
@@ -54,6 +60,10 @@ worse than a missing one, because it makes a skipped requirement look finished.
 - **One generator.** G1–G7 (CRI rules, neural TKG, analogy, change-point,
   OpenForecaster, causal scenarios, open-set) are not built, so "candidate
   recall" here is a single-branch floor, not a union result.
+- **ReliefWeb evidence is ingested but not extracted.** Phase 1A adds the
+  connector; turning humanitarian prose into `EventMention`s needs the Phase 2
+  extraction cascade, so `pramaanx extract` skips ReliefWeb observations and
+  says so.
 - **No dashboard, API or containers.** Phase 10. A polished interface must not
   hide an unvalidated forecasting core.
 - **No real-world accuracy claim.** The demo runs on a synthetic world with a
@@ -102,23 +112,135 @@ not exist yet.
 ### Real evidence
 
 ```bash
+# GDELT: machine-coded event records, no credential required.
 uv run pramaanx ingest --source gdelt \
   --config configs/sources/gdelt_india_unrest.yaml \
   --from 2026-01-01T00:00:00Z --until 2026-01-01T06:00:00Z
+
+# ReliefWeb: curated humanitarian reporting. No key, but every caller must
+# identify itself with an appname ReliefWeb has APPROVED IN ADVANCE (mandatory
+# since 2025-11-01 -- request one via https://apidoc.reliefweb.int/parameters).
+export PRAMAANX_RELIEFWEB_APPNAME=your-approved-appname
+uv run pramaanx ingest --source reliefweb \
+  --config configs/sources/reliefweb_india.yaml \
+  --from 2026-03-01 --until 2026-03-02 --dry-run   # plan first; makes no request
 ```
 
-GDELT needs no key. Other Tier-0 sources (ACLED, ReliefWeb, data.gov.in) require
-accounts and licence review, which is why they are Phase 1 rather than M0 — see
-`.env.example`. **No licensed data may be committed to this repository.**
+Neither needs an account, though ReliefWeb needs an approved appname. Its terms
+restrict use to personal/non-commercial purposes and prohibit resale and
+redistribution unless specific permission or a particular document's own terms
+provide otherwise; the connector marks the source non-redistributable as a
+conservative machine-enforced default, which is not a substitute for reading
+the terms for your use. The remaining Tier-0 sources require registration and licence review —
+see `.env.example`. **No licensed data may be committed to this repository.**
+
+#### ReliefWeb caller identity
+
+The `appname` is **mandatory**, it travels in the request URL, and since
+**1 November 2025 it must be pre-approved by ReliefWeb**. It is not a string you
+pick: request one through the process linked from
+<https://apidoc.reliefweb.int/parameters>. An unapproved or misspelled name is
+refused at the origin with an HTTP 403 — which this client reports as a
+permanent error naming the appname, never as a blocked-egress skip.
+
+Keep it in the environment. It is redacted from every persisted payload, every
+log line, every exception message and from `--dry-run` output, and a contract
+test fails if any tracked config commits one.
+
+#### ReliefWeb availability semantics
+
+ReliefWeb serves only the *current* revision of a report, with no
+version-history endpoint. So a report's `first_observed_at` is
+**`max(date.created, date.changed)`** — never `date.created` alone, and never
+the document's own `date.original`. A report posted in 2020 and revised in 2026
+enters a 2026 snapshot, because the body in hand is the 2026 body.
+
+That is deliberately conservative: it withholds evidence from early cutoffs that
+a contemporaneous reader might really have had, rather than risk attributing to
+an early cutoff a sentence written later. `claimed_event_time` is left unset,
+because report metadata carries publication dates and not the date of the
+situation described.
+
+All three raw instants survive into `metadata` under their own names —
+`date_created`, `date_changed` (null when the API omits it, never back-filled)
+and `date_original` — alongside the derived `date_availability`. `published_at`
+is `date.original` when present, otherwise `date.created`. Details in
+[docs/M1_ACCEPTANCE.md](docs/M1_ACCEPTANCE.md).
+
+Acquisition queries the union of reports whose `date.created` **or**
+`date.changed` intersects the window, then applies the exact derived maximum
+client-side. A changed-only query would silently lose records whose modification
+instant is absent or earlier than creation.
+
+#### ReliefWeb pagination: overlap your windows
+
+Paging walks `offset` under a total sort (`date.changed:asc`, then `id:asc`).
+The total order stops records with identical timestamps reshuffling across a
+page boundary. It does **not** stop an index that mutates mid-walk from omitting
+a record entirely, and no client-side check can detect that — the response is
+well-formed either way. Deduplication handles repeats, which are visible;
+nothing handles drops, which are not.
+
+So treat one pass as a sample, not a proof: re-ingest with overlapping windows.
+Bronze is content-addressed and append-only, so re-ingesting is idempotent.
+Detectable truncation is not treated as a sample: an unexpectedly empty page or
+an exhausted `max_pages` bound raises and commits no partial bronze records.
+
+#### data.gov.in: contextual evidence only
+
+The data.gov.in profile is deliberately contextual only:
+
+```bash
+export PRAMAANX_DATA_GOV_IN_API_KEY='<user-issued-key>'
+uv run pramaanx ingest --source data_gov_in \
+  --config configs/sources/data_gov_in_extremism_context.yaml \
+  --from 2026-02-13T00:00:00Z --until 2026-02-15T00:00:00Z --dry-run
+```
+
+Remove `--dry-run` only after reviewing the resource terms and running the
+opt-in live contract test described in `docs/M1C_ACCEPTANCE.md`. The table is an
+annual retrospective aggregate published in 2026 about 2023. It can support
+context/base rates; it is not pre-incident evidence and is never back-dated to
+2023.
+
+#### ACLED caller identity and availability
+
+ACLED programmatic access uses OAuth, not the retired email/API-key query
+parameters. Create a myACLED account, accept the applicable terms, then inject
+either a short-lived bearer token or the username/password used for ACLED's
+documented OAuth password grant:
+
+```bash
+export PRAMAANX_ACLED_ACCESS_TOKEN='short-lived-token'
+uv run pramaanx ingest --source acled \
+  --config configs/sources/acled_india.yaml \
+  --from 2026-01-01T00:00:00Z --until 2026-02-01T00:00:00Z
+```
+
+The connector uses cursor pagination, requires stable totals and query
+restrictions, and writes nothing if a traversal is incomplete. ACLED's
+``timestamp`` controls availability; ``event_date`` remains the claimed event
+date. Because ACLED is a living dataset, a revised row receives the later
+timestamp. Deep-history cutoffs are therefore conservative unless an external
+versioned archive is available. Raw ACLED data are marked non-redistributable
+by default; review the EULA, Content Usage Terms, and Attribution Policy for the
+actual deployment.
 
 Behind a proxy, the standard environment is honoured (`HTTPS_PROXY`,
 `ALL_PROXY`, `NO_PROXY`, `SSL_CERT_FILE`), and every part of it is overridable
-per source — `proxy`, `trust_env`, `ca_bundle`, `verify` — including SOCKS. A
-policy denial (403/407) is reported immediately, naming the blocked host,
-instead of being retried. To check egress end to end:
+per source — `proxy`, `trust_env`, `ca_bundle`, `verify` — including SOCKS.
+Egress failures are classified rather than lumped together: an HTTP 407, or a
+CONNECT the proxy refuses, is a **policy denial** reported immediately and
+naming the blocked host; an HTTP 401/403 *from the destination* is a
+**permanent origin refusal**, because a request that was answered is not a
+request that was blocked. Neither is retried. HTTP 429 is retried honouring the
+server's own `Retry-After`, bounded by `max_retry_after_seconds` so a header of
+86400 cannot park an ingest for a day. To check egress end to end:
 
 ```bash
 PRAMAANX_LIVE_GDELT=1 uv run pytest tests/network -m network -v
+PRAMAANX_LIVE_RELIEFWEB=1 PRAMAANX_RELIEFWEB_APPNAME=your-app \
+  uv run pytest tests/network -m network -v
 ```
 
 That test is opt-in and never runs in ordinary CI: a green build must mean the
@@ -229,11 +351,29 @@ chose.
 
 ## Next milestone
 
-Phase 1 — the point-in-time evidence ledger against real sources: ACLED,
-ReliefWeb/HDX and data.gov.in connectors under their access terms, plus a
-frozen English news corpus for leak-proof backtesting. Its gate is the same as
-M0's: future-document injection must change no pre-cutoff snapshot, and every
-record must carry provenance and a hash.
+All four connectors are now integrated on one shared ingestion surface, so a
+change to retry, redaction or cutoff handling applies to every source at once
+rather than being fixed four times. Each connector keeps its own acceptance
+document, and those documents do not currently agree on verification status:
+
+| Source | Docs-verified | Fixture-tested | Live-verified |
+| --- | --- | --- | --- |
+| GDELT | yes | yes | opt-in, reachable |
+| data.gov.in | yes (2026-08-26) | yes | **yes** (2026-08-27) |
+| ReliefWeb | yes (2026-08-26) | yes | **no** |
+| ACLED | yes | yes | **no** |
+
+None of these connectors improves forecasting accuracy, and none claims to.
+They add trustworthy bronze evidence sources. ReliefWeb is response-driven
+humanitarian reporting, data.gov.in is retrospective administrative aggregate,
+and ACLED is hand-coded after the fact — so by construction none of them alone
+supplies the pre-event signal coverage a 26/11, Pahalgam or Kandahar
+retrospective would need.
+
+Still outstanding in Phase 1: a legally frozen English news corpus for
+leak-proof backtesting. The gate stays the same as M0's: future-document
+injection must change no pre-cutoff snapshot, and every admitted record must
+carry provenance and a hash.
 
 ## Licence
 

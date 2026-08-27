@@ -199,14 +199,22 @@ class EvidenceLedger:
                     plan=plan,
                 )
 
+            # Complete the acquisition before writing anything. Connectors are
+            # allowed to discover a contract or pagination failure after one or
+            # more pages; converting items as they stream would leave orphaned
+            # payloads and a source record behind even though the ingest failed.
+            # This was already an in-memory ingest (observations were buffered),
+            # so buffering RawItems first does not change its scaling class.
+            items = list(conn.guarded_fetch(window))
             source = conn.source_record
-            self.record_source(source)
-            observations: list[Observation] = []
-            payload_bytes = 0
-            for item in conn.guarded_fetch(window):
-                payload_bytes += len(item.payload)
-                observations.append(self.observation_from_item(item, source))
+            observations = [self.observation_from_item(item, source) for item in items]
+            payload_bytes = sum(len(item.payload) for item in items)
 
+            # Source provenance becomes durable only after the connector has
+            # completed successfully. This matters for connectors that buffer a
+            # pagination traversal: a later-page contract failure must leave no
+            # misleading record suggesting the source was ingested.
+            self.record_source(source)
             result = self.observations.append(observations)
             log.info(
                 "ingest.complete",
