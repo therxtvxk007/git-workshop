@@ -45,7 +45,12 @@ API_CONTRACT: Final[dict[str, Any]] = {
     "resource_api": "https://api.data.gov.in/resource/{resource_id}",
     "auth": {"location": "query", "parameter": API_KEY_PARAMETER},
     "format": "json",
-    "pagination": {"kind": "offset_limit", "fields": ["offset", "limit"]},
+    "pagination": {
+        "kind": "offset_limit",
+        "fields": ["offset", "limit"],
+        "response_echo_encoding": "integer_or_canonical_decimal_string",
+        "live_observation": {"limit": "canonical_decimal_string", "offset": "pending"},
+    },
     "required_envelope_fields": ["status", "total", "count", "limit", "offset", "records"],
     "success_status": "ok",
     "instant_mapping": {
@@ -77,6 +82,28 @@ def _strict_nonnegative_int(value: Any, *, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise DataGovInContractError(f"{field} must be a non-negative integer, not {value!r}")
     return value
+
+
+def _pagination_echo_int(value: Any, *, field: str) -> int:
+    """Normalize only the two request-echo fields without weakening counts."""
+    if isinstance(value, bool):
+        raise DataGovInContractError(
+            f"{field} must be a non-negative integer or canonical decimal string, not {value!r}"
+        )
+    if isinstance(value, int):
+        if value >= 0:
+            return value
+    elif (
+        isinstance(value, str)
+        and 1 <= len(value) <= 20
+        and value.isascii()
+        and value.isdecimal()
+        and (value == "0" or not value.startswith("0"))
+    ):
+        return int(value)
+    raise DataGovInContractError(
+        f"{field} must be a non-negative integer or canonical decimal string, not {value!r}"
+    )
 
 
 def _parse_claimed_instant(value: Any, *, field: str) -> datetime:
@@ -135,8 +162,11 @@ def parse_envelope(
 
     total = _strict_nonnegative_int(envelope["total"], field="total")
     count = _strict_nonnegative_int(envelope["count"], field="count")
-    limit = _strict_nonnegative_int(envelope["limit"], field="limit")
-    offset = _strict_nonnegative_int(envelope["offset"], field="offset")
+    # The live API represents pagination request echoes as JSON strings on at
+    # least some resources. Normalize that semantically exact representation,
+    # while keeping authoritative total/count fields strict JSON integers.
+    limit = _pagination_echo_int(envelope["limit"], field="limit")
+    offset = _pagination_echo_int(envelope["offset"], field="offset")
     records = envelope["records"]
     if not isinstance(records, list):
         raise DataGovInContractError("records must be a list")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 
 import pytest
@@ -11,6 +12,7 @@ from pramaanx.ingest.connectors.data_gov_in import (
     API_KEY_ENV,
     SECRET_QUERY_PARAMETERS,
     DataGovInConnector,
+    DataGovInContractError,
     parse_envelope,
 )
 from pramaanx.ingest.http import HttpClient, ProxyPolicyError, sanitize_error_text
@@ -18,6 +20,21 @@ from pramaanx.ingest.http import HttpClient, ProxyPolicyError, sanitize_error_te
 pytestmark = pytest.mark.network
 
 RESOURCE_ID = "869c674d-59a4-4de3-8b09-f2b709983f51"
+ENVELOPE_FIELDS = ("status", "total", "count", "limit", "offset", "records")
+
+
+def _safe_type_summary(payload: bytes) -> str:
+    """Describe contract shape without printing records, URLs, or credentials."""
+    try:
+        envelope = json.loads(payload)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return "top_level=invalid_json"
+    if not isinstance(envelope, dict):
+        return f"top_level={type(envelope).__name__}"
+    return ", ".join(
+        f"{field}={type(envelope[field]).__name__}" if field in envelope else f"{field}=<missing>"
+        for field in ENVELOPE_FIELDS
+    )
 
 
 def test_selected_resource_live_contract() -> None:
@@ -59,7 +76,18 @@ def test_selected_resource_live_contract() -> None:
     if failure_message is not None:  # pragma: no cover - network dependent
         pytest.fail(f"live data.gov.in request failed: {failure_message}", pytrace=False)
 
-    records, total = parse_envelope(
-        payload, expected_offset=0, expected_limit=10, expected_total=None
-    )
+    parsed: tuple[list[dict[str, object]], int] | None = None
+    contract_failure: str | None = None
+    try:
+        parsed = parse_envelope(
+            payload, expected_offset=0, expected_limit=10, expected_total=None
+        )
+    except DataGovInContractError as error:  # pragma: no cover - network dependent
+        contract_failure = f"{error}; safe envelope types: {_safe_type_summary(payload)}"
+
+    if contract_failure is not None:  # pragma: no cover - network dependent
+        pytest.fail(f"live data.gov.in contract mismatch: {contract_failure}", pytrace=False)
+
+    assert parsed is not None
+    records, total = parsed
     assert total >= len(records)

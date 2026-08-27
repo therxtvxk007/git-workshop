@@ -162,9 +162,34 @@ class TestEnvelopeContract:
                 expected_total=None,
             )
 
-    @pytest.mark.parametrize("field", ["total", "count", "limit", "offset"])
+    @pytest.mark.parametrize("field", ["total", "count"])
     @pytest.mark.parametrize("bad", [True, -1, "1", 1.5, None])
-    def test_pagination_numbers_are_strict(self, field: str, bad: object) -> None:
+    def test_authoritative_counts_are_strict_integers(self, field: str, bad: object) -> None:
+        raw = json.loads(envelope([], total=0, offset=0))
+        raw[field] = bad
+        with pytest.raises(DataGovInContractError, match=field):
+            parse_envelope(
+                json.dumps(raw).encode(),
+                expected_offset=0,
+                expected_limit=2,
+                expected_total=None,
+            )
+
+    def test_live_observed_string_pagination_echoes_are_normalized(self) -> None:
+        records, total = parse_envelope(
+            envelope([{"row": 1}], total=1, offset="0", limit="2"),
+            expected_offset=0,
+            expected_limit=2,
+            expected_total=None,
+        )
+        assert records == [{"row": 1}]
+        assert total == 1
+
+    @pytest.mark.parametrize("field", ["limit", "offset"])
+    @pytest.mark.parametrize(
+        "bad", [True, -1, 1.5, None, "", " 1", "+1", "01", "1.0", "1e0", "１２"]
+    )
+    def test_pagination_echoes_reject_ambiguous_values(self, field: str, bad: object) -> None:
         raw = json.loads(envelope([], total=0, offset=0))
         raw[field] = bad
         with pytest.raises(DataGovInContractError, match=field):

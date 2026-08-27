@@ -11,7 +11,7 @@ validated against a genuine live API response.
 | --- | --- | --- | --- |
 | `verified_against_current_official_docs` | `true` | 2026-08-26 UTC | Current resource API panel, portal help, terms and Government Open Data License pages were inspected. |
 | `fixture_and_integration_tested` | `true` | 2026-08-26 UTC | Hand-written synthetic pages exercise strict parsing, pagination, ledger writes, cutoff exclusion, deterministic hashing and failure containment. |
-| `genuinely_live_api_verified` | `false` | 2026-08-27 UTC | A credentialed Windows probe received HTTP 403, so no response envelope was available and the API contract was not verified. The first failure traceback exposed the raw query credential through pytest's rendered `HttpClient.get(url=...)` argument even though the exception message was redacted. That credential must be revoked. The HTTP frame is now hidden from pytest, the live probe converts request errors into sanitized traceback-free failures, and a subprocess regression test asserts the complete rendered failure excludes a sentinel key. A new credential must not be tried until this correction is installed. |
+| `genuinely_live_api_verified` | `false` | 2026-08-27 UTC | A credentialed Windows probe now reached the origin and received a JSON success envelope without exposing the replacement key. Parsing established that all required fields exist, `status` is `ok`, and `total`/`count` are JSON integers; it then found the live `limit` echo encoded as the canonical decimal string `"10"`. The parser now normalizes canonical decimal strings only for `limit`/`offset`, while authoritative counts remain strict integers. A complete live pass is still required before this flag changes. |
 
 These booleans are independent. A green offline suite or documentation check
 does not change `genuinely_live_api_verified`.
@@ -57,7 +57,7 @@ timestamp.
 | Format | Required `format=json`; production fetch accepts `application/json`. |
 | Pagination | `offset` + `limit`; response must echo both and prove completion with stable `total`. |
 | Required envelope | `status`, `total`, `count`, `limit`, `offset`, `records`; status must be `ok`. |
-| Strict numeric policy | Non-negative integers only; booleans, numeric strings, floats and null fail. |
+| Strict numeric policy | Authoritative `total`/`count` must be non-negative JSON integers. Request echoes `limit`/`offset` accept either non-negative JSON integers or canonical ASCII decimal strings (`0` or a non-zero digit followed by digits), then must exactly match the request. Booleans, signs, whitespace, leading zeros, floats, exponents, null and Unicode digits fail. |
 | Row identity | Configured scalar stable fields where a resource has them; otherwise canonical resource-ID + row-content hash. Any duplicate fails. |
 | Ordering | Complete traversal is buffered and sorted by stable row ID before emission. |
 | Safety bounds | Page size 1–1000, pages 1–10000 and items 1–1,000,000 are project safety bounds, not claims about undocumented portal maxima. The shipped profile uses page size 10 because the portal labels its public sample key as limited to 10 records. |
@@ -65,9 +65,12 @@ timestamp.
 The inspected official panel documented JSON/XML/CSV, offset/limit, and HTTP
 200/400/403, but did not publish a general user-key quota, rate limit,
 transactional snapshot token, durable row ID, or universal maximum page size.
-The connector does not invent those properties. Unknown live response types
-will fail the opt-in contract test and must be reconciled with current official
-documentation before the live flag changes.
+The connector does not invent those properties. The first successful origin
+response showed that `limit` is a JSON string, a representation the official
+panel did not specify. That observation is recorded without treating a partial
+parse as complete verification. Unknown live response types fail the opt-in
+contract test with field names and type names only—never record values, URLs or
+credentials—and must be reconciled before the live flag changes.
 
 Offset pagination over a mutating resource is not transactionally complete.
 Stable totals and duplicate detection catch several failure modes, but cannot
