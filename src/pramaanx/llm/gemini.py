@@ -1,13 +1,25 @@
 """Gemini REST provider with strict schema and evidence validation."""
 from __future__ import annotations
 import os
-from typing import TypeVar
+from collections.abc import Mapping, Sequence
+from typing import Any, TypeVar
 import httpx
 from pydantic import BaseModel, ValidationError
 T = TypeVar("T", bound=BaseModel)
 
 class GeminiValidationError(ValueError):
     pass
+
+def _walk(value: Any) -> list[tuple[str, Any]]:
+    found: list[tuple[str, Any]] = []
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            found.append((str(key), item))
+            found.extend(_walk(item))
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        for item in value:
+            found.extend(_walk(item))
+    return found
 
 class GeminiProvider:
     name = "gemini"
@@ -33,11 +45,13 @@ class GeminiProvider:
             parsed = output_schema.model_validate_json(text)
         except (KeyError, IndexError, ValidationError) as exc:
             raise GeminiValidationError("Gemini response failed strict schema validation") from exc
-        data = parsed.model_dump()
-        for ref in data.get("evidence_refs", []):
-            if ref not in allowed_evidence:
-                raise GeminiValidationError(f"unknown evidence reference: {ref}")
-        for quote in data.get("quoted_spans", []):
-            if not any(quote in body for body in allowed_evidence.values()):
-                raise GeminiValidationError("quoted span is not present in supplied evidence")
+        for key, value in _walk(parsed.model_dump()):
+            if key == "evidence_refs":
+                for ref in value:
+                    if ref not in allowed_evidence:
+                        raise GeminiValidationError(f"unknown evidence reference: {ref}")
+            elif key == "quoted_spans":
+                for quote in value:
+                    if not any(quote in body for body in allowed_evidence.values()):
+                        raise GeminiValidationError("quoted span is not present in supplied evidence")
         return parsed
