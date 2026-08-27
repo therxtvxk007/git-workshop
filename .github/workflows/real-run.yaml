@@ -1,0 +1,149 @@
+name: real evidence run
+
+# The end-to-end pipeline on REAL evidence, not the synthetic world.
+#
+# It lives in CI rather than in a developer session because GDELT is the one
+# real source that needs no credential, and many sandboxed environments (this
+# project's own agent sessions included) cannot reach data.gdeltproject.org at
+# all. Running it here means "it works on real data" is a claim anyone can
+# re-check from a URL, rather than something asserted from a local terminal.
+#
+# GDELT publishes a file every 15 minutes and keeps it for a limited window, so
+# the default window is recent rather than fixed. A run over a stale window
+# legitimately finds nothing, which is a source outage, not a failure.
+
+on:
+  workflow_dispatch:
+    inputs:
+      hours_back:
+        description: "How many hours of GDELT to ingest"
+        type: string
+        default: "6"
+      lag_hours:
+        description: "Stop this many hours before now (GDELT publishes with lag)"
+        type: string
+        default: "3"
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: ingest → snapshot → audit → forecast
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --frozen --extra dev
+
+      - name: Choose the window
+        id: window
+        run: |
+          set -euo pipefail
+          end=$(date -u -d "${{ inputs.lag_hours }} hours ago" +%Y-%m-%dT%H:00:00Z)
+          start=$(date -u -d "$(( ${{ inputs.hours_back }} + ${{ inputs.lag_hours }} )) hours ago" +%Y-%m-%dT%H:00:00Z)
+          # The cutoff is the window end: forecasts may only see evidence that
+          # had become available by then, which is the whole point of the guard.
+          echo "start=$start" >> "$GITHUB_OUTPUT"
+          echo "end=$end"     >> "$GITHUB_OUTPUT"
+          echo "Window: $start .. $end"
+
+      - name: Write the run config
+        run: |
+          set -euo pipefail
+          mkdir -p runs
+          cat > real-run.yaml <<'CFG'
+          include: configs/base.yaml
+          storage:
+            data_root: real-data
+            run_root: real-runs
+          sources:
+            gdelt:
+              country_filter: ["IN"]
+              event_root_codes: ["10", "13", "14", "17", "18"]
+              max_rows_per_file: 500
+          CFG
+
+      - name: Ingest real GDELT evidence
+        env:
+          PRAMAANX_LIVE_GDELT: "1"
+        run: |
+          set -euo pipefail
+          uv run pramaanx ingest --source gdelt \
+            --from '${{ steps.window.outputs.start }}' \
+            --until '${{ steps.window.outputs.end }}' \
+            --config real-run.yaml --output real-runs/ingest.json
+          python - <<'PY'
+          import json, pathlib, sys
+          m = json.loads(pathlib.Path("real-runs/ingest.json").read_text())
+          print(json.dumps(m, indent=2)[:2000])
+          # A source that returned nothing is an outage, and an outage must not
+          # be reported as a successful run over real evidence.
+          if m["written"] == 0:
+              sys.exit("GDELT returned no rows for this window; nothing to forecast")
+          PY
+
+      - name: Verify the bronze it just wrote
+        run: uv run pramaanx replay verify --config real-run.yaml --output real-runs/replay.json
+
+      - name: Build a cutoff-safe snapshot
+        id: snap
+        run: |
+          set -euo pipefail
+          uv run pramaanx snapshot build --cutoff '${{ steps.window.outputs.end }}' \
+            --config real-run.yaml --output real-runs/snapshot.json
+          sid=$(python -c "import json;print(json.load(open('real-runs/snapshot.json'))['snapshot_id'])")
+          echo "id=$sid" >> "$GITHUB_OUTPUT"
+          echo "Snapshot: $sid"
+
+      - name: Leakage audit on real evidence
+        run: |
+          uv run pramaanx audit leakage --cutoff '${{ steps.window.outputs.end }}' \
+            --config real-run.yaml --output real-runs/audit.json
+
+      - name: Extract mentions
+        run: |
+          uv run pramaanx extract --snapshot '${{ steps.snap.outputs.id }}' \
+            --config real-run.yaml --output real-runs/extract.json
+
+      - name: Generate candidates
+        run: |
+          uv run pramaanx candidates generate --snapshot '${{ steps.snap.outputs.id }}' \
+            --config real-run.yaml --output real-runs/candidates.json
+
+      - name: Summarise
+        if: always()
+        run: |
+          set -euo pipefail
+          {
+            echo "## Real evidence run"
+            echo
+            echo "Window: \`${{ steps.window.outputs.start }}\` → \`${{ steps.window.outputs.end }}\`"
+            echo
+            echo "| Stage | Result |"
+            echo "| --- | --- |"
+            for f in ingest replay snapshot audit extract candidates; do
+              if [ -f "real-runs/$f.json" ]; then
+                echo "| $f | \`$(python -c "
+          import json,sys
+          d=json.load(open('real-runs/$f.json'))
+          keys=[k for k in ('written','observations','defects','observation_count','snapshot_id','findings','mentions','count','proposals','candidates') if k in d]
+          print(', '.join(f'{k}={d[k] if not isinstance(d[k],list) else len(d[k])}' for k in keys) or d.get('kind','ok'))
+          ")\` |"
+              else
+                echo "| $f | not reached |"
+              fi
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-evidence-run
+          path: real-runs/
+          if-no-files-found: warn

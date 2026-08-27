@@ -1,0 +1,374 @@
+# PRAMAAN-X checklist status — what is done, what remains, split two ways
+
+Audit date: **2026-08-27**. A Track A progress log follows the audit; where the
+two disagree, the log is later. Evidence: the GitHub repository state of
+`therxtvxk007/git-workshop` on that date — branch list, pull requests, tags,
+Actions runs 1–25, and the trees of `main`,
+`claude/forecasting-roadmap-completion-pq1tey` and
+`claude/pramaan-x-phase2-downstream`.
+
+Every status below is sourced from something checkable, not from a branch's own
+claims about itself. Where a branch asserts a capability that has never been
+executed, it is recorded as **written, unverified** — which is not *done*.
+
+---
+
+## 1. Repository state, as observed
+
+| Fact | Observed value |
+| --- | --- |
+| `main` | `a98fa0d` — PR #1 only. M0 and nothing else. *(superseded: see the progress log.)* |
+| Tags in the repository | **none** |
+| Branch protection on `main` | **off** (`protected: false`) |
+| Open PRs | #2 (Codex plugin), unrelated to PRAMAAN-X |
+| Phase 1 integration branch | `claude/forecasting-roadmap-completion-pq1tey` @ `37ecf03`, 18 commits ahead, **CI green** (run 24) |
+| Phase 1 mergeability | **fast-forward onto `main`**, no conflicts |
+| Phase 2 branch | `claude/pramaan-x-phase2-downstream` @ `bc64856`, 2 commits, **CI red** (run 25) |
+| Phase 2 file overlap with Phase 1 | **zero** — the two diffs touch disjoint file sets |
+| `live-gdelt.yaml` workflow runs | **0** — the live smoke has never been executed |
+
+### The Phase 2 CI failure is smaller than the checklist assumes
+
+Run 25 (`bc64856`) fails on the **first** step, `ruff check`: 10 lint errors, 3
+auto-fixable, the rest import-ordering and one unused unpacked variable
+(`RUF059` in `tests/unit/test_scenarios.py:73`). Format, mypy and the test suite
+were **skipped**, not failed — so the branch's own admission that no test in it
+has ever run still stands, on both Python 3.13 and 3.14.
+
+Two corrections to the checklist's Stage 3.2 assumptions:
+
+- **The M0 acceptance gate already passes on Phase 2** (run 25, job "M0
+  acceptance gate": leakage + reproducibility gates and `make demo` both green).
+  There is no M0 failure left to diagnose; only *keeping* it green matters.
+- Ruff is the whole visible blocker. What mypy, the six unit modules and the
+  coverage floor do once lint clears is **unknown**, not known-bad.
+
+---
+
+## 2. Stage scoreboard
+
+`DONE` = observed working. `WRITTEN` = code exists, never executed or never
+wired in. `PARTIAL` = some items closed, most open. `OPEN` = nothing in the repo.
+
+| Stage | Status | One-line reason |
+| --- | --- | --- |
+| 1.1 Protect M0 baseline | **PARTIAL** | Acceptance doc + gate exist; **no tag, no branch protection, no review rule** |
+| 1.2 Merge Phase 1 | **OPEN** | Branch is green and fast-forwardable; **PR never opened** |
+| 2.1 Live source verification | **PARTIAL** | data.gov.in verified 2026-08-27; ReliefWeb and ACLED **not**; GDELT smoke never run |
+| 2.2 Missing evidence sources | **OPEN** | No news corpus of any kind in the repository |
+| 2.3 Source replay system | **PARTIAL** | Bronze ledger + content-hashed snapshots exist; no replay command, no replay tests |
+| 3.1 Rebase Phase 2 | **OPEN** | Phase 2 sits on `main`, not on an integrated Phase 1 |
+| 3.2 Repair Phase 2 quality | **OPEN** | 10 ruff errors gate everything behind them |
+| 3.3 `pipeline.py` integration | **OPEN** | Phase 2 does not touch `pipeline.py` at all |
+| 3.4 CLI + config surfaces | **OPEN** | CLI has 10 commands; `graph`, `calibrate`, `adjudicate`, `scenario` are not among them |
+| 4.1 Connect prose sources | **WRITTEN** | `register_prose_source()` exists; ReliefWeb and news are not registered through it |
+| 4.2 Extraction gold set | **WRITTEN** | `gold.py` types and scoring exist; **no annotated data, no guidelines, no annotators** |
+| 4.3 Learned extraction stages | **OPEN** | Deliberately absent — span tagger, type classifier, LLM verifier all unshipped |
+| 5.1 Entity resolution | **WRITTEN** | Blocking + scored merge + stemmer; **no gazetteer, no transliteration, no human validation** |
+| 5.2 Event deduplication | **WRITTEN** | Clustering + independence groups; no blinded labels, no error reports |
+| 6 Evidence graph + retrieval | **WRITTEN** | `as_of()` refuses post-cutoff queries, contradictions seeded first; recall never measured |
+| 7 Generator portfolio | **PARTIAL** | G0 on `main`; G1 and G6 written in Phase 2; **G2, G3, G4, G5, G7 and the union OPEN** |
+| 8 Candidate adjudication | **OPEN** | No belief state, no adjudication loop, anywhere in any branch |
+| 9 Trustworthy outcomes | **PARTIAL** | `PENDING` semantics + matcher on `main`; no ontology, no human adjudication interface |
+| 10 Calibration | **WRITTEN** | Platt, isotonic, beta, identity implemented; never fitted, never compared, never selected |
+| 11 Risk-controlled alerting | **WRITTEN** | `RecallFirstController` + conformal bound implemented; budget undecided, unintegrated |
+| 12 Hypothetical input | **WRITTEN** | Four interventions + `hyp_` namespace via `stable_id`; no CLI, no API, no contamination tests |
+| 13 Preregister benchmark | **PARTIAL** | `research/preregistration.md` is an explicit **draft**; nothing frozen, no hash published |
+| 14 Reproduce baselines | **OPEN** | Registry holds two synthetic demo entries and supports no real claim |
+| 15 Retrospective evaluation | **OPEN** | Leakage/injection tests exist for M0 only; no real folds, no real outcomes |
+| 16 Prospective evaluation | **OPEN** | Not started; also wall-clock bound once it is |
+| 17 API + dashboard | **OPEN** | No `api/`, no server, no interface |
+| 18 Production engineering | **OPEN** | No container, no scheduler, no migrations, no monitoring, no SBOM |
+| 19 Safety / legal / governance | **PARTIAL** | Protected-attribute drop at ingestion + claim discipline done; licences, red-team, audit logs, external review open |
+| 20 Release gates | **OPEN** | 1 of 19 gates is even close (Phase 1 mergeable, not merged) |
+
+**Roughly 25 of ~330 checklist items are closed.** Two of the twenty stages
+have no work at all in any branch: **Stage 8 (adjudication)** and **Stage 17
+(API/dashboard)**.
+
+---
+
+## 3. The split
+
+The two tracks below are cut so that **two agents can work simultaneously
+without touching the same files**. This is not a difficulty split or a
+sequential split — it follows the seam the repository already has: Phase 1 was
+upstream (connectors, ingestion, HTTP, CLI plumbing), Phase 2 was downstream
+(extraction, entities, graph, generators, calibration, scenarios), and their
+diffs against `main` share **zero files**.
+
+### Gate zero — before either track starts
+
+One task, owned by Track A, blocking both:
+
+1. Open the PR from `claude/forecasting-roadmap-completion-pq1tey` into `main`,
+   review the 18 commits as one change, merge it (fast-forward is available).
+2. Tag `M0` at `a98fa0d` and `phase1-integrated` at the merge commit.
+3. Turn on branch protection for `main`: require both CI jobs on 3.13 and 3.14,
+   require one review for anything under `src/pramaanx/{generators,calibration,evaluation,timeguard}`.
+
+Both tracks then branch from `phase1-integrated`. Track B's first act is the
+Phase 2 rebase, which is clean by construction — the file sets are disjoint.
+
+---
+
+### Track A — Evidence and Platform
+
+*Owns:* `src/pramaanx/ingest/`, `storage.py`, `ledger/`, `.github/`, source
+configs, `docs/` for sources, and everything under a future `api/` and `ops/`.
+
+*Question it answers:* **can this system get trustworthy evidence in, and can a
+person safely see what comes out?**
+
+| Stage | Work |
+| --- | --- |
+| **1.1 / 1.2** | Gate zero above: merge, tag, protect. |
+| **2.1** | Obtain an approved ReliefWeb `appname` and run the live contract test to a pass. Create the myACLED account under the EULA, run the credentialed live test, confirm what its timestamps actually mean. Re-run the GDELT and data.gov.in smokes against merged code — GDELT's has literally never run. Pin resource IDs and schema versions; add a scheduled freshness/drift workflow; write source-contract versions into every ingestion manifest. |
+| **2.2** | Acquire and freeze a legally usable English news corpus, Indian regional sources included. Store publication / retrieval / revision times separately, preserve original bytes or permitted hashes, add syndication and source-independence metadata, add source-health and missingness statistics. This is the single largest unstarted dependency in the whole project — Stages 4, 5, 6, 14 and 15 are all downstream of it. |
+| **2.3** | Deterministic replay from bronze, pinned to source/config/code hash, byte-identical output. Tests for deleted, revised, delayed, duplicated and malformed records, and for outages and partial responses. Fail closed on incomplete acquisition. |
+| **9** | Outcome ontology, outcome registry from delayed reports, reporting-delay distributions, right censoring, never-reported events. Build the **human adjudication interface** and dual-adjudication workflow, version every correction, keep outcomes unreadable before forecast commitment. |
+| **17** | The whole API and dashboard: authenticated ingestion, snapshot, forecast, scenario, evidence/provenance, outcome-adjudication and health endpoints; rate limits; versions on every response. Dashboard shows probability with uncertainty, supporting *and* contradicting evidence, source independence, cutoff, calibration/policy versions, outages — and separates real from hypothetical runs. No maps implying tactical certainty. |
+| **18** | Containerization, production store, migrations, scheduler, retry/dead-letter queues, source-health and drift monitoring, structured logs, secrets, encryption, backups and restore tests, DR, vulnerability scanning, SBOM, pinned deps, staged deploy and rollback, load testing, cost documentation. |
+| **19** | Licence confirmation per source with redistribution restrictions recorded *programmatically*, human authorization before any alert leaves the research environment, audit logs on every forecast viewed or exported, permitted/prohibited use policy, red-team testing, incident response, retraction mechanism, model/data/benchmark cards, external legal review. |
+
+---
+
+### Track B — Inference and Evaluation
+
+*Owns:* `src/pramaanx/{extraction,entities,graph,features,generators,calibration,scenarios,evaluation}/`,
+`pipeline.py`, `research/`.
+
+*Question it answers:* **does this system actually forecast better than the
+floor, and are its numbers believable?**
+
+| Stage | Work |
+| --- | --- |
+| **3.1 / 3.2** | Rebase Phase 2 onto `phase1-integrated` (clean — disjoint files). Fix the 10 ruff errors, then run format, mypy and the six unit modules plus the leakage module **for the first time** and fix what they find. Restore the coverage floor, keep the M0 gate green (it already is), add Phase 2 CI jobs. |
+| **3.3** | The `pipeline.py` patch: injectable `Calibrator` and `RiskController` on `run_cutoff()`, defaulting to `IdentityCalibrator` / `FixedThresholdController`, replacing direct probability and threshold assignment, recording both versions in every forecast — and **proving byte-identical M0 forecasts** with the defaults. Keep the fixed-threshold path as a tested control arm. |
+| **3.4** | Strict config blocks and the four missing CLI commands: `graph`, `calibrate`, `adjudicate`, `scenario`. `--dry-run` on every write command, a content-hashed manifest from every command, unknown options rejected. |
+| **4** | Register ReliefWeb and news prose through `register_prose_source()` once Track A lands the corpus. Then the gold set — guidelines, taxonomy, two blinded annotators, separate adjudication, versioned, hashed, frozen, with an untouched final test set. Then the learned stages: span tagger, event-type classifier, constrained LLM verifier that must cite spans and may not invent fields. Measure field-level P/R/F1 by source and rarity, measure extraction-confidence calibration, freeze the cascade before final testing. |
+| **5** | Versioned Indian gazetteer with legal provenance, renames and hierarchy changes, organization aliases over time, transliteration for major Indian languages. Validate merges against human labels; report false-merge and false-split **separately**. Blinded validation of event clustering; freeze thresholds before final evaluation. |
+| **6** | Wire the graph in: cutoff-safe snapshots, future-edge injection tests, later-corrections tests, source-copy independence tests. Measure retrieval recall against human-labelled evidence and add the oracle-retrieval diagnostic, so retrieval failure can be told apart from reasoning failure. |
+| **7** | Refit G0 pre-cutoff only. Validate and ablate G1's three rules. Then build **G2** (temporal KG model, architecture preregistered), **G3** (analogy, with retrospectives kept out of earlier searches), **G4** (change-point, reporting volume modelled separately from real change), **G5** (bounded agent, no open web during backtests, every tool call logged), **G7** (open-set novelty with abstention). Finish **G6** by wiring the existing interventions in. Then the union: dedupe across branches, keep per-generator provenance, share one budget, measure marginal recall, delete generators that only add burden, freeze before test. |
+| **8** | Entirely new: versioned belief state, supporting/contradicting/neutral packs, independent corroboration distinguished from repetition, explicit unresolved states, bounded loop, logged updates, seeded multi-trial reasoning aggregated in logit space with disagreement measured, abstention on thin evidence, structured fields protected from reasoning prose. Evaluate against oracle candidates and oracle evidence, and against simpler non-LLM adjudicators. |
+| **10 / 11** | Strictly earlier calibration folds, never the test period. Fit and compare identity/Platt/isotonic/beta on Brier and log loss, reliability by bin, calibration by event type / region / horizon, drift over time, minimum sample sizes enforced, choice made **before** final testing, raw scores preserved. Then the alert policy: budget and miss-vs-false-alarm cost decided (human input), thresholds fit on calibration data only, `RecallFirstController` integrated, exchangeability limits stated, alerts/region-day, recall at budget, lead time; abstain/watch/elevated/high states; human review before escalation; no automated action. |
+| **12** | Scenario input schema and validation, hypothetical storage separated from real bronze, entity resolution on hypothetical objects, interventions applied to *copied* graph state, generation + adjudication + calibration re-run under intervention, baseline-vs-scenario comparison with the causing assumptions named, adversarial contamination tests, one-command CLI, and the API endpoint (schema agreed with Track A). |
+| **13** | Freeze and publish: primary metric, alert budget, fold boundaries, geographies, event types, lead-time windows, matcher tolerances, baseline versions, evidence budgets, comparison directions, failure definition, subgroup reporting. Publish the preregistration hash **before** looking at final-test results. |
+| **14 / 15** | Reproduce base-rate, logistic and tree baselines plus relevant published systems under equal cutoff and equal budget. Run the retrospective benchmark: multiple temporal folds, frozen snapshots, forecasts before outcomes, negative controls (label shuffling, source removal, future-document injection), oracle diagnostics, generator and calibration ablations. Publish failures too; get an independent clean-clone reproduction. |
+| **16** | The prospective trial: pick a start date, freeze code/config/sources, forecast on a schedule, hash and timestamp before outcomes, no retroactive edits, wait the full reporting-delay window, report everything including abstentions and outages, compare with the retrospective estimate. |
+
+---
+
+## 4. The shared seam
+
+Three files both tracks want. The rule that keeps them apart:
+
+| File | Track A owns | Track B owns |
+| --- | --- | --- |
+| `src/pramaanx/config.py` | source blocks, HTTP/proxy, storage | extraction, entities, graph, features, generator, calibration, risk, scenario blocks |
+| `src/pramaanx/cli/commands/` | `ingest`, `sources`, `snapshot`, `outcomes` | `extract`, `candidates`, `graph`, `calibrate`, `adjudicate`, `scenario`, `backtest`, `report` |
+| `src/pramaanx/pipeline.py` | — | sole owner |
+
+The API surface in Stage 17 is the one genuine cross-track contract: Track B
+defines the scenario and forecast **response schemas**, Track A implements the
+transport, auth and rate limiting around them.
+
+---
+
+## 5. What neither track can close by writing code
+
+These are the real schedule risks, and every one of them needs a person:
+
+- **ReliefWeb `appname` approval** and **ACLED account + EULA acceptance** — Stage 2.1 cannot pass without them, and the current environment answers `403` at `CONNECT` for ReliefWeb regardless.
+- **News corpus licensing** — Stage 2.2 gates Stages 4, 5, 6, 14 and 15.
+- **Annotators** — two independent, blinded, for extraction, entity and outcome gold sets.
+- **The alert budget and the miss-versus-false-alarm exchange rate** — Stage 11 is a policy decision, not a fitting problem, and it must come from the people who would triage the alerts.
+- **External legal, domain and statistical review** — Stage 19.
+- **Calendar time** — Stage 16 cannot be compressed; a prospective trial is only as long as its reporting-delay window allows.
+
+## 6. Immediate next three actions
+
+1. Open and merge the Phase 1 PR; tag `M0` and `phase1-integrated`; enable branch protection.
+2. Track A: start the ReliefWeb appname and ACLED credential applications the same day — they have external latency and block Stage 2.1 indefinitely otherwise.
+3. Track B: rebase Phase 2, clear the 10 ruff errors, and run its test suite for the first time. That single step converts ~7,300 lines from *written* to *known*.
+
+
+---
+
+## 7. Track A progress log
+
+Track A is the upstream half of the split in §3: evidence, platform, governance.
+Track B is being worked separately.
+
+### 2026-08-27 — gate zero
+
+- **Phase 1 merged.** [PR #3](https://github.com/therxtvxk007/git-workshop/pull/3)
+  opened from `claude/forecasting-roadmap-completion-pq1tey` and merged.
+  `main` is now `aaec0c2`; all four evidence connectors are registered on one
+  CLI surface. Stage 1.2 closed.
+- **Tags not created.** `M0` at `a98fa0d` and `phase1-integrated` at `aaec0c2`
+  are prepared but could not be pushed: this session's git write policy answers
+  `403` to any ref outside its designated branch, and no tag-creation API is
+  available to it. The two commands are in the handover note below; they are a
+  person's to run.
+- **Branch protection not enabled.** Repository settings, not something a
+  session can reach. Stage 1.1 stays open on both counts.
+
+### 2026-08-27 — GDELT is live-verified
+
+The `live-gdelt` workflow had never run in the repository's history. Dispatched
+against merged `main`:
+[run 33086345335](https://github.com/therxtvxk007/git-workshop/actions/runs/33086345335)
+— `tests/network/test_gdelt_live.py .`, **1 passed**, one export file fetched
+from the origin, unzipped and parsed.
+
+The same run also showed the problem worth fixing: ten of eleven tests skipped
+for want of credentials, and the workflow reported success. A green tick that
+verified one source looked exactly like one that verified four.
+
+### 2026-08-27 — source contracts, and the skip-is-not-a-pass rule
+
+- `src/pramaanx/ingest/contracts.py` — one vocabulary for "has this source's
+  contract ever been answered by the real service?", replacing the three
+  dialects the Phase 1 connectors each invented. A `live_verified` contract
+  that cannot produce a date, a scope and an address for its evidence is
+  rejected at construction; a `docs_only` one that names no blocker is too.
+- The record now reaches artefacts: every ingestion manifest carries the
+  contract its evidence was acquired under, and every `SnapshotManifest`
+  carries `source_contracts`. That field is deliberately **excluded** from
+  `content_fingerprint`, so learning on Tuesday that a source works does not
+  make Monday's snapshot un-reproducible.
+- `tests/contracts/test_source_contracts.py` — 25 tests, including a drift
+  alarm: changing a contract without bumping `contract_version` fails, and so
+  does bumping the version without updating the pinned hashes.
+- `.github/workflows/live-sources.yaml` replaces `live-gdelt.yaml`. One job per
+  source; a weekly schedule that is a real GDELT probe rather than a scheduled
+  skip; and an attempted source whose suite produced no passing test **fails**.
+  Whether a source is attempted follows from whether its credential exists, so
+  adding a secret starts enforcing that source with no workflow edit.
+- `docs/SOURCE_VERIFICATION.md` — the human-readable face of the registry, and
+  the four steps that move a source to verified.
+
+The data.gov.in **resource identifier** is pinned; its **field names are not**.
+The live run recorded that the envelope contract held, not what the records
+contained, and the only data.gov.in records in this repository are openly
+synthetic fixtures. `drift_against` raises rather than compare against an empty
+pin. Capturing the schema needs one live probe.
+
+Local gate before push: ruff, format, mypy, 664 tests, coverage 92.3% against
+the 88% floor, the M0 acceptance suites, and `make demo` end to end.
+
+### 2026-08-27 — deterministic replay (Stage 2.3)
+
+Bronze is append-only and content-addressed, which makes replay possible but not
+verified. Between an ingestion and a replay a payload can be deleted, its bytes
+can change underneath a reference that still resolves, a source record can go
+missing, or an acquisition can have stopped halfway. Every one of those reads,
+to naive code, as a smaller corpus — and a smaller corpus produces a forecast
+from less evidence than the run it claims to reproduce, while looking exactly
+like a legitimate one.
+
+`src/pramaanx/ingest/replay.py` is therefore a verification pass that returns
+observations, not a read that checks a few things.
+
+- **Fails closed.** `replay()` refuses a corpus with any defect: missing
+  payload, payload-hash mismatch, unknown source, id collision, impossible
+  timeline. `--no-strict` exists for triage on a ledger already known to be
+  damaged, and its manifest still counts the damage.
+- **Reports separately.** `verify()` never raises. Finding out what is wrong
+  with a ledger should not require doing it through an exception.
+- **Pins everything that could change the answer.** Source versions, source
+  contracts, config hash, code hash and the dependency lock hash. A missing
+  `uv.lock` records the literal `"absent"` rather than `None`, because an
+  environment without it genuinely has different provenance — and two
+  incomparable replays must not compare equal.
+- **`pramaanx replay`**, with `--dry-run` for the read-only half.
+
+Verified against the demo's own bronze: 4,927 observations, 0 defects.
+
+The 20 tests cover every case Stage 2.3 names — deleted, revised and delayed
+reports; source outages; partial acquisition; the same wire bytes from two
+sources staying two observations; malformed timestamps — plus the property the
+stage is actually about: **a snapshot built from replayed bronze admits
+byte-identical evidence** to one built from the original ingestion.
+
+Two design corrections made while building it, both caught by the repository's
+own tests rather than by review:
+
+- `contract_summaries` originally raised on a source with no declared contract,
+  which made snapshot building hard-fail for any evidence from a since-removed
+  connector — a ledger that cannot be read back defeats the point. It now
+  records `"<source>@undeclared"`, conspicuously. Refusing to *ingest* from an
+  undeclared source is still enforced, in CI, where it belongs.
+- `replayed_evidence_fingerprint` handed the whole corpus to `CutoffGuard`,
+  which in strict mode *raises* on post-cutoff records rather than filtering
+  them. It now selects candidates by the boundary first, exactly as
+  `SnapshotBuilder` does. The guard decides whether a candidate is admissible;
+  it is not the mechanism for choosing candidates.
+
+### 2026-08-27 — reconciling two parallel replay implementations
+
+A Codex session built replay in parallel, branching from this branch at
+`4d55354` (`codex/pramaan-x-deterministic-replay`, commit `7cd8c8e`, delivered
+as a bundle whose SHA-256 and size both verify). They turned out to be
+different operations sharing a name, so both were kept:
+
+| Operation | Question | Origin |
+| --- | --- | --- |
+| `replay verify` | Is the bronze in this data root intact? | Track A |
+| `replay restore` | Can this archived bronze move and still be the same evidence? | Codex |
+
+**Three checks came from the Codex side and are strictly stronger** than what
+was here, so they now run in both paths:
+
+- `non_reproducible_id` — recomputes `Observation.build_id` from the record's
+  own content. `id_collision` needs two records to disagree before it fires, so
+  a single hand-edited record was invisible to it.
+- `orphaned_payload` — a stored payload no observation refers to. Bronze is
+  written observations-last, so this is the signature of an acquisition that
+  died between writing bytes and recording them: the "fail closed on incomplete
+  acquisition" item, which the original implementation missed entirely.
+- `duplicate_source_record`.
+
+**The first one found a real defect in this repository's own fixtures.** The
+Track A test helper minted observation ids from `datetime.isoformat()` while
+`EvidenceLedger.observation_from_item` uses `utc_isoformat` — ids production
+could never produce, in tests that had been passing. The helper was wrong, not
+the check.
+
+Also adopted: the whole restore path with its symlink rejection, staging
+directory, re-hash-after-copy and single-rename commit; the dedicated CI gate;
+and `docs/REPLAY_ACCEPTANCE.md`.
+
+One earlier claim in this log was wrong and is corrected here: the Codex report
+cited "Track A CI run 29", which read as a misattribution. It was not — run 29
+is the CI of `4d55354`, the commit its branch was built on. Citing the base
+commit's CI was legitimate.
+
+### Stage 2.1 after this pass
+
+| Source | Was | Now |
+| --- | --- | --- |
+| GDELT | never live-probed | **live_verified**, run 33086345335 |
+| data.gov.in | live-verified, unrecorded in code | **live_verified**, in the registry; resource id pinned, schema pin open |
+| ReliefWeb | unverified, reason in prose | `docs_only`, blocker recorded and machine-readable |
+| ACLED | unverified, reason in prose | `docs_only`, blocker recorded and machine-readable |
+
+What remains in 2.1 is exactly the credential work, which is §5's business.
+Stage 2.3 is closed.
+
+### Handover — three things only a person can do
+
+```bash
+# 1. The tags this session could not push.
+git tag -a M0 a98fa0d -m "M0: the cutoff-safe temporal foundation"
+git tag -a phase1-integrated aaec0c2 -m "Phase 1 integrated: four evidence connectors"
+git push origin M0 phase1-integrated
+```
+
+2. **Branch protection on `main`** — require both CI jobs on 3.13 and 3.14, and
+   one review for `src/pramaanx/{generators,calibration,evaluation,timeguard}`.
+
+3. **Credentials.** Request the ReliefWeb `appname` and the myACLED account, and
+   issue a data.gov.in key. Add each as a repository secret under the name in
+   `.env.example`; the live workflow enforces that source from the next run.

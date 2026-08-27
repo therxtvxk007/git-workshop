@@ -77,6 +77,14 @@ jobs:
       - name: Leakage and reproducibility gates
         run: uv run pytest tests/leakage tests/metamorphic tests/contracts -v
 
+      # Rebuild bronze without a connector or a network, and prove the restored
+      # bytes admit the same evidence at the same cutoff. Adopted from the
+      # parallel Codex implementation: replay is the one gate that can tell
+      # "the source answered again" from "the same evidence was reproduced",
+      # and it is worth failing the build over.
+      - name: Deterministic replay gate
+        run: uv run pytest tests/integration/test_replay.py -v
+
       # The documented entry point, exactly as a new clone would run it.
       - name: make demo
         run: make demo

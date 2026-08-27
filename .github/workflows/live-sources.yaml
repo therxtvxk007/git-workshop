@@ -1,0 +1,132 @@
+name: live source verification
+
+# Ordinary CI stays offline, so a green build means the code is correct rather
+# than that a third party happened to be reachable. This workflow is where the
+# opposite question gets asked: does each source still answer the contract we
+# believe it answers?
+#
+# The property this workflow exists to enforce is that **a skip is never a
+# pass**. The previous live workflow ran the whole tests/network directory and
+# reported success when ten of eleven tests skipped for want of credentials --
+# a green tick that verified one source and looked like it verified four. Here
+# each source is judged separately, and a source that was *attempted* and did
+# not run is a failure.
+#
+# Whether a source is attempted follows from whether its credential exists. Add
+# the secret and that source starts being enforced on the next run; no workflow
+# edit is needed, and none can be forgotten.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: "Which source to verify"
+        type: choice
+        options: [all, gdelt, reliefweb, acled, data_gov_in]
+        default: all
+      proxy:
+        description: "Optional proxy URL (http://, https:// or socks5://)"
+        required: false
+        default: ""
+  schedule:
+    # Weekly freshness check. GDELT needs no credential, so this is a real
+    # recurring probe of at least one live source rather than a scheduled skip.
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: ${{ matrix.source }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        source: [gdelt, reliefweb, acled, data_gov_in]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.13
+      - run: uv sync --frozen --extra dev
+
+      - name: Decide whether this source is attempted
+        id: decide
+        env:
+          SELECTED: ${{ inputs.source || 'all' }}
+          RELIEFWEB_APPNAME: ${{ secrets.PRAMAANX_RELIEFWEB_APPNAME }}
+          ACLED_ACCESS_TOKEN: ${{ secrets.PRAMAANX_ACLED_ACCESS_TOKEN }}
+          ACLED_USERNAME: ${{ secrets.PRAMAANX_ACLED_USERNAME }}
+          DATA_GOV_IN_API_KEY: ${{ secrets.PRAMAANX_DATA_GOV_IN_API_KEY }}
+        run: |
+          set -euo pipefail
+          source='${{ matrix.source }}'
+
+          if [ "$SELECTED" != "all" ] && [ "$SELECTED" != "$source" ]; then
+            echo "attempt=false" >> "$GITHUB_OUTPUT"
+            echo "reason=not selected for this run" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # GDELT is public. Every other source needs a credential that only a
+          # person can obtain, so its absence is a documented blocker rather
+          # than a failure -- see SOURCE_CONTRACTS in
+          # src/pramaanx/ingest/contracts.py, which records the same fact.
+          case "$source" in
+            gdelt)       have=true ;;
+            reliefweb)   [ -n "$RELIEFWEB_APPNAME" ] && have=true || have=false ;;
+            acled)       { [ -n "$ACLED_ACCESS_TOKEN" ] || [ -n "$ACLED_USERNAME" ]; } && have=true || have=false ;;
+            data_gov_in) [ -n "$DATA_GOV_IN_API_KEY" ] && have=true || have=false ;;
+          esac
+
+          echo "attempt=$have" >> "$GITHUB_OUTPUT"
+          if [ "$have" = "false" ]; then
+            echo "reason=no credential configured for this repository" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify against the live service
+        if: steps.decide.outputs.attempt == 'true'
+        env:
+          PRAMAANX_HTTP_PROXY: ${{ inputs.proxy }}
+          PRAMAANX_LIVE_GDELT: ${{ matrix.source == 'gdelt' && '1' || '' }}
+          PRAMAANX_LIVE_RELIEFWEB: ${{ matrix.source == 'reliefweb' && '1' || '' }}
+          PRAMAANX_LIVE_ACLED: ${{ matrix.source == 'acled' && '1' || '' }}
+          PRAMAANX_LIVE_DATA_GOV_IN: ${{ matrix.source == 'data_gov_in' && '1' || '' }}
+          PRAMAANX_RELIEFWEB_APPNAME: ${{ secrets.PRAMAANX_RELIEFWEB_APPNAME }}
+          PRAMAANX_ACLED_ACCESS_TOKEN: ${{ secrets.PRAMAANX_ACLED_ACCESS_TOKEN }}
+          PRAMAANX_ACLED_USERNAME: ${{ secrets.PRAMAANX_ACLED_USERNAME }}
+          PRAMAANX_ACLED_PASSWORD: ${{ secrets.PRAMAANX_ACLED_PASSWORD }}
+          PRAMAANX_DATA_GOV_IN_API_KEY: ${{ secrets.PRAMAANX_DATA_GOV_IN_API_KEY }}
+        run: |
+          set -euo pipefail
+          suite="tests/network/test_${{ matrix.source }}_live.py"
+          uv run pytest "$suite" -m network -v 2>&1 | tee /tmp/live.txt
+
+          # The whole point. pytest exits 0 for an all-skipped run, so exit
+          # status cannot distinguish "the service answered" from "we never
+          # asked". A passing test is the only thing that counts as verified.
+          if ! grep -qE '[0-9]+ passed' /tmp/live.txt; then
+            echo "::error title=${{ matrix.source }} not verified::This source was \
+          attempted -- its credential is configured -- but no test passed. A skipped \
+          live test verifies nothing; see the log for why it skipped."
+            exit 1
+          fi
+
+      - name: Report
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.decide.outputs.attempt }}" != "true" ]; then
+            printf '| %s | not attempted | %s |\n' \
+              '${{ matrix.source }}' '${{ steps.decide.outputs.reason }}' \
+              >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ job.status }}" = "success" ]; then
+            printf '| %s | **verified** | live response satisfied the contract |\n' \
+              '${{ matrix.source }}' >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf '| %s | **FAILED** | attempted and did not verify |\n' \
+              '${{ matrix.source }}' >> "$GITHUB_STEP_SUMMARY"
+          fi

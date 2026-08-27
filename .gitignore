@@ -21,6 +21,7 @@ data/bronze/**
 data/silver/**
 data/gold/**
 data/snapshots/**
+data/replays/**
 !data/**/.gitkeep
 
 # Run outputs

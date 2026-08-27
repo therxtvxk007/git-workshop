@@ -12,6 +12,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from pramaanx.calibration.base import (
+    IDENTITY_CALIBRATION,
+    PLACEHOLDER_POLICY,
+    Calibrator,
+    FixedThresholdController,
+    IdentityCalibrator,
+    RiskController,
+)
 from pramaanx.clock import Clock, SystemClock
 from pramaanx.config import AlertPolicyConfig, Settings
 from pramaanx.generators.base import (
@@ -29,14 +37,12 @@ from pramaanx.timeguard.snapshots import Snapshot
 
 log = get_logger(__name__)
 
-IDENTITY_CALIBRATION = "identity@uncalibrated"
-"""Recorded in every M0 forecast. Probabilities are raw generator output: no
-temperature, isotonic, beta or hierarchical calibration has been fitted, so
-they must not be described as calibrated."""
-
-PLACEHOLDER_POLICY = "fixed_threshold@placeholder"
-"""Recorded in every M0 forecast. Statuses come from fixed thresholds, not from
-recall-first conformal risk control, and carry no miss-rate guarantee."""
+#: Re-exported from :mod:`pramaanx.calibration.base`, which owns them now.
+#: They were duplicated string literals while the pipeline was the only thing
+#: that recorded them; once a fitted calibrator can be injected, two copies is
+#: one copy too many -- a forecast whose label disagrees with the calibrator
+#: that produced it is worse than one with no label.
+__all__ = ["IDENTITY_CALIBRATION", "PLACEHOLDER_POLICY", "run_cutoff"]
 
 
 def allocate_budget(settings: Settings) -> dict[str, int]:
@@ -164,9 +170,26 @@ def run_cutoff(
     *,
     clock: Clock | None = None,
     region_scope: list[str] | None = None,
+    calibrator: Calibrator | None = None,
+    controller: RiskController | None = None,
 ) -> CutoffRun:
-    """Produce forecasts for one cutoff from one snapshot."""
+    """Produce forecasts for one cutoff from one snapshot.
+
+    ``calibrator`` and ``controller`` are injectable so that a fitted calibrator
+    and a risk-controlled policy can replace the M0 defaults without touching
+    this function. They default to :class:`IdentityCalibrator` and
+    :class:`FixedThresholdController`, which reproduce M0's behaviour exactly --
+    the identity mapping and the placeholder thresholds, extracted verbatim.
+
+    The two are separate arguments because they fail differently. A
+    miscalibrated probability is a modelling error a Brier score can measure; a
+    badly chosen threshold is a *policy* error, a decision about how many misses
+    are worth how many false alerts, which no amount of calibration data
+    settles. Taking them together would hide the policy inside the model.
+    """
     tick = clock or SystemClock()
+    calibrator = calibrator or IdentityCalibrator()
+    controller = controller or FixedThresholdController(settings.alerting)
     allocation = allocate_budget(settings)
     generators = build_generators(settings, ledger, snapshot)
 
@@ -192,15 +215,18 @@ def run_cutoff(
     created_at = max(tick.now(), snapshot.cutoff_at)
     model_versions = {
         **versions,
-        "calibration": IDENTITY_CALIBRATION,
-        "alert_policy": PLACEHOLDER_POLICY,
+        # Read off the injected objects rather than hard-coded, so a forecast
+        # can never claim a calibration it was not produced under.
+        "calibration": calibrator.version,
+        "alert_policy": controller.version,
         "schema": str(snapshot.manifest.schema_version),
     }
 
     forecasts: list[ForecastRecord] = []
     for proposal in merged:
         uncertainty = epistemic_uncertainty(proposal)
-        probability = proposal.generator_score
+        raw = proposal.generator_score
+        probability = calibrator.apply(raw)
         forecasts.append(
             ForecastRecord(
                 forecast_id=ForecastRecord.build_id(
@@ -209,16 +235,17 @@ def run_cutoff(
                 cutoff_at=snapshot.cutoff_at,
                 created_at=created_at,
                 hypothesis=proposal.hypothesis,
-                raw_probability=probability,
-                # Identity mapping, recorded as such in model_versions.
+                # The raw generator score is kept alongside the calibrated one.
+                # A calibrator can be refitted later; the score it was applied
+                # to cannot be recovered if it was overwritten.
+                raw_probability=raw,
                 calibrated_probability=probability,
                 epistemic_uncertainty=uncertainty,
-                status=assign_status(
+                status=controller.assign(
                     probability,
                     uncertainty=uncertainty,
                     evidence_count=len(proposal.hypothesis.evidence),
                     novelty=proposal.hypothesis.novelty_score,
-                    policy=settings.alerting,
                 ),
                 model_versions=dict(sorted(model_versions.items())),
                 snapshot_hash=snapshot.snapshot_hash,

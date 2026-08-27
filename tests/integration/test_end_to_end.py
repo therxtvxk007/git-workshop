@@ -32,6 +32,7 @@ from pramaanx.schemas.forecast import ForecastStatus
 from pramaanx.timeguard.snapshots import SnapshotBuilder
 
 CUTOFF = datetime(2025, 6, 1, tzinfo=UTC)
+BOOTSTRAP = datetime(2026, 8, 25, tzinfo=UTC)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -347,3 +348,96 @@ class TestInstalledEntryPoint:
         )
         assert result.returncode == 0, result.stderr
         assert json.loads(result.stdout)["milestone"] == "M0"
+
+
+class TestCalibratorInjectionPreservesM0:
+    """The defaults must reproduce M0 exactly, or the control arm is fiction.
+
+    ``run_cutoff`` now takes an injectable calibrator and risk controller. The
+    whole value of that depends on the defaults changing nothing: when a fitted
+    calibrator is finally evaluated, the comparison is against this path, and
+    any drift between the injected default and the original hard-coded
+    behaviour makes that comparison meaningless.
+    """
+
+    @staticmethod
+    def _run(settings: Settings, ledger: EvidenceLedger) -> object:
+        from pramaanx.pipeline import run_cutoff
+        from pramaanx.timeguard.snapshots import SnapshotBuilder
+
+        snapshot = SnapshotBuilder(settings, ledger).build(
+            datetime(2025, 7, 1, tzinfo=UTC), persist=False
+        )
+        return run_cutoff(settings, ledger, snapshot, clock=FixedClock(BOOTSTRAP))
+
+    def test_the_default_calibrator_is_the_identity_mapping(
+        self, settings: Settings, populated_ledger: EvidenceLedger
+    ) -> None:
+        run = self._run(settings, populated_ledger)
+        assert run.forecasts
+        for forecast in run.forecasts:
+            assert forecast.calibrated_probability == forecast.raw_probability
+
+    def test_the_default_status_matches_the_original_hard_coded_policy(
+        self, settings: Settings, populated_ledger: EvidenceLedger
+    ) -> None:
+        """The extracted FixedThresholdController against assign_status itself."""
+        from pramaanx.pipeline import assign_status
+
+        run = self._run(settings, populated_ledger)
+        for forecast in run.forecasts:
+            assert forecast.status == assign_status(
+                forecast.calibrated_probability,
+                uncertainty=forecast.epistemic_uncertainty,
+                evidence_count=len(forecast.hypothesis.evidence),
+                novelty=forecast.hypothesis.novelty_score,
+                policy=settings.alerting,
+            )
+
+    def test_versions_are_read_from_the_objects_not_hard_coded(
+        self, settings: Settings, populated_ledger: EvidenceLedger
+    ) -> None:
+        from pramaanx.calibration.base import IDENTITY_CALIBRATION, PLACEHOLDER_POLICY
+
+        run = self._run(settings, populated_ledger)
+        for forecast in run.forecasts:
+            assert forecast.model_versions["calibration"] == IDENTITY_CALIBRATION
+            assert forecast.model_versions["alert_policy"] == PLACEHOLDER_POLICY
+
+    def test_an_injected_calibrator_actually_changes_the_probability(
+        self, settings: Settings, populated_ledger: EvidenceLedger
+    ) -> None:
+        """Proves the seam is real and not decorative.
+
+        Without this, every assertion above would also pass on a pipeline that
+        ignored its arguments entirely.
+        """
+        from pramaanx.calibration.base import BaseCalibrator
+        from pramaanx.pipeline import run_cutoff
+        from pramaanx.timeguard.snapshots import SnapshotBuilder
+
+        class Halving(BaseCalibrator):
+            name = "halving"
+            VERSION = "9.9.9"
+
+            @property
+            def version(self) -> str:
+                return "halving@test"
+
+            def apply(self, probability: float) -> float:
+                return probability / 2.0
+
+        snapshot = SnapshotBuilder(settings, populated_ledger).build(
+            datetime(2025, 7, 1, tzinfo=UTC), persist=False
+        )
+        run = run_cutoff(
+            settings,
+            populated_ledger,
+            snapshot,
+            clock=FixedClock(BOOTSTRAP),
+            calibrator=Halving(),
+        )
+        assert run.forecasts
+        for forecast in run.forecasts:
+            assert forecast.calibrated_probability == forecast.raw_probability / 2.0
+            assert forecast.model_versions["calibration"] == "halving@test"
