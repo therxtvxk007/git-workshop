@@ -138,7 +138,7 @@ def test_selected_resource_complete_live_traversal() -> None:
             "resource_id": RESOURCE_ID,
             "resource_title": "Attacker-wise incidents during 2023",
             "available_at": "2026-02-14T00:00:00Z",
-            "page_size": 10,
+            "page_size": 1,
             "cache": False,
         },
         fetcher=fetch_page,
@@ -173,7 +173,7 @@ def test_selected_resource_complete_live_traversal() -> None:
     assert observed_total is not None
     assert observed_total > 0
     assert len(items) == observed_total
-    assert requested_offsets
+    assert len(requested_offsets) > 1
     assert requested_offsets[0] == 0
     assert requested_offsets == sorted(set(requested_offsets))
     assert all(item.metadata["resource_id"] == RESOURCE_ID for item in items)
