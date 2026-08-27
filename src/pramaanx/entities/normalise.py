@@ -169,9 +169,7 @@ def name_tokens(raw: str | None) -> tuple[str, ...]:
     if not normalised:
         return ()
     tokens = {
-        stem_token(token)
-        for token in normalised.split(" ")
-        if token and token not in NOISE_TOKENS
+        stem_token(token) for token in normalised.split(" ") if token and token not in NOISE_TOKENS
     }
     return tuple(sorted(tokens))
 
@@ -246,11 +244,14 @@ def initials_match(left: str | None, right: str | None) -> bool:
     if not left_tokens or not right_tokens:
         return False
     for single, multi in ((left_tokens, right_tokens), (right_tokens, left_tokens)):
-        if len(single) == 1 and len(multi) >= 2:
-            # Initials are compared as a sorted set because name_tokens() has
-            # already discarded word order.
-            if single[0] == "".join(sorted(token[0] for token in multi)):
-                return True
+        # Initials are compared as a sorted set because name_tokens() has
+        # already discarded word order.
+        if (
+            len(single) == 1
+            and len(multi) >= 2
+            and single[0] == "".join(sorted(token[0] for token in multi))
+        ):
+            return True
     return False
 
 

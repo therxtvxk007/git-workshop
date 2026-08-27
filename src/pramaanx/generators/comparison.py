@@ -154,7 +154,6 @@ class FloorVerdict(PramaanModel):
         )
         if self.discovery is not None and self.discovery.adds_discovery:
             detail += (
-                f"; it proposed {len(self.discovery.challenger_only)} candidates "
-                f"the floor did not"
+                f"; it proposed {len(self.discovery.challenger_only)} candidates the floor did not"
             )
         return detail

@@ -156,9 +156,7 @@ class TestConformalControl:
         sample = _sample(size=4000, positives=1500)
         controller = RecallFirstController(AlertPolicyConfig())
         controller.fit(sample, alpha=0.2, delta=0.1)
-        observed = empirical_miss_rate(
-            sample.probabilities, sample.outcomes, controller.threshold
-        )
+        observed = empirical_miss_rate(sample.probabilities, sample.outcomes, controller.threshold)
         assert observed <= 0.2
 
     def test_unfitted_controller_says_so_in_its_version(self) -> None:

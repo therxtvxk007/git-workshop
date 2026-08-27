@@ -18,7 +18,6 @@ that it is too small, it is that it is unanimous when reality is not.
 
 from __future__ import annotations
 
-import math
 from collections import defaultdict
 from collections.abc import Sequence
 from datetime import datetime, timedelta
@@ -119,9 +118,10 @@ def _stance_for(mention: EventMention, requested_types: Sequence[str]) -> Stance
     """
     if mention.modality == "denied":
         return "contradicts"
-    if mention.modality in CORROBORATING_MODALITIES:
-        if not requested_types or mention.event_type in set(requested_types):
-            return "supports"
+    if mention.modality in CORROBORATING_MODALITIES and (
+        not requested_types or mention.event_type in set(requested_types)
+    ):
+        return "supports"
     return "context"
 
 
@@ -131,9 +131,7 @@ def _recency(observed_at: datetime, *, as_of: datetime, half_life_days: float) -
     return float(0.5 ** (age_days / half_life_days))
 
 
-def _reliability(
-    *, effective_support: int, contested: bool, mention: EventMention
-) -> float:
+def _reliability(*, effective_support: int, contested: bool, mention: EventMention) -> float:
     """A coarse reliability for one reference.
 
     Built from independent support and the extractor's own confidence, and
@@ -171,8 +169,7 @@ def _support_as_of(
         available = [
             mention_by_id[mention_id]
             for mention_id in group.mention_ids
-            if mention_id in mention_by_id
-            and mention_by_id[mention_id].observed_at <= as_of
+            if mention_id in mention_by_id and mention_by_id[mention_id].observed_at <= as_of
         ]
         if not available:
             continue
@@ -294,9 +291,7 @@ def _walk(view: EvidenceGraph, query: RetrievalQuery) -> dict[str, int]:
             for event_id in view.events_for(entity_id):
                 reached.setdefault(event_id, hop)
             if hop < query.max_hops:
-                for neighbour in view.neighbours(
-                    entity_id, relations={EdgeRelation.CO_OCCURRED}
-                ):
+                for neighbour in view.neighbours(entity_id, relations={EdgeRelation.CO_OCCURRED}):
                     if neighbour not in visited:
                         visited.add(neighbour)
                         next_frontier.append(neighbour)

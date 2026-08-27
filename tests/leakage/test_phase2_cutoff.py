@@ -68,7 +68,9 @@ def corpus() -> list[EventMention]:
     cluster, and the test would silently stop testing anything.
     """
     early = [
-        _mention(observed_days=10 + index * 20 + 1, event_days=10 + index * 20, span=f"clash {index}")
+        _mention(
+            observed_days=10 + index * 20 + 1, event_days=10 + index * 20, span=f"clash {index}"
+        )
         for index in range(4)
     ]
     late = _mention(observed_days=250, event_days=95, span="an archive released much later")

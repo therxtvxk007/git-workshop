@@ -150,9 +150,7 @@ class EvidenceGraph(PramaanModel):
         return EvidenceGraph(nodes=nodes, edges=edges, cutoff_at=moment)
 
     def incident(self, node_id: str) -> list[GraphEdge]:
-        return [
-            edge for edge in self.edges if node_id in (edge.source_id, edge.target_id)
-        ]
+        return [edge for edge in self.edges if node_id in (edge.source_id, edge.target_id)]
 
     def neighbours(
         self, node_id: str, *, relations: Iterable[EdgeRelation] | None = None

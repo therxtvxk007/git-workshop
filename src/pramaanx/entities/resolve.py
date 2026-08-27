@@ -173,8 +173,7 @@ class EntityIndex(PramaanModel):
             {
                 assignment.entity_id
                 for assignment in self.assignments
-                if assignment.mention_id == mention_id
-                and (role is None or assignment.role == role)
+                if assignment.mention_id == mention_id and (role is None or assignment.role == role)
             }
         )
 
@@ -299,8 +298,9 @@ def resolve_entities(
 
     surfaces = _surfaces_from(mentions, cutoff_at=cutoff_at)
     if not surfaces:
-        return EntityIndex(entities=[], assignments=[], cutoff_at=cutoff_at,
-                           merge_threshold=merge_threshold)
+        return EntityIndex(
+            entities=[], assignments=[], cutoff_at=cutoff_at, merge_threshold=merge_threshold
+        )
 
     # Group occurrences by (kind, exact normalised key) first. Exact-key matches
     # are free and unambiguous, so the expensive pairwise stage only ever sees
@@ -330,11 +330,7 @@ def resolve_entities(
     assignments: list[EntityAssignment] = []
     for kind, groups in sorted(per_kind_groups.items(), key=lambda item: item[0].value):
         for member_keys in groups.values():
-            members = [
-                occurrence
-                for key in member_keys
-                for occurrence in occurrences[(kind, key)]
-            ]
+            members = [occurrence for key in member_keys for occurrence in occurrences[(kind, key)]]
             entity = _build_entity(kind, member_keys, members, scores)
             entities.append(entity)
             assignments.extend(

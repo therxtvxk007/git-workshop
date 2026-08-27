@@ -64,9 +64,7 @@ class Intervention(PramaanModel, ABC):
     rationale: str = ""
 
     @abstractmethod
-    def apply(
-        self, clusters: Sequence[EventCluster], *, cutoff_at: datetime
-    ) -> list[EventCluster]:
+    def apply(self, clusters: Sequence[EventCluster], *, cutoff_at: datetime) -> list[EventCluster]:
         """Return a new cluster list. Must not mutate ``clusters``."""
 
 
@@ -90,9 +88,7 @@ class AddEvent(Intervention):
             raise ValueError("an assumed event needs at least an actor or a location")
         return self
 
-    def apply(
-        self, clusters: Sequence[EventCluster], *, cutoff_at: datetime
-    ) -> list[EventCluster]:
+    def apply(self, clusters: Sequence[EventCluster], *, cutoff_at: datetime) -> list[EventCluster]:
         if self.occurred_at > cutoff_at:
             raise ValueError(
                 f"assumed event at {self.occurred_at.isoformat()} is after the scenario "
@@ -143,9 +139,7 @@ class RemoveEvent(Intervention):
     kind: Literal[InterventionKind.REMOVE_EVENT] = InterventionKind.REMOVE_EVENT
     cluster_ids: list[str] = Field(min_length=1)
 
-    def apply(
-        self, clusters: Sequence[EventCluster], *, cutoff_at: datetime
-    ) -> list[EventCluster]:
+    def apply(self, clusters: Sequence[EventCluster], *, cutoff_at: datetime) -> list[EventCluster]:
         del cutoff_at
         targets = set(self.cluster_ids)
         missing = sorted(targets - {cluster.cluster_id for cluster in clusters})
@@ -164,9 +158,7 @@ class ShiftTime(Intervention):
     cluster_ids: list[str] = Field(min_length=1)
     delta_days: float
 
-    def apply(
-        self, clusters: Sequence[EventCluster], *, cutoff_at: datetime
-    ) -> list[EventCluster]:
+    def apply(self, clusters: Sequence[EventCluster], *, cutoff_at: datetime) -> list[EventCluster]:
         shift = timedelta(days=self.delta_days)
         targets = set(self.cluster_ids)
         shifted: list[EventCluster] = []
@@ -217,9 +209,7 @@ class ReplaceActor(Intervention):
             raise ValueError("replacement actor is identical to the original")
         return self
 
-    def apply(
-        self, clusters: Sequence[EventCluster], *, cutoff_at: datetime
-    ) -> list[EventCluster]:
+    def apply(self, clusters: Sequence[EventCluster], *, cutoff_at: datetime) -> list[EventCluster]:
         del cutoff_at
         swapped: list[EventCluster] = []
         for cluster in clusters:
@@ -392,9 +382,7 @@ def diff_proposals(
     scenario_id: str,
 ) -> ScenarioResult:
     """Compare two proposal sets by candidate identity."""
-    baseline_scores = {
-        proposal.candidate_key: proposal.generator_score for proposal in baseline
-    }
+    baseline_scores = {proposal.candidate_key: proposal.generator_score for proposal in baseline}
     scenario_scores = {
         proposal.candidate_key: proposal.generator_score for proposal in scenario_proposals
     }

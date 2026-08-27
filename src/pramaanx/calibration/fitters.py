@@ -107,9 +107,7 @@ class CalibrationSample(PramaanModel):
         confident and meaningless.
         """
         if len(self) < minimum:
-            raise ValueError(
-                f"calibration sample has {len(self)} points, need at least {minimum}"
-            )
+            raise ValueError(f"calibration sample has {len(self)} points, need at least {minimum}")
         if self.positives == 0 or self.negatives == 0:
             raise ValueError(
                 f"calibration sample has one outcome class only "
@@ -199,9 +197,7 @@ class IsotonicCalibrator(BaseCalibrator):
         super().__init__()
         self._model: object | None = None
 
-    def fit(
-        self, sample: CalibrationSample, *, minimum: int | None = None
-    ) -> IsotonicCalibrator:
+    def fit(self, sample: CalibrationSample, *, minimum: int | None = None) -> IsotonicCalibrator:
         from sklearn.isotonic import IsotonicRegression
 
         threshold = self.MIN_ISOTONIC_SAMPLE if minimum is None else minimum
@@ -256,9 +252,7 @@ class BetaCalibrator(BaseCalibrator):
 
         sample.validate_fittable(minimum=minimum)
         probabilities = _squeeze(sample.probabilities)
-        features = np.column_stack(
-            [np.log(probabilities), -np.log(1.0 - probabilities)]
-        )
+        features = np.column_stack([np.log(probabilities), -np.log(1.0 - probabilities)])
         model = LogisticRegression(solver="lbfgs", C=1e6, max_iter=1000)
         model.fit(features, np.asarray(sample.outcomes, dtype=int))
         self.coefficients = (float(model.coef_[0][0]), float(model.coef_[0][1]))

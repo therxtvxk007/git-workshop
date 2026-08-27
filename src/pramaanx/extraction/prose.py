@@ -30,7 +30,14 @@ from datetime import UTC, datetime, timedelta
 #: connectors feed it. Extending this table is a data decision and should come
 #: with gold-set evidence that the new trigger earns its false positives.
 EVENT_TRIGGERS: dict[str, tuple[str, ...]] = {
-    "armed_clash": ("clash", "firefight", "gun battle", "gunbattle", "skirmish", "exchange of fire"),
+    "armed_clash": (
+        "clash",
+        "firefight",
+        "gun battle",
+        "gunbattle",
+        "skirmish",
+        "exchange of fire",
+    ),
     "armed_assault": ("attack", "assault", "raid", "ambush", "storm"),
     "bombing": ("bomb", "ied", "explosion", "blast", "detonat", "landmine"),
     "shelling": ("shell", "artillery", "mortar", "rocket", "airstrike", "air strike"),
@@ -97,31 +104,67 @@ POSSIBLE_CUES: tuple[str, ...] = (
 )
 
 _MONTHS: dict[str, int] = {
-    "january": 1, "jan": 1,
-    "february": 2, "feb": 2,
-    "march": 3, "mar": 3,
-    "april": 4, "apr": 4,
+    "january": 1,
+    "jan": 1,
+    "february": 2,
+    "feb": 2,
+    "march": 3,
+    "mar": 3,
+    "april": 4,
+    "apr": 4,
     "may": 5,
-    "june": 6, "jun": 6,
-    "july": 7, "jul": 7,
-    "august": 8, "aug": 8,
-    "september": 9, "sep": 9, "sept": 9,
-    "october": 10, "oct": 10,
-    "november": 11, "nov": 11,
-    "december": 12, "dec": 12,
+    "june": 6,
+    "jun": 6,
+    "july": 7,
+    "jul": 7,
+    "august": 8,
+    "aug": 8,
+    "september": 9,
+    "sep": 9,
+    "sept": 9,
+    "october": 10,
+    "oct": 10,
+    "november": 11,
+    "nov": 11,
+    "december": 12,
+    "dec": 12,
 }
 
 _WEEKDAYS: dict[str, int] = {
-    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
-    "friday": 4, "saturday": 5, "sunday": 6,
+    "monday": 0,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 3,
+    "friday": 4,
+    "saturday": 5,
+    "sunday": 6,
 }
 
 #: Abbreviations that end in a period without ending a sentence.
 _ABBREVIATIONS = frozenset(
     {
-        "mr", "mrs", "ms", "dr", "prof", "gen", "col", "lt", "sgt", "capt",
-        "st", "no", "vs", "etc", "inc", "ltd", "govt", "dept", "approx",
-        "u.s", "u.n", "u.k",
+        "mr",
+        "mrs",
+        "ms",
+        "dr",
+        "prof",
+        "gen",
+        "col",
+        "lt",
+        "sgt",
+        "capt",
+        "st",
+        "no",
+        "vs",
+        "etc",
+        "inc",
+        "ltd",
+        "govt",
+        "dept",
+        "approx",
+        "u.s",
+        "u.n",
+        "u.k",
     }
 )
 
@@ -148,13 +191,61 @@ _PROPER_RUN = re.compile(r"\b([A-Z][\w'-]*(?:\s+(?:of|the|de|al|bin)?\s*[A-Z][\w
 #: these unavoidable without a tagger, so they are listed rather than guessed at.
 _NON_NAMES = frozenset(
     {
-        "a", "after", "an", "and", "as", "at", "but", "during", "following", "for",
-        "from", "he", "however", "in", "it", "meanwhile", "on", "one", "she",
-        "since", "the", "their", "there", "they", "this", "to", "two", "we",
-        "when", "while", "with", "several", "many", "some", "at least", "more",
-        "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
-        "sunday", "january", "february", "march", "april", "may", "june",
-        "july", "august", "september", "october", "november", "december",
+        "a",
+        "after",
+        "an",
+        "and",
+        "as",
+        "at",
+        "but",
+        "during",
+        "following",
+        "for",
+        "from",
+        "he",
+        "however",
+        "in",
+        "it",
+        "meanwhile",
+        "on",
+        "one",
+        "she",
+        "since",
+        "the",
+        "their",
+        "there",
+        "they",
+        "this",
+        "to",
+        "two",
+        "we",
+        "when",
+        "while",
+        "with",
+        "several",
+        "many",
+        "some",
+        "at least",
+        "more",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday",
+        "january",
+        "february",
+        "march",
+        "april",
+        "may",
+        "june",
+        "july",
+        "august",
+        "september",
+        "october",
+        "november",
+        "december",
     }
 )
 
@@ -283,9 +374,7 @@ def extract_date(sentence: str, *, reference: datetime, allow_future: bool) -> d
         count = int(units.group(1)) if units.group(1) else 1
         unit = units.group(2).casefold().rstrip("s")
         days = {"day": 1, "week": 7, "month": 30}[unit] * count
-        return (reference - timedelta(days=days)).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
+        return (reference - timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
 
     weekday = _LAST_WEEKDAY.search(sentence)
     if weekday:
@@ -309,9 +398,7 @@ def extract_date(sentence: str, *, reference: datetime, allow_future: bool) -> d
         day = int(day_text)
         if year_text:
             return _clamp_day(int(year_text), month, day)
-        return _resolve_bare_date(
-            month, day, reference=reference, allow_future=allow_future
-        )
+        return _resolve_bare_date(month, day, reference=reference, allow_future=allow_future)
     return None
 
 

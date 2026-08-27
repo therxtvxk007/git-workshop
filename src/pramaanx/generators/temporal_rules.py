@@ -275,9 +275,10 @@ class TemporalRuleGenerator(BaseGenerator):
             if combined <= 0.0:
                 continue
 
-            hypothesis = self._hypothesis(series, features, combined, context, as_of)
-            trace["contributions"] = {name: round(value, 6) for name, value in
-                                      sorted(contributions.items())}
+            hypothesis = self._hypothesis(series, features, context, as_of)
+            trace["contributions"] = {
+                name: round(value, 6) for name, value in sorted(contributions.items())
+            }
             trace["features"] = {
                 name: round(features.get(name), 6)
                 for name in (
@@ -312,7 +313,6 @@ class TemporalRuleGenerator(BaseGenerator):
         self,
         series: SeriesKey,
         features: FeatureVector,
-        score: float,
         context: ForecastContext,
         as_of: datetime,
     ) -> EventHypothesis:
@@ -339,19 +339,24 @@ class TemporalRuleGenerator(BaseGenerator):
             actor_ids=actors,
             target_ids=[],
             location_cells=location_cells,
-            time_bucket_probabilities=self._buckets(score, context.horizon_days),
+            time_bucket_probabilities=self._buckets(context.horizon_days),
             severity_distribution={},
             evidence=evidence,
             generated_by={self.name},
             novelty_score=features.get("novelty", 0.0),
         )
 
-    def _buckets(self, score: float, horizon_days: int) -> dict[str, float]:
-        """Spread the score across time buckets by exposure.
+    def _buckets(self, horizon_days: int) -> dict[str, float]:
+        """Distribute candidate mass across time buckets by exposure.
 
         Proportional to each bucket's width inside the horizon. A flat split
         would put as much mass in a two-day bucket as in a sixty-day one, which
         is a claim about timing that no rule here actually makes.
+
+        Takes no score on purpose. ``time_bucket_probabilities`` is validated as
+        a normalised distribution -- it says *when, given the event* -- so the
+        candidate's own probability belongs elsewhere, and scaling this by it
+        would simply fail validation.
         """
         if not self.buckets:
             return {}

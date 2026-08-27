@@ -316,7 +316,7 @@ def _consensus(
                 location_text=location,
                 event_time_start=start,
                 event_time_end=end if end and start and end >= start else start,
-                modality=modality or "unknown",  # type: ignore[arg-type]
+                modality=modality or "unknown",
                 extraction_probability=probability,
                 supporting_span=span,
                 explicit_fields=explicit,
@@ -393,9 +393,7 @@ def resolve_text(payload: dict[str, Any], fields: Sequence[str]) -> str:
     return "\n".join(chunk.strip() for chunk in chunks if chunk and chunk.strip())
 
 
-def prose_extractor(
-    fields: Sequence[str], cascade: ExtractionCascade | None = None
-) -> Any:
+def prose_extractor(fields: Sequence[str], cascade: ExtractionCascade | None = None) -> Any:
     """Build an extractor callable compatible with ``structured.EXTRACTORS``.
 
     Returned rather than registered so that a caller can hold several

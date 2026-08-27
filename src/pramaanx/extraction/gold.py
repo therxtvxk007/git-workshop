@@ -204,8 +204,8 @@ def score_extraction(
     )
 
     remaining: dict[tuple[str, str], list[GoldMention]] = {}
-    for mention in sorted(gold.mentions, key=lambda item: (item.observation_id, item.span)):
-        remaining.setdefault(mention.key, []).append(mention)
+    for gold_mention in sorted(gold.mentions, key=lambda item: (item.observation_id, item.span)):
+        remaining.setdefault(gold_mention.key, []).append(gold_mention)
 
     defects: list[Defect] = []
     matched = 0

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from _phase2_builders import at, mention, series_of
 
 from pramaanx.entities import (
     EntityKind,
@@ -14,7 +15,6 @@ from pramaanx.entities import (
     similarity,
     stem_token,
 )
-from _phase2_builders import at, mention, series_of
 
 
 class TestNormalisation:
@@ -123,9 +123,7 @@ class TestResolution:
         assert actor.canonical_name == "Maoists"
 
     def test_role_lookup(self) -> None:
-        target = mention(
-            observed_days=1, event_days=1, subject="Maoists", obj="Police", span="one"
-        )
+        target = mention(observed_days=1, event_days=1, subject="Maoists", obj="Police", span="one")
         index = resolve_entities([target], cutoff_at=at(30))
         assert index.actors_for(target.mention_id)
         assert index.targets_for(target.mention_id)

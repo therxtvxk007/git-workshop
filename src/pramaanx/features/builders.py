@@ -21,6 +21,7 @@ and a model that cannot see the lag will happily pretend otherwise.
 
 from __future__ import annotations
 
+import itertools
 import statistics
 from collections.abc import Sequence
 from datetime import datetime, timedelta
@@ -91,8 +92,7 @@ def _register_all() -> dict[str, FeatureSpec]:
                 name="escalation_ratio",
                 kind=FeatureKind.RATE,
                 description=(
-                    "Recent 30-day rate divided by the 365-day baseline rate. "
-                    "1.0 means no change."
+                    "Recent 30-day rate divided by the 365-day baseline rate. 1.0 means no change."
                 ),
                 default=1.0,
             ),
@@ -230,14 +230,12 @@ def build_features(
         values["rate_per_30d"] = float(len(available)) * 30.0 / span_days
 
         last_window = max(cluster.window_end for cluster in available)
-        values["days_since_last_event"] = max(
-            (as_of - last_window).total_seconds() / 86400.0, 0.0
-        )
+        values["days_since_last_event"] = max((as_of - last_window).total_seconds() / 86400.0, 0.0)
 
         starts = [cluster.window_start for cluster in available]
         gaps = [
             (later - earlier).total_seconds() / 86400.0
-            for earlier, later in zip(starts, starts[1:], strict=False)
+            for earlier, later in itertools.pairwise(starts)
         ]
         values["interval_mean_days"] = float(statistics.fmean(gaps)) if gaps else 0.0
         values["interval_dispersion"] = _dispersion(gaps)
@@ -330,7 +328,8 @@ def series_from_clusters(clusters: Sequence[EventCluster]) -> list[SeriesKey]:
     """
     keys: set[tuple[str, str | None, str | None]] = set()
     for cluster in clusters:
-        for actor_id in cluster.actor_ids or [None]:
+        actor_ids: list[str | None] = list(cluster.actor_ids) or [None]
+        for actor_id in actor_ids:
             keys.add((cluster.event_type, actor_id, cluster.location_entity_id))
     return sorted(
         (

@@ -105,7 +105,7 @@ def required_positives(alpha: float, delta: float) -> int:
         raise ValueError(f"alpha must be in (0, 1), got {alpha}")
     if not 0.0 < delta < 1.0:
         raise ValueError(f"delta must be in (0, 1), got {delta}")
-    return int(math.ceil(math.log(1.0 / delta) / (2.0 * alpha * alpha)))
+    return math.ceil(math.log(1.0 / delta) / (2.0 * alpha * alpha))
 
 
 class RecallFirstController(BaseRiskController):

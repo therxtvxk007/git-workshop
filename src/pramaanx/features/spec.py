@@ -16,7 +16,6 @@ alone, without re-running anything.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from datetime import datetime
 from enum import StrEnum
 
 from pydantic import Field, model_validator
@@ -84,7 +83,9 @@ class SeriesKey(PramaanModel):
     def key(self) -> str:
         return stable_id("ser", self.event_type, self.actor_id or "", self.location_id or "")
 
-    def matches(self, *, event_type: str, actor_ids: Iterable[str], location_id: str | None) -> bool:
+    def matches(
+        self, *, event_type: str, actor_ids: Iterable[str], location_id: str | None
+    ) -> bool:
         """Does one cluster belong to this series?"""
         if event_type != self.event_type:
             return False
@@ -172,9 +173,11 @@ class FeatureRegistry:
             spec = self._specs[name]
             if spec.kind in {FeatureKind.RATIO, FeatureKind.SCORE} and not 0.0 <= value <= 1.0:
                 raise ValueError(f"{name} is a {spec.kind.value} but has value {value}")
-            if spec.kind in {FeatureKind.COUNT, FeatureKind.RATE, FeatureKind.DURATION}:
-                if value < 0.0:
-                    raise ValueError(f"{name} is a {spec.kind.value} but is negative: {value}")
+            if (
+                spec.kind in {FeatureKind.COUNT, FeatureKind.RATE, FeatureKind.DURATION}
+                and value < 0.0
+            ):
+                raise ValueError(f"{name} is a {spec.kind.value} but is negative: {value}")
 
 
 REGISTRY = FeatureRegistry()

@@ -70,7 +70,7 @@ class TestScenarioValidation:
 
 class TestInterventions:
     def test_added_events_are_marked_hypothetical(self) -> None:
-        index, clusters, cutoff = _world()
+        index, clusters, _cutoff = _world()
         actor = clusters[0].actor_ids[0]
         scenario = _scenario(
             AddEvent(
@@ -104,9 +104,7 @@ class TestInterventions:
         )
         # Inside the cutoff is fine.
         apply_scenario(clusters, index, scenario)
-        late = _scenario(
-            AddEvent(event_type="armed_clash", actor_ids=[actor], occurred_at=at(250))
-        )
+        late = _scenario(AddEvent(event_type="armed_clash", actor_ids=[actor], occurred_at=at(250)))
         with pytest.raises(ValueError, match="after the scenario"):
             apply_scenario(clusters, index, late)
 

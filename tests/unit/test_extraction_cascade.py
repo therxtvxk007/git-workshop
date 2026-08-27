@@ -60,7 +60,7 @@ class TestDates:
         assert found.month == 3
 
     def test_relative_dates_resolve_against_availability_not_a_clock(self) -> None:
-        """"Yesterday" means the day before the document became available."""
+        """ "Yesterday" means the day before the document became available."""
         reference = at(100)
         found = extract_date("Fighting erupted yesterday", reference=reference, allow_future=False)
         assert found is not None
@@ -74,8 +74,9 @@ class TestDates:
 
     def test_bare_dates_may_resolve_forward_when_planned(self) -> None:
         reference = at(60)
-        found = extract_date("The poll is scheduled for 12 December", reference=reference,
-                             allow_future=True)
+        found = extract_date(
+            "The poll is scheduled for 12 December", reference=reference, allow_future=True
+        )
         assert found is not None
         assert found > reference
 
