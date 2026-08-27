@@ -41,6 +41,7 @@ from pramaanx.entities.normalise import (
     normalise_name,
     shingles,
     similarity,
+    stem_token,
     strip_accents,
 )
 from pramaanx.entities.resolve import (
@@ -83,5 +84,6 @@ __all__ = [
     "resolve_entities",
     "shingles",
     "similarity",
+    "stem_token",
     "strip_accents",
 ]

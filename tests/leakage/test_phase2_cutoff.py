@@ -58,15 +58,20 @@ def _mention(*, observed_days: float, event_days: float, span: str) -> EventMent
 def corpus() -> list[EventMention]:
     """Four early events, plus one that only becomes available at day 250.
 
-    The late arrival describes an event at day 50 -- inside the early cutoff by
+    The late arrival describes an event at day 95 -- inside the early cutoff by
     event time, outside it by availability. That is exactly the row that leaks
     if a stage filters on the wrong timestamp.
+
+    Day 95 rather than day 50 because the early events fall on days 10, 30, 50
+    and 70: an event dated to day 50 is the *same event* as the day-50 one under
+    the deduplication tolerance, so it would merge instead of arriving as a new
+    cluster, and the test would silently stop testing anything.
     """
     early = [
         _mention(observed_days=10 + index * 20 + 1, event_days=10 + index * 20, span=f"clash {index}")
         for index in range(4)
     ]
-    late = _mention(observed_days=250, event_days=50, span="an archive released much later")
+    late = _mention(observed_days=250, event_days=95, span="an archive released much later")
     return [*early, late]
 
 
@@ -94,17 +99,38 @@ class TestLateArrivalIsInvisible:
         assert all(edge.observed_at <= EARLY_CUTOFF for edge in early_graph.edges)
 
     def test_features_exclude_then_include(self, corpus: list[EventMention]) -> None:
-        index, clusters, graph = _pipeline(corpus, LATE_CUTOFF)
+        early_index, early_clusters, early_graph = _pipeline(corpus, EARLY_CUTOFF)
+        _, late_clusters, late_graph = _pipeline(corpus, LATE_CUTOFF)
         series = SeriesKey(
             event_type="armed_clash",
-            actor_id=clusters[0].actor_ids[0],
-            location_id=clusters[0].location_entity_id,
+            actor_id=early_clusters[0].actor_ids[0],
+            location_id=early_clusters[0].location_entity_id,
         )
-        early = build_features(series, clusters, graph, as_of=EARLY_CUTOFF)
-        late = build_features(series, clusters, graph, as_of=LATE_CUTOFF)
+        # Each view is built from its own cutoff. Handing the later cluster set
+        # to the earlier as_of is refused outright -- see the next test.
+        early = build_features(series, early_clusters, early_graph, as_of=EARLY_CUTOFF)
+        late = build_features(series, late_clusters, late_graph, as_of=LATE_CUTOFF)
         assert early.support == 4
         assert late.support == 5
-        assert index.entities
+        assert early_index.entities
+
+    def test_a_later_cluster_set_cannot_be_read_at_an_earlier_cutoff(
+        self, corpus: list[EventMention]
+    ) -> None:
+        """The subtle leak: cluster aggregates summarise their build cutoff.
+
+        ``first_observed_at`` is the earliest mention a cluster holds, so a
+        cluster built in March passes an availability filter in January while
+        its support and window still summarise March.
+        """
+        _, late_clusters, late_graph = _pipeline(corpus, LATE_CUTOFF)
+        series = SeriesKey(
+            event_type="armed_clash",
+            actor_id=late_clusters[0].actor_ids[0],
+            location_id=late_clusters[0].location_entity_id,
+        )
+        with pytest.raises(ValueError, match="predates the graph cutoff"):
+            build_features(series, late_clusters, late_graph, as_of=EARLY_CUTOFF)
 
     def test_retrieval_excludes_then_includes(self, corpus: list[EventMention]) -> None:
         index, clusters, graph = _pipeline(corpus, LATE_CUTOFF)

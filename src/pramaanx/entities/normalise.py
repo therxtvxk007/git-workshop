@@ -117,17 +117,62 @@ def normalise_name(raw: str | None) -> str:
     return " ".join(tokens)
 
 
+#: Endings that look plural but are not. Stripping the trailing "s" from any of
+#: these mangles the word: "Congress" is not "Congres", "Belarus" is not
+#: "Belaru", "analysis" is not "analysi".
+_NON_PLURAL_ENDINGS: tuple[str, ...] = ("ss", "us", "is", "as", "os")
+
+#: Endings where the plural marker is "es" rather than "s".
+_ES_PLURAL_ENDINGS: tuple[str, ...] = ("ches", "shes", "xes", "zes", "ses")
+
+#: Below this length a trailing "s" is more likely part of the word than a
+#: plural marker, and the cost of being wrong is a false merge.
+_MIN_STEM_LENGTH = 4
+
+
+def stem_token(token: str) -> str:
+    """Strip inflectional endings, conservatively.
+
+    Blocking is character-based (a four-character prefix) but scoring was
+    purely token-set based, so "Maoists" and "Maoist" landed in the same block
+    and then scored 0.0 against each other -- compared, and found to have no
+    tokens in common. Stemming closes that gap at the only place it was open.
+
+    Deliberately *not* a Porter stemmer and deliberately not edit distance. A
+    general character-similarity fallback scores "Iran" against "Iraq" at 0.75,
+    which clears the merge threshold and silently fuses two countries. Handling
+    only the plural and agentive endings costs recall on irregular forms and
+    cannot make that class of mistake.
+    """
+    if len(token) < _MIN_STEM_LENGTH:
+        return token
+    if token.endswith(_NON_PLURAL_ENDINGS):
+        return token
+    if token.endswith("ies") and len(token) > _MIN_STEM_LENGTH:
+        return f"{token[:-3]}y"
+    if token.endswith(_ES_PLURAL_ENDINGS):
+        return token[:-2]
+    if token.endswith("s"):
+        return token[:-1]
+    return token
+
+
 def name_tokens(raw: str | None) -> tuple[str, ...]:
-    """Content tokens of a name, sorted, with connectives removed.
+    """Content tokens of a name, stemmed and sorted, with connectives removed.
 
     Sorted because word order is not identity: "Ministry of Home Affairs" and
     "Home Affairs Ministry" are the same body. Deduplicated because a repeated
-    token should not inflate the overlap score.
+    token should not inflate the overlap score. Stemmed because inflection is
+    not identity either, and every caller here compares token *sets*.
     """
     normalised = normalise_name(raw)
     if not normalised:
         return ()
-    tokens = {token for token in normalised.split(" ") if token and token not in NOISE_TOKENS}
+    tokens = {
+        stem_token(token)
+        for token in normalised.split(" ")
+        if token and token not in NOISE_TOKENS
+    }
     return tuple(sorted(tokens))
 
 

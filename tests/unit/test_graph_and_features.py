@@ -150,23 +150,36 @@ class TestFeatures:
         assert vector.get("events_last_365d") == 5.0
 
     def test_an_event_reported_late_does_not_appear_early(self) -> None:
-        """The core leak guard: availability filters before event time counts."""
+        """The core leak guard: availability filters before event time counts.
+
+        The two events are 50 days apart so that deduplication keeps them
+        separate; at 2 days apart they are one event by design, and the test
+        would be measuring the merge tolerance rather than the cutoff.
+        """
         mentions = [
             mention(observed_days=11, event_days=10, span="promptly reported clash"),
-            mention(observed_days=90, event_days=12, span="an archive released much later"),
+            mention(observed_days=90, event_days=60, span="an archive released much later"),
         ]
-        index = resolve_entities(mentions, cutoff_at=at(120))
-        clusters = deduplicate_mentions(mentions, index, cutoff_at=at(120))
-        graph = build_graph(clusters, index, cutoff_at=at(120))
+        # One cutoff, one cluster set. Reusing the day-120 clusters for a day-30
+        # view would carry day-90 evidence into January's counts.
+        _, early_clusters, early_graph = _world(mentions, 30)
+        _, late_clusters, late_graph = _world(mentions, 120)
         series = SeriesKey(
             event_type="armed_clash",
-            actor_id=clusters[0].actor_ids[0],
-            location_id=clusters[0].location_entity_id,
+            actor_id=early_clusters[0].actor_ids[0],
+            location_id=early_clusters[0].location_entity_id,
         )
-        early = build_features(series, clusters, graph, as_of=at(30))
-        late = build_features(series, clusters, graph, as_of=at(120))
+        early = build_features(series, early_clusters, early_graph, as_of=at(30))
+        late = build_features(series, late_clusters, late_graph, as_of=at(120))
         assert early.support == 1
         assert late.support == 2
+
+    def test_features_refuse_a_cluster_set_from_another_cutoff(self) -> None:
+        """A cluster set is an artefact of one cutoff; reading it at another leaks."""
+        _, clusters, graph = _world(series_of(count=4, spacing_days=20), 200)
+        series = series_from_clusters(clusters)[0]
+        with pytest.raises(ValueError, match="predates the graph cutoff"):
+            build_features(series, clusters, graph, as_of=at(100))
 
     def test_building_past_the_graph_cutoff_raises(self) -> None:
         mentions = series_of(count=3, spacing_days=10)

@@ -131,18 +131,58 @@ def _recency(observed_at: datetime, *, as_of: datetime, half_life_days: float) -
     return float(0.5 ** (age_days / half_life_days))
 
 
-def _reliability(cluster: EventCluster, mention: EventMention) -> float:
+def _reliability(
+    *, effective_support: int, contested: bool, mention: EventMention
+) -> float:
     """A coarse reliability for one reference.
 
     Built from independent support and the extractor's own confidence, and
     halved when the cluster is contested. It is not a calibrated probability
     and is not used as one -- it orders a pack, nothing more.
+
+    Support and contestedness are passed in rather than read off the cluster,
+    because both are aggregates over every mention available when the cluster
+    was *built*. Reading them directly would let a corroborating report filed
+    next month raise the reliability of a reference retrieved as of today, and
+    let a denial that has not arrived yet mark a claim contested.
     """
-    independence = 1.0 - (1.0 / (1.0 + float(cluster.effective_support)))
+    independence = 1.0 - (1.0 / (1.0 + float(effective_support)))
     combined = 0.5 * independence + 0.5 * mention.extraction_probability
-    if cluster.contested:
+    if contested:
         combined *= 0.5
     return float(min(max(combined, 0.0), 1.0))
+
+
+def _support_as_of(
+    cluster: EventCluster,
+    mention_by_id: dict[str, EventMention],
+    *,
+    as_of: datetime,
+) -> tuple[int, bool]:
+    """Recompute independent support and contestedness from available mentions.
+
+    Returns ``(effective_support, contested)`` counting only what a reader at
+    ``as_of`` could actually have seen.
+    """
+    groups = 0
+    denials = 0
+    corroborations = 0
+    for group in cluster.independence_groups:
+        available = [
+            mention_by_id[mention_id]
+            for mention_id in group.mention_ids
+            if mention_id in mention_by_id
+            and mention_by_id[mention_id].observed_at <= as_of
+        ]
+        if not available:
+            continue
+        groups += 1
+        for mention in available:
+            if mention.modality == "denied":
+                denials += 1
+            elif mention.modality in CORROBORATING_MODALITIES:
+                corroborations += 1
+    return groups, bool(denials and corroborations)
 
 
 def retrieve_evidence(
@@ -175,6 +215,7 @@ def retrieve_evidence(
             continue
         if cluster.window_end < query.window_start:
             continue
+        support, contested = _support_as_of(cluster, mention_by_id, as_of=query.as_of)
         for group in cluster.independence_groups:
             for mention_id in group.mention_ids:
                 mention = mention_by_id.get(mention_id)
@@ -185,7 +226,9 @@ def retrieve_evidence(
                     as_of=query.as_of,
                     half_life_days=query.half_life_days,
                 )
-                reliability = _reliability(cluster, mention)
+                reliability = _reliability(
+                    effective_support=support, contested=contested, mention=mention
+                )
                 score = recency * reliability * (HOP_DECAY**hops)
                 scored.append(
                     ScoredEvidence(

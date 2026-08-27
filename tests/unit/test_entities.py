@@ -12,6 +12,7 @@ from pramaanx.entities import (
     normalise_name,
     resolve_entities,
     similarity,
+    stem_token,
 )
 from _phase2_builders import at, mention, series_of
 
@@ -38,6 +39,32 @@ class TestNormalisation:
 
     def test_two_unparseable_names_do_not_match(self) -> None:
         assert similarity("...", "!!!") == 0.0
+
+
+class TestStemming:
+    def test_plurals_reduce_to_their_singular(self) -> None:
+        assert stem_token("maoists") == "maoist"
+        assert stem_token("guards") == "guard"
+        assert stem_token("forces") == "force"
+
+    def test_ies_plurals_restore_the_y(self) -> None:
+        assert stem_token("authorities") == "authority"
+
+    def test_words_that_merely_end_in_s_are_left_alone(self) -> None:
+        for word in ("congress", "belarus", "analysis", "hamas", "lagos"):
+            assert stem_token(word) == word
+
+    def test_short_tokens_are_never_stemmed(self) -> None:
+        assert stem_token("sas") == "sas"
+
+    def test_near_miss_country_names_must_not_merge(self) -> None:
+        """The reason there is no edit-distance fallback.
+
+        A character-similarity score puts Iran and Iraq at 0.75, over the merge
+        threshold. Token-set matching plus conservative stemming scores them 0.
+        """
+        assert similarity("Iran", "Iraq") == 0.0
+        assert similarity("Sudan", "Sedan") == 0.0
 
 
 class TestResolution:

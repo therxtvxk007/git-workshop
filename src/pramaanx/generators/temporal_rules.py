@@ -235,6 +235,15 @@ class TemporalRuleGenerator(BaseGenerator):
                 f"context cutoff {as_of.isoformat()} is after the graph cutoff "
                 f"{self.graph.cutoff_at.isoformat()}"
             )
+        if as_of < self.graph.cutoff_at:
+            # Caught here rather than three frames down in the feature builder,
+            # where the same mistake surfaces as a confusing message about a
+            # cluster set nobody in this call chose.
+            raise ValueError(
+                f"context cutoff {as_of.isoformat()} predates the graph cutoff "
+                f"{self.graph.cutoff_at.isoformat()}; rebuild the cluster set and "
+                "graph for this cutoff rather than reusing a later one"
+            )
         entities = self.index.by_id()
         proposals: list[CandidateProposal] = []
 

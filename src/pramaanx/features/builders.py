@@ -194,15 +194,26 @@ def build_features(
 ) -> FeatureVector:
     """Build the full feature vector for one series at one instant.
 
-    Raises if ``as_of`` is after the graph cutoff. That check is redundant with
-    the one on :class:`FeatureVector`, and deliberately so: the failure should
-    name the builder that caused it, not surface three frames later as a
-    validation error on a model nobody was looking at.
+    ``as_of`` must equal the graph cutoff, and an earlier one is refused just as
+    firmly as a later one. That is not pedantry, it is the leak guard.
+
+    An :class:`EventCluster` is an artefact of the cutoff it was *built* at. Its
+    ``first_observed_at`` is the earliest mention it holds, but its aggregates --
+    ``effective_support``, ``window_end``, ``last_observed_at`` -- summarise
+    every mention available at build time. So a cluster built in March and read
+    as of January passes an availability filter on its first mention while
+    carrying March's evidence in its counts. Filtering clusters by
+    ``first_observed_at <= as_of`` looks like a cutoff check and is not one.
+
+    One cutoff, one cluster set. Re-running deduplication per cutoff is the only
+    honest way to ask what a January view actually contained.
     """
-    if as_of > graph.cutoff_at:
+    if as_of != graph.cutoff_at:
+        relation = "is after" if as_of > graph.cutoff_at else "predates"
         raise ValueError(
-            f"cannot build features as of {as_of.isoformat()} from a graph cut at "
-            f"{graph.cutoff_at.isoformat()}"
+            f"cannot build features as of {as_of.isoformat()}: it {relation} the graph "
+            f"cutoff {graph.cutoff_at.isoformat()}. Cluster aggregates belong to the "
+            "cutoff they were built at; rebuild the cluster set for this instant."
         )
 
     available = _available(clusters, series, as_of=as_of)
