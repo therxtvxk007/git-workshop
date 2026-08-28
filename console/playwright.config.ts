@@ -25,9 +25,16 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev -- --port 5173",
+    // `--host 127.0.0.1` is load-bearing. Vite's default bind is `localhost`,
+    // which on a GitHub runner resolves to ::1 first, so the dev server ends
+    // up listening on IPv6 only while Playwright polls the IPv4 baseURL and
+    // times out after 60s having never reached it.
+    command: "npm run dev -- --port 5173 --host 127.0.0.1",
     url: "http://127.0.0.1:5173",
     reuseExistingServer: !process.env.CI,
+    // A cold CI runner installs and transforms on the first request; 60s is
+    // enough locally and marginal there.
+    timeout: 120_000,
     env: { VITE_PRAMAANX_API_MODE: "mock" },
   },
 });
