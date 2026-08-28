@@ -8,6 +8,20 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   server: { port: 5173 },
+  build: {
+    rollupOptions: {
+      output: {
+        // MapLibre is ~800 kB and is only needed by one panel on one route,
+        // which degrades gracefully when it is absent. Splitting it out keeps
+        // it off the critical path for the ten routes that never draw a map.
+        manualChunks: {
+          maplibre: ["maplibre-gl"],
+          react: ["react", "react-dom", "react-router-dom"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 900,
+  },
   test: {
     environment: "jsdom",
     globals: true,

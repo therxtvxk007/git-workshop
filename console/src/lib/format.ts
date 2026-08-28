@@ -33,7 +33,11 @@ export function formatProbability(value: number | null | undefined): string {
   if (pct < 100 && pct > 99.9) return ">99.9%";
   if (pct === 0) return "0%";
   if (pct === 100) return "100%";
-  return pct >= 10 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
+  // The threshold is 9.95, not 10, because the branches must agree after
+  // rounding: at 9.99 the one-decimal branch prints "10.0%" while 10 itself
+  // prints "10%", and two renderings of the same magnitude read as two
+  // different precisions.
+  return pct >= 9.95 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
 }
 
 /** Percentage-point delta, always signed, for comparisons and scenarios. */

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import maplibregl, { type Map as MapLibreMap } from "maplibre-gl";
-import "maplibre-gl/dist/maplibre-gl.css";
+import type maplibregl from "maplibre-gl";
+import type { Map as MapLibreMap, Marker } from "maplibre-gl";
 import { EVENT_FAMILY_LABELS, formatProbability, probabilityColor } from "@/lib/format";
 import { PROBABILITY_RAMP } from "@/lib/format";
 import type { District, ForecastSummary } from "@/lib/api/types";
@@ -13,6 +13,11 @@ import type { District, ForecastSummary } from "@/lib/api/types";
  * configuration (`VITE_MAP_STYLE_URL`), and when it is absent or fails to load
  * the map is replaced by `MapUnavailable` — which points at the ranked table
  * rather than pretending the map is merely still loading.
+ *
+ * MapLibre itself is imported dynamically, inside the effect, for the same
+ * reason: it is 800 kB serving one panel on one route. With no style URL
+ * configured it is never fetched at all, and the ten routes that draw no map
+ * never pay for it.
  *
  * The map is never the only way to read the data. Everything encoded here is
  * also in the table below it, because a choropleth is unusable with a screen
@@ -47,6 +52,8 @@ export function DistrictMap({
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapLibreMap | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  // The loaded module, held in state so the marker effect re-runs once it lands.
+  const [gl, setGl] = useState<typeof maplibregl | null>(null);
 
   // The strongest forecast per district: a district with three families showing
   // is one dot, coloured by its highest probability, and the table disambiguates.
@@ -59,28 +66,45 @@ export function DistrictMap({
   }
 
   useEffect(() => {
-    if (!STYLE_URL || !container.current || map.current) return;
-    try {
-      const instance = new maplibregl.Map({
-        container: container.current,
-        style: STYLE_URL,
-        center: [79, 22],
-        zoom: 3.6,
-        attributionControl: { compact: true },
-      });
-      instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
-      instance.on("error", (event) => {
+    if (!STYLE_URL || !container.current) return;
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const [{ default: maplibregl }] = await Promise.all([
+          import("maplibre-gl"),
+          import("maplibre-gl/dist/maplibre-gl.css"),
+        ]);
+        if (cancelled || !container.current || map.current) return;
+
+        const instance = new maplibregl.Map({
+          container: container.current,
+          style: STYLE_URL,
+          center: [79, 22],
+          zoom: 3.6,
+          attributionControl: { compact: true },
+        });
+        instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+        instance.on("error", (event) => {
+          setFailed(
+            `The basemap style at ${STYLE_URL} could not be loaded (${
+              event.error?.message ?? "unknown error"
+            }).`,
+          );
+        });
+        map.current = instance;
+        setGl(() => maplibregl);
+      } catch (error) {
         setFailed(
-          `The basemap style at ${STYLE_URL} could not be loaded (${
-            event.error?.message ?? "unknown error"
-          }).`,
+          error instanceof Error
+            ? `MapLibre could not be loaded: ${error.message}`
+            : "MapLibre could not be loaded.",
         );
-      });
-      map.current = instance;
-    } catch (error) {
-      setFailed(error instanceof Error ? error.message : "The map could not be initialised.");
-    }
+      }
+    })();
+
     return () => {
+      cancelled = true;
       map.current?.remove();
       map.current = null;
     };
@@ -88,8 +112,8 @@ export function DistrictMap({
 
   useEffect(() => {
     const instance = map.current;
-    if (!instance) return;
-    const markers: maplibregl.Marker[] = [];
+    if (!instance || !gl) return;
+    const markers: Marker[] = [];
     for (const district of districts) {
       const forecast = byDistrict.get(district.district_id);
       if (!forecast) continue;
@@ -103,10 +127,14 @@ export function DistrictMap({
         forecast.calibrated_probability,
       )}`;
       element.addEventListener("click", () => onSelect(forecast));
-      markers.push(new maplibregl.Marker({ element }).setLngLat([district.centroid.lon, district.centroid.lat]).addTo(instance));
+      markers.push(
+        new gl.Marker({ element })
+          .setLngLat([district.centroid.lon, district.centroid.lat])
+          .addTo(instance),
+      );
     }
     return () => markers.forEach((marker) => marker.remove());
-  }, [districts, forecasts]);
+  }, [districts, forecasts, gl]);
 
   if (!STYLE_URL) {
     return (

@@ -10,7 +10,20 @@ export default defineConfig({
   fullyParallel: true,
   reporter: "list",
   use: { baseURL: "http://127.0.0.1:5173", trace: "on-first-retry" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // Honour a preinstalled browser when one is provided, so the specs can
+        // run in an image that already ships Chromium instead of downloading
+        // a second copy.
+        launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH
+          ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
+          : {},
+      },
+    },
+  ],
   webServer: {
     command: "npm run dev -- --port 5173",
     url: "http://127.0.0.1:5173",
