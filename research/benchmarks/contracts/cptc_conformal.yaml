@@ -1,0 +1,154 @@
+benchmark_family: conformal
+benchmark_id: cptc_conformal
+blockers:
+- code: missing_field
+  detail: the repository publishes no release or tag tied to the paper
+  field: official_commit
+- code: missing_field
+  detail: no checkout has been taken, so no tree hash exists
+  field: official_code_hash
+- code: missing_field
+  detail: the official metric implementation has not been checked out
+  field: metric_code_hash
+- code: missing_field
+  detail: no environment has been resolved or locked
+  field: software_lock_hash
+- code: missing_field
+  detail: the six datasets are named in the README but no versioned, hashed release is identified
+  field: data_version
+- code: missing_field
+  detail: the datasets have not been obtained, so they have not been hashed
+  field: data_hash
+- code: licence_unknown
+  detail: the README states MIT for the code; the LICENSE file itself was not read, and the Bee, Electricity
+    and Traffic datasets carry their own separate terms that have not been established
+  field: data_license
+- code: missing_field
+  detail: undetermined until the dataset licences are read
+  field: redistribution_allowed
+- code: unverified_source
+  detail: 'no score recorded: the paper''s own table was unreachable (arxiv.org, aclanthology.org and
+    journals.sagepub.com were unreachable (egress proxy refusal) when this contract was written; the value
+    was not read from the paper''s own table), and this contract will not carry a number nobody read'
+  field: published_score
+- code: missing_field
+  detail: the official split has not been read from the primary source
+  field: training_period
+- code: missing_field
+  detail: as above
+  field: validation_period
+- code: missing_field
+  detail: as above
+  field: test_period
+- code: missing_field
+  detail: no split is pinned while the periods are unknown
+  field: split_hash
+calibration_period: null
+challenger_run_ids: []
+confidence_method:
+  alpha: 0.05
+  block_length: 3
+  name: moving_block_bootstrap
+  resamples: 10000
+contract_schema_version: 1
+contract_version: 1
+control_run_id: null
+data_hash: null
+data_license: null
+data_name: Bouncing Ball (observation noise), Bouncing Ball (dynamics noise), 3-Mode System, Bee, Electricity,
+  Traffic
+data_version: null
+final_test_policy:
+  authorisation_id: null
+  description: the repository's evaluation split; opened once, under authorisation
+  max_openings: 1
+  opened: false
+  requires_frozen_artefacts: true
+  requires_frozen_configs: true
+  requires_frozen_contract: true
+forecast_horizon: one step ahead, online
+hardware_requirements:
+  cpu_cores: 4
+  disk_gb: null
+  gpu_count: 0
+  gpu_memory_gb: null
+  gpu_model: null
+  memory_gb: 16.0
+maximum_inference_cost:
+  cpu_hours: 2.0
+  gpu_hours: null
+  peak_memory_gb: null
+  wall_clock_hours: 1.0
+maximum_training_cost:
+  cpu_hours: 24.0
+  gpu_hours: null
+  peak_memory_gb: null
+  wall_clock_hours: 12.0
+metric_code_hash: null
+metric_direction:
+  interval_coverage_error: lower_is_better
+  interval_width: lower_is_better
+metric_implementation: run_all_baselines.py (official repository)
+minimum_seed_count: 5
+notes:
+- 'Verified directly from the repository: it exists, its default branch is main, it names requirements.txt,
+  its README names the six datasets recorded above, and its entrypoint is `python run_all_baselines.py
+  --methods REDSDS CP ACI CPTC AgACI DtACI MVP`.'
+- 'Coverage is not a metric that improves monotonically: a method that over-covers is not better than
+  one that hits its nominal rate. The primary metric is therefore the absolute deviation from nominal
+  coverage, which is lower-is-better, and interval width is a secondary protection against buying coverage
+  with uselessly wide intervals.'
+- 'This is the most likely first reproduction of the eight families: CPU-only, small datasets, code released,
+  and a clear entrypoint. The blockers are the unread licences and the unpinned commit, not compute.'
+official_code_hash: null
+official_commit: null
+official_release_or_tag: null
+official_repository: https://github.com/Rose-STL-Lab/CPTC
+paired_test:
+  alternative: greater
+  name: paired_sign_permutation
+  resamples: 10000
+paper_reference:
+  citation: Sun and Yu, Conformal Prediction for Time-series Forecasting with Change Points, NeurIPS 2025
+  identifier: arXiv:2509.02844
+  kind: paper
+  retrieved_hash: null
+  url: https://arxiv.org/abs/2509.02844
+paper_title: Conformal Prediction for Time-series Forecasting with Change Points
+primary_metric: interval_coverage_error
+published_score: []
+redistribution_allowed: null
+reproduction_tolerance:
+  interval_coverage_error:
+    absolute: 0.02
+    relative: null
+  interval_width:
+    absolute: null
+    relative: 0.05
+schema_version: 2
+secondary_metrics:
+- interval_width
+seed_list:
+- 11
+- 23
+- 37
+- 53
+- 71
+software_environment:
+  container_digest: null
+  container_image: null
+  cuda_version: null
+  environment_files:
+  - requirements.txt
+  python_version: null
+software_lock_hash: null
+spatial_unit: series
+split_hash: null
+status: contract_incomplete
+target_definition: prediction intervals over a non-stationary time series, evaluated for validity (coverage)
+  and adaptivity (width)
+task_name: Conformal prediction for time series with change points
+temporal_unit: time step
+test_period: null
+training_period: null
+validation_period: null

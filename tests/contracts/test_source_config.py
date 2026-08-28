@@ -372,7 +372,11 @@ class TestConfigHash:
         assert first.config_hash == second.config_hash
 
     def test_shipped_configs_declare_only_known_options(self) -> None:
+        # configs/benchmarks/ is the WP-B0 harness's own config family, not a
+        # pipeline Settings document; it has its own contract tests.
         for path in sorted(Path("configs").rglob("*.yaml")):
+            if "benchmarks" in path.parts:
+                continue
             raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
             if "backtest" in raw:
                 Settings.model_validate(raw.get("settings", {}))

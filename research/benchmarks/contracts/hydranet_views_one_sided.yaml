@@ -1,0 +1,228 @@
+benchmark_family: hydranet_views
+benchmark_id: hydranet_views_one_sided
+blockers:
+- code: unverified_source
+  detail: arxiv.org, aclanthology.org and journals.sagepub.com were unreachable (egress proxy refusal)
+    when this contract was written; the value was not read from the paper's own table. Every published
+    score here is a claim awaiting verification.
+  field: published_score
+- code: missing_field
+  detail: https://github.com/views-platform/views-hydranet publishes no release or tag tied to the paper.
+    The only tag observed was 'archive/vpc-3.0.0-from-git' at fa10327aa5a742f88d31499e15794835472e04ee,
+    and repository HEAD at verification time was fb1af9a7670b8fff0daa14f27d33065b83fd87ce (2026-08-15).
+    Neither is evidence of the commit the published results were produced on.
+  field: official_commit
+- code: missing_field
+  detail: no checkout has been taken, so no tree hash exists
+  field: official_code_hash
+- code: missing_field
+  detail: the UCDP GED release and VIEWS PRIO-GRID-month table version behind the published results have
+    not been identified from the paper
+  field: data_version
+- code: missing_field
+  detail: the dataset has not been obtained, so it has not been hashed
+  field: data_hash
+- code: missing_field
+  detail: the paper's train/validation/test month ranges have not been read
+  field: training_period
+- code: missing_field
+  detail: as above
+  field: validation_period
+- code: missing_field
+  detail: as above
+  field: test_period
+- code: missing_field
+  detail: no split is pinned while the periods are unknown
+  field: split_hash
+- code: missing_field
+  detail: the official metric implementation has not been checked out
+  field: metric_code_hash
+- code: missing_field
+  detail: no environment has been resolved or locked
+  field: software_lock_hash
+calibration_period: null
+challenger_run_ids: []
+confidence_method:
+  alpha: 0.05
+  block_length: 3
+  name: moving_block_bootstrap
+  resamples: 10000
+contract_schema_version: 1
+contract_version: 1
+control_run_id: null
+data_hash: null
+data_license: 'UCDP GED: CC BY 4.0 (dataset); views-hydranet code: MIT'
+data_name: UCDP GED aggregated to VIEWS PRIO-GRID-month
+data_version: null
+final_test_policy:
+  authorisation_id: null
+  description: the paper's own held-out period; opened once, under authorisation
+  max_openings: 1
+  opened: false
+  requires_frozen_artefacts: true
+  requires_frozen_configs: true
+  requires_frozen_contract: true
+forecast_horizon: 1-36 months ahead (paper reports a multi-step horizon)
+hardware_requirements:
+  cpu_cores: 8
+  disk_gb: null
+  gpu_count: 1
+  gpu_memory_gb: 16.0
+  gpu_model: null
+  memory_gb: 32.0
+maximum_inference_cost:
+  cpu_hours: 4.0
+  gpu_hours: 2.0
+  peak_memory_gb: null
+  wall_clock_hours: 2.0
+maximum_training_cost:
+  cpu_hours: 96.0
+  gpu_hours: 48.0
+  peak_memory_gb: null
+  wall_clock_hours: 72.0
+metric_code_hash: null
+metric_direction:
+  average_precision: higher_is_better
+  brier_score: lower_is_better
+  mse: lower_is_better
+  roc_auc: higher_is_better
+metric_implementation: views-hydranet official evaluation (path not yet identified)
+minimum_seed_count: 5
+notes:
+- HydraNet is not implemented in this repository and must not be, under WP-B0. This record fixes the contract
+  its future implementation would have to meet.
+- 'Verified directly from the repository: URL resolves, licence is MIT, default branch is main, and the
+  README names pyproject.toml, poetry.lock and environment.yml. The README''s paper link is a placeholder.'
+- Units are temporally dependent, so the contract requires a moving-block bootstrap; an i.i.d. interval
+  over adjacent months would be far too narrow.
+- A secondary summary of the same paper reports average precision 0.138 for one-sided violence against
+  the 0.162 recorded here, and attributes the value to VIEWS rather than to HydraNet. The two cannot be
+  reconciled without the paper's own table, and it is not established which system either number belongs
+  to. Resolve before any comparison is run.
+official_code_hash: null
+official_commit: null
+official_release_or_tag: null
+official_repository: https://github.com/views-platform/views-hydranet
+paired_test:
+  alternative: greater
+  name: paired_sign_permutation
+  resamples: 10000
+paper_reference:
+  citation: 'Next-Generation Conflict Forecasting: Unleashing Predictive Patterns through Spatiotemporal
+    Learning (DRAFT), 2025'
+  identifier: arXiv:2506.14817
+  kind: paper
+  retrieved_hash: null
+  url: https://arxiv.org/abs/2506.14817
+paper_title: 'Next-Generation Conflict Forecasting: Unleashing Predictive Patterns through Spatiotemporal
+  Learning'
+primary_metric: average_precision
+published_score:
+- metric: average_precision
+  reported_seed_count: null
+  reported_variance: null
+  scale: fraction
+  source:
+    citation: 'Next-Generation Conflict Forecasting: Unleashing Predictive Patterns through Spatiotemporal
+      Learning (DRAFT), 2025'
+    identifier: arXiv:2506.14817
+    kind: paper
+    retrieved_hash: null
+    url: https://arxiv.org/abs/2506.14817
+  value: 0.162
+  verification_note: recorded as a fraction because the value lies inside [0,1] and the metric is bounded
+    there; arxiv.org, aclanthology.org and journals.sagepub.com were unreachable (egress proxy refusal)
+    when this contract was written; the value was not read from the paper's own table
+  verified_against_primary: false
+- metric: roc_auc
+  reported_seed_count: null
+  reported_variance: null
+  scale: fraction
+  source:
+    citation: 'Next-Generation Conflict Forecasting: Unleashing Predictive Patterns through Spatiotemporal
+      Learning (DRAFT), 2025'
+    identifier: arXiv:2506.14817
+    kind: paper
+    retrieved_hash: null
+    url: https://arxiv.org/abs/2506.14817
+  value: 0.9
+  verification_note: recorded as a fraction because the value lies inside [0,1] and the metric is bounded
+    there; arxiv.org, aclanthology.org and journals.sagepub.com were unreachable (egress proxy refusal)
+    when this contract was written; the value was not read from the paper's own table
+  verified_against_primary: false
+- metric: brier_score
+  reported_seed_count: null
+  reported_variance: null
+  scale: fraction
+  source:
+    citation: 'Next-Generation Conflict Forecasting: Unleashing Predictive Patterns through Spatiotemporal
+      Learning (DRAFT), 2025'
+    identifier: arXiv:2506.14817
+    kind: paper
+    retrieved_hash: null
+    url: https://arxiv.org/abs/2506.14817
+  value: 0.003
+  verification_note: recorded as a fraction because the value lies inside [0,1] and the metric is bounded
+    there; arxiv.org, aclanthology.org and journals.sagepub.com were unreachable (egress proxy refusal)
+    when this contract was written; the value was not read from the paper's own table
+  verified_against_primary: false
+- metric: mse
+  reported_seed_count: null
+  reported_variance: null
+  scale: fraction
+  source:
+    citation: 'Next-Generation Conflict Forecasting: Unleashing Predictive Patterns through Spatiotemporal
+      Learning (DRAFT), 2025'
+    identifier: arXiv:2506.14817
+    kind: paper
+    retrieved_hash: null
+    url: https://arxiv.org/abs/2506.14817
+  value: 0.003
+  verification_note: recorded as a fraction because the value lies inside [0,1] and the metric is bounded
+    there; arxiv.org, aclanthology.org and journals.sagepub.com were unreachable (egress proxy refusal)
+    when this contract was written; the value was not read from the paper's own table
+  verified_against_primary: false
+redistribution_allowed: true
+reproduction_tolerance:
+  average_precision:
+    absolute: 0.01
+    relative: 0.05
+  brier_score:
+    absolute: 0.0005
+    relative: 0.1
+  mse:
+    absolute: 0.0005
+    relative: 0.1
+  roc_auc:
+    absolute: 0.005
+    relative: 0.01
+schema_version: 2
+secondary_metrics:
+- roc_auc
+- brier_score
+- mse
+seed_list:
+- 11
+- 23
+- 37
+- 53
+- 71
+software_environment:
+  container_digest: null
+  container_image: null
+  cuda_version: null
+  environment_files:
+  - pyproject.toml
+  - poetry.lock
+  - environment.yml
+  python_version: null
+software_lock_hash: null
+spatial_unit: PRIO-GRID cell (0.5 degree)
+split_hash: null
+status: contract_incomplete
+target_definition: binary occurrence of one-sided violence in a PRIO-GRID cell in a calendar month
+task_name: 'VIEWS conflict occurrence: one-sided violence'
+temporal_unit: calendar month
+test_period: null
+training_period: null
+validation_period: null

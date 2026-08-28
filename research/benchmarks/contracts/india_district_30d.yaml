@@ -1,0 +1,190 @@
+benchmark_family: pramaanx_india
+benchmark_id: india_district_30d
+blockers:
+- code: awaiting_measurement
+  detail: 'the expanding training window''s start is not yet fixed: it depends on measured real-data completeness
+    per source, which has not been computed. Inventing a date would silently define the benchmark around
+    whatever data happens to exist.'
+  field: training_period
+- code: awaiting_measurement
+  detail: the model-selection window depends on the same completeness measurement
+  field: validation_period
+- code: awaiting_measurement
+  detail: the calibration window depends on the same completeness measurement
+  field: calibration_period
+- code: awaiting_measurement
+  detail: the frozen final-test window must be chosen after completeness is measured and then never moved
+  field: test_period
+- code: missing_field
+  detail: no split is pinned while the windows are unmeasured
+  field: split_hash
+- code: missing_field
+  detail: the ACLED, ReliefWeb, data.gov.in and GDELT snapshot versions for the frozen windows have not
+    been cut
+  field: data_version
+- code: missing_field
+  detail: no snapshot has been cut, so none has been hashed
+  field: data_hash
+- code: missing_field
+  detail: pramaanx.evaluation.metrics is under active development; the hash is taken when the contract
+    is frozen, not before
+  field: metric_code_hash
+- code: missing_field
+  detail: taken from uv.lock when the contract is frozen
+  field: software_lock_hash
+- code: missing_field
+  detail: the repository commit is pinned when the contract is frozen
+  field: official_commit
+- code: missing_field
+  detail: taken when the contract is frozen
+  field: official_code_hash
+calibration_period: null
+challenger_run_ids: []
+confidence_method:
+  alpha: 0.05
+  block_length: 3
+  name: moving_block_bootstrap
+  resamples: 10000
+contract_schema_version: 1
+contract_version: 1
+control_run_id: null
+data_hash: null
+data_license: 'ACLED: proprietary terms, redistribution prohibited; others vary by source'
+data_name: ACLED India, ReliefWeb, data.gov.in extremism context, GDELT India unrest
+data_version: null
+final_test_policy:
+  authorisation_id: null
+  description: 'Final-test access policy. The frozen final-test window may be opened exactly once, and
+    only against a frozen contract hash, frozen model artefact hashes and frozen prompt/config hashes,
+    recorded in a one-time authorisation. Before opening: test labels cannot be loaded, the test metric
+    command refuses to run, and challenger selection cannot read test results. After opening: any change
+    to a model, prompt or config invalidates the result, and a further run is reported as a rerun rather
+    than replacing the first.'
+  max_openings: 1
+  opened: false
+  requires_frozen_artefacts: true
+  requires_frozen_configs: true
+  requires_frozen_contract: true
+forecast_horizon: 30 days from the monthly cutoff
+hardware_requirements:
+  cpu_cores: 4
+  disk_gb: null
+  gpu_count: 0
+  gpu_memory_gb: null
+  gpu_model: null
+  memory_gb: 16.0
+maximum_inference_cost:
+  cpu_hours: 1.0
+  gpu_hours: null
+  peak_memory_gb: null
+  wall_clock_hours: 1.0
+maximum_training_cost:
+  cpu_hours: 8.0
+  gpu_hours: null
+  peak_memory_gb: null
+  wall_clock_hours: 4.0
+metric_code_hash: null
+metric_direction:
+  analyst_load: lower_is_better
+  average_precision: higher_is_better
+  brier_score: lower_is_better
+  calibration_error: lower_is_better
+  count_deviance: lower_is_better
+  crps: lower_is_better
+  interval_coverage: higher_is_better
+  interval_width: lower_is_better
+  log_loss: lower_is_better
+  recall_at_10: higher_is_better
+  recall_at_20: higher_is_better
+  recall_at_5: higher_is_better
+  roc_auc: higher_is_better
+  selective_risk: lower_is_better
+metric_implementation: pramaanx.evaluation.metrics (this repository)
+minimum_seed_count: 5
+notes:
+- 'Unit of evaluation: district x monthly cutoff x event family. Occurrence and count are two targets
+  on that same unit, which is what makes a paired comparison valid.'
+- Training uses an expanding window; model selection uses a separate later window; calibration uses a
+  third; and the final test window is frozen and sealed. Four windows, not two, because a calibrator fitted
+  on the selection window inherits its selection bias.
+- 'Reporting-delay rule: an event is only scoreable once the reporting delay for its source has elapsed
+  past the end of the 30-day horizon. A cutoff whose horizon is still inside the delay window is right-censored
+  and must be refused rather than scored, as tests/leakage already enforces for the pipeline.'
+- 'District universe: the historical, effective-dated district set, so a district created by a later bifurcation
+  cannot appear in an earlier cutoff''s universe. Using today''s district list retrospectively is a leak.'
+- Dates are deliberately absent. They are blocked on measuring real-data completeness and must not be
+  invented; the task brief says so, and a fabricated window would make every number downstream unfalsifiable.
+- ACLED redistribution is prohibited, so redistribution_allowed is false. Data may be cached locally for
+  a run but never committed to this repository or republished.
+- 'No published score exists and none should: this is an internal track, not a reproduction of anyone''s
+  paper. It can never reach status ''reproduced'' -- the statuses that apply to it are the blocked ones,
+  then ''running''.'
+official_code_hash: null
+official_commit: null
+official_release_or_tag: null
+official_repository: https://github.com/therxtvxk007/git-workshop
+paired_test:
+  alternative: greater
+  name: paired_sign_permutation
+  resamples: 10000
+paper_reference:
+  citation: PRAMAAN-X internal forecasting track; see research/preregistration.md and docs/integration/wpb0_benchmarks.md
+  identifier: null
+  kind: internal
+  retrieved_hash: null
+  url: null
+paper_title: null
+primary_metric: average_precision
+published_score: []
+redistribution_allowed: false
+reproduction_tolerance:
+  average_precision:
+    absolute: 0.01
+    relative: 0.05
+  brier_score:
+    absolute: 0.005
+    relative: 0.05
+  crps:
+    absolute: null
+    relative: 0.05
+schema_version: 2
+secondary_metrics:
+- brier_score
+- log_loss
+- roc_auc
+- recall_at_5
+- recall_at_10
+- recall_at_20
+- count_deviance
+- crps
+- calibration_error
+- interval_coverage
+- interval_width
+- selective_risk
+- analyst_load
+seed_list:
+- 11
+- 23
+- 37
+- 53
+- 71
+software_environment:
+  container_digest: null
+  container_image: null
+  cuda_version: null
+  environment_files:
+  - pyproject.toml
+  - uv.lock
+  python_version: '3.13'
+software_lock_hash: null
+spatial_unit: district (historical district universe, effective-dated)
+split_hash: null
+status: contract_incomplete
+target_definition: 'two targets on the same unit: (1) occurrence -- whether at least one event of the
+  given family occurs in the district within 30 days of the monthly cutoff; (2) count -- how many such
+  events occur in that window. Event families: terrorism, left-wing extremism, insurgency.'
+task_name: India 30-day district occurrence and count track
+temporal_unit: monthly cutoff
+test_period: null
+training_period: null
+validation_period: null

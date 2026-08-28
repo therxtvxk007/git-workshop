@@ -1,0 +1,217 @@
+benchmark_family: stk_adapter
+benchmark_id: stk_adapter_ice15
+blockers:
+- code: unverified_source
+  detail: arxiv.org, aclanthology.org and journals.sagepub.com were unreachable (egress proxy refusal)
+    when this contract was written; the value was not read from the paper's own table. Every published
+    score here is a claim awaiting verification.
+  field: published_score
+- code: no_official_code
+  detail: no official code release was found for STK-Adapter. Searches of the arXiv listing, the ACL anthology
+    entry and GitHub returned no repository. Without released code this is a re-implementation target,
+    not a reproduction target.
+  field: official_repository
+- code: missing_field
+  detail: no repository, therefore no commit
+  field: official_commit
+- code: missing_field
+  detail: no checkout has been taken, so no tree hash exists
+  field: official_code_hash
+- code: missing_field
+  detail: the official metric implementation has not been checked out
+  field: metric_code_hash
+- code: missing_field
+  detail: no environment has been resolved or locked
+  field: software_lock_hash
+- code: missing_field
+  detail: the ranking protocol (time-aware filtered vs raw) has not been read from the paper, and the
+    two give materially different Hit@k
+  field: metric_implementation
+- code: missing_field
+  detail: the exact release used by the paper has not been identified
+  field: data_version
+- code: missing_field
+  detail: the dataset has not been obtained, so it has not been hashed
+  field: data_hash
+- code: licence_unknown
+  detail: the licence attached to the ICEWS05-15 distribution used by the paper has not been read
+  field: data_license
+- code: missing_field
+  detail: undetermined until the licence is read
+  field: redistribution_allowed
+- code: missing_field
+  detail: the official split has not been read from the primary source
+  field: training_period
+- code: missing_field
+  detail: as above
+  field: validation_period
+- code: missing_field
+  detail: as above
+  field: test_period
+- code: missing_field
+  detail: no split is pinned while the periods are unknown
+  field: split_hash
+calibration_period: null
+challenger_run_ids: []
+confidence_method:
+  alpha: 0.05
+  block_length: null
+  name: paired_percentile_bootstrap
+  resamples: 10000
+contract_schema_version: 1
+contract_version: 1
+control_run_id: null
+data_hash: null
+data_license: null
+data_name: ICEWS05-15
+data_version: null
+final_test_policy:
+  authorisation_id: null
+  description: the dataset's standard test split; opened once, under authorisation
+  max_openings: 1
+  opened: false
+  requires_frozen_artefacts: true
+  requires_frozen_configs: true
+  requires_frozen_contract: true
+forecast_horizon: extrapolation to timestamps after the training window
+hardware_requirements:
+  cpu_cores: 8
+  disk_gb: null
+  gpu_count: 1
+  gpu_memory_gb: 40.0
+  gpu_model: null
+  memory_gb: 64.0
+maximum_inference_cost:
+  cpu_hours: 8.0
+  gpu_hours: 4.0
+  peak_memory_gb: null
+  wall_clock_hours: 4.0
+maximum_training_cost:
+  cpu_hours: 144.0
+  gpu_hours: 72.0
+  peak_memory_gb: null
+  wall_clock_hours: 96.0
+metric_code_hash: null
+metric_direction:
+  hit_at_1: higher_is_better
+  hit_at_10: higher_is_better
+  hit_at_3: higher_is_better
+metric_implementation: null
+minimum_seed_count: 5
+notes:
+- The paper names this dataset ICE15; it corresponds to the ICEWS05-15 temporal knowledge graph benchmark.
+- Scale is recorded as percentage by inference from Hit@k's bounded range, not by reading the paper. If
+  the paper in fact reports fractions, every tolerance here is off by two orders of magnitude, so the
+  inference must be confirmed before any reproduction is attempted.
+- Whether the paper's ranking is time-aware filtered or raw is unresolved and changes Hit@1 substantially.
+  It is a blocker, not a detail.
+official_code_hash: null
+official_commit: null
+official_release_or_tag: null
+official_repository: null
+paired_test:
+  alternative: greater
+  name: paired_sign_permutation
+  resamples: 10000
+paper_reference:
+  citation: 'STK-Adapter: Incorporating Evolving Graph and Event Chain for Temporal Knowledge Graph Extrapolation,
+    ACL 2026 (long 905)'
+  identifier: arXiv:2604.19042 / ACL 2026 long 905
+  kind: paper
+  retrieved_hash: null
+  url: https://aclanthology.org/2026.acl-long.905.pdf
+paper_title: 'STK-Adapter: Incorporating Evolving Graph and Event Chain for Temporal Knowledge Graph Extrapolation'
+primary_metric: hit_at_1
+published_score:
+- metric: hit_at_1
+  reported_seed_count: null
+  reported_variance: null
+  scale: percentage
+  source:
+    citation: 'STK-Adapter: Incorporating Evolving Graph and Event Chain for Temporal Knowledge Graph
+      Extrapolation, ACL 2026 (long 905)'
+    identifier: arXiv:2604.19042 / ACL 2026 long 905
+    kind: paper
+    retrieved_hash: null
+    url: https://aclanthology.org/2026.acl-long.905.pdf
+  value: 48.82
+  verification_note: 'recorded as a percentage because Hit@k is bounded in [0,1] as a fraction and the
+    reported value exceeds 1, so the paper''s table must be in percent. This is an inference from the
+    metric''s definition, not a reading of the paper: arxiv.org, aclanthology.org and journals.sagepub.com
+    were unreachable (egress proxy refusal) when this contract was written; the value was not read from
+    the paper''s own table.'
+  verified_against_primary: false
+- metric: hit_at_3
+  reported_seed_count: null
+  reported_variance: null
+  scale: percentage
+  source:
+    citation: 'STK-Adapter: Incorporating Evolving Graph and Event Chain for Temporal Knowledge Graph
+      Extrapolation, ACL 2026 (long 905)'
+    identifier: arXiv:2604.19042 / ACL 2026 long 905
+    kind: paper
+    retrieved_hash: null
+    url: https://aclanthology.org/2026.acl-long.905.pdf
+  value: 65.83
+  verification_note: 'recorded as a percentage because Hit@k is bounded in [0,1] as a fraction and the
+    reported value exceeds 1, so the paper''s table must be in percent. This is an inference from the
+    metric''s definition, not a reading of the paper: arxiv.org, aclanthology.org and journals.sagepub.com
+    were unreachable (egress proxy refusal) when this contract was written; the value was not read from
+    the paper''s own table.'
+  verified_against_primary: false
+- metric: hit_at_10
+  reported_seed_count: null
+  reported_variance: null
+  scale: percentage
+  source:
+    citation: 'STK-Adapter: Incorporating Evolving Graph and Event Chain for Temporal Knowledge Graph
+      Extrapolation, ACL 2026 (long 905)'
+    identifier: arXiv:2604.19042 / ACL 2026 long 905
+    kind: paper
+    retrieved_hash: null
+    url: https://aclanthology.org/2026.acl-long.905.pdf
+  value: 78.22
+  verification_note: 'recorded as a percentage because Hit@k is bounded in [0,1] as a fraction and the
+    reported value exceeds 1, so the paper''s table must be in percent. This is an inference from the
+    metric''s definition, not a reading of the paper: arxiv.org, aclanthology.org and journals.sagepub.com
+    were unreachable (egress proxy refusal) when this contract was written; the value was not read from
+    the paper''s own table.'
+  verified_against_primary: false
+redistribution_allowed: null
+reproduction_tolerance:
+  hit_at_1:
+    absolute: 0.005
+    relative: 0.02
+  hit_at_10:
+    absolute: 0.005
+    relative: 0.02
+  hit_at_3:
+    absolute: 0.005
+    relative: 0.02
+schema_version: 2
+secondary_metrics:
+- hit_at_3
+- hit_at_10
+seed_list:
+- 11
+- 23
+- 37
+- 53
+- 71
+software_environment:
+  container_digest: null
+  container_image: null
+  cuda_version: null
+  environment_files: []
+  python_version: null
+software_lock_hash: null
+spatial_unit: not applicable (entity-relation graph)
+split_hash: null
+status: contract_incomplete
+target_definition: 'link prediction over future timestamps: rank the missing entity of a query quadruple
+  (subject, relation, ?, timestamp)'
+task_name: 'Temporal knowledge graph extrapolation: ICE15'
+temporal_unit: ICE15 native timestamp granularity
+test_period: null
+training_period: null
+validation_period: null

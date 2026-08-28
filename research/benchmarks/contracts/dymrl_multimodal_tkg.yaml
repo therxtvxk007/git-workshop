@@ -1,0 +1,162 @@
+benchmark_family: dymrl
+benchmark_id: dymrl_multimodal_tkg
+blockers:
+- code: no_official_code
+  detail: no official code release was found for DyMRL; GitHub and the arXiv listing returned none. A
+    similarly named repository (HUSTNLP-codes/DySarl) is a different model and must not be substituted.
+  field: official_repository
+- code: missing_field
+  detail: no repository, therefore no commit
+  field: official_commit
+- code: missing_field
+  detail: no checkout has been taken, so no tree hash exists
+  field: official_code_hash
+- code: missing_field
+  detail: the official metric implementation has not been checked out
+  field: metric_code_hash
+- code: missing_field
+  detail: no environment has been resolved or locked
+  field: software_lock_hash
+- code: source_unreachable
+  detail: the paper's official multimodal TKG datasets have not been enumerated from the primary source,
+    which was unreachable
+  field: data_name
+- code: missing_field
+  detail: the exact release used by the paper has not been identified
+  field: data_version
+- code: missing_field
+  detail: the dataset has not been obtained, so it has not been hashed
+  field: data_hash
+- code: licence_unknown
+  detail: no dataset identified, so no licence read
+  field: data_license
+- code: missing_field
+  detail: undetermined until the datasets and licences are known
+  field: redistribution_allowed
+- code: missing_field
+  detail: not read from the primary source
+  field: target_definition
+- code: missing_field
+  detail: not read from the primary source
+  field: temporal_unit
+- code: missing_field
+  detail: the paper's headline metric has not been read; Hit@k and MRR are both plausible and the choice
+    changes what 'exceeded' would mean
+  field: primary_metric
+- code: missing_field
+  detail: unknown while the metric is unknown
+  field: metric_implementation
+- code: unverified_source
+  detail: 'no score recorded: the primary source was unreachable and this contract will not carry a number
+    nobody read'
+  field: published_score
+- code: missing_field
+  detail: cannot be set before the metric is known
+  field: reproduction_tolerance
+- code: missing_field
+  detail: the official split has not been read from the primary source
+  field: training_period
+- code: missing_field
+  detail: as above
+  field: validation_period
+- code: missing_field
+  detail: as above
+  field: test_period
+- code: missing_field
+  detail: no split is pinned while the periods are unknown
+  field: split_hash
+calibration_period: null
+challenger_run_ids: []
+confidence_method:
+  alpha: 0.05
+  block_length: null
+  name: paired_percentile_bootstrap
+  resamples: 10000
+contract_schema_version: 1
+contract_version: 1
+control_run_id: null
+data_hash: null
+data_license: null
+data_name: null
+data_version: null
+final_test_policy:
+  authorisation_id: null
+  description: not yet definable
+  max_openings: 1
+  opened: false
+  requires_frozen_artefacts: true
+  requires_frozen_configs: true
+  requires_frozen_contract: true
+forecast_horizon: extrapolation to timestamps after the training window
+hardware_requirements:
+  cpu_cores: 8
+  disk_gb: null
+  gpu_count: 1
+  gpu_memory_gb: 40.0
+  gpu_model: null
+  memory_gb: 64.0
+maximum_inference_cost:
+  cpu_hours: 8.0
+  gpu_hours: 4.0
+  peak_memory_gb: null
+  wall_clock_hours: 4.0
+maximum_training_cost:
+  cpu_hours: 144.0
+  gpu_hours: 72.0
+  peak_memory_gb: null
+  wall_clock_hours: 96.0
+metric_code_hash: null
+metric_direction: {}
+metric_implementation: null
+minimum_seed_count: 5
+notes:
+- This record exists to hold the contract open, not to describe a benchmark. Almost every field is unknown,
+  and the honest status is contract_incomplete.
+- The task brief calls for 'DyMRL official multimodal TKG datasets'. Which datasets those are could not
+  be established without the paper, so the field is null rather than filled with a plausible guess such
+  as MMKG or VTKG.
+official_code_hash: null
+official_commit: null
+official_release_or_tag: null
+official_repository: null
+paired_test:
+  alternative: greater
+  name: paired_sign_permutation
+  resamples: 10000
+paper_reference:
+  citation: 'DyMRL: Dynamic Multispace Representation Learning for Multimodal Event Forecasting in Knowledge
+    Graph'
+  identifier: arXiv:2603.24636
+  kind: paper
+  retrieved_hash: null
+  url: https://arxiv.org/abs/2603.24636
+paper_title: 'DyMRL: Dynamic Multispace Representation Learning for Multimodal Event Forecasting in Knowledge
+  Graph'
+primary_metric: null
+published_score: []
+redistribution_allowed: null
+reproduction_tolerance: {}
+schema_version: 2
+secondary_metrics: []
+seed_list:
+- 11
+- 23
+- 37
+- 53
+- 71
+software_environment:
+  container_digest: null
+  container_image: null
+  cuda_version: null
+  environment_files: []
+  python_version: null
+software_lock_hash: null
+spatial_unit: not applicable (entity-relation graph)
+split_hash: null
+status: contract_incomplete
+target_definition: null
+task_name: Multimodal temporal knowledge graph event forecasting
+temporal_unit: null
+test_period: null
+training_period: null
+validation_period: null

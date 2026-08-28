@@ -1,0 +1,160 @@
+benchmark_family: views_challenge
+benchmark_id: views_fatality_distribution
+blockers:
+- code: missing_field
+  detail: the challenge repository publishes no tag tied to the paper
+  field: official_commit
+- code: missing_field
+  detail: no checkout has been taken, so no tree hash exists
+  field: official_code_hash
+- code: missing_field
+  detail: the official metric implementation has not been checked out
+  field: metric_code_hash
+- code: missing_field
+  detail: no environment has been resolved or locked
+  field: software_lock_hash
+- code: missing_field
+  detail: replication data is distributed via a Dropbox folder linked from the repository README, not
+    by a versioned, hashed release
+  field: data_version
+- code: missing_field
+  detail: the data has not been obtained, so it has not been hashed
+  field: data_hash
+- code: licence_unknown
+  detail: no LICENSE was found for the challenge repository and the terms attached to the replication
+    data have not been read
+  field: data_license
+- code: missing_field
+  detail: undetermined until the licence is read
+  field: redistribution_allowed
+- code: missing_field
+  detail: the official split has not been read from the primary source
+  field: training_period
+- code: missing_field
+  detail: as above
+  field: validation_period
+- code: missing_field
+  detail: as above
+  field: test_period
+- code: missing_field
+  detail: no split is pinned while the periods are unknown
+  field: split_hash
+- code: unverified_source
+  detail: 'no benchmark score is recorded: the paper''s own table was unreachable (arxiv.org, aclanthology.org
+    and journals.sagepub.com were unreachable (egress proxy refusal) when this contract was written; the
+    value was not read from the paper''s own table), and this contract will not carry a number nobody
+    read'
+  field: published_score
+calibration_period: null
+challenger_run_ids: []
+confidence_method:
+  alpha: 0.05
+  block_length: 3
+  name: moving_block_bootstrap
+  resamples: 10000
+contract_schema_version: 1
+contract_version: 1
+control_run_id: null
+data_hash: null
+data_license: null
+data_name: VIEWS prediction challenge submissions and actuals (UCDP-derived)
+data_version: null
+final_test_policy:
+  authorisation_id: null
+  description: the challenge's true-future window; opened once, under authorisation
+  max_openings: 1
+  opened: false
+  requires_frozen_artefacts: true
+  requires_frozen_configs: true
+  requires_frozen_contract: true
+forecast_horizon: 12 months (true-future window July 2024 - June 2025)
+hardware_requirements:
+  cpu_cores: 8
+  disk_gb: null
+  gpu_count: 0
+  gpu_memory_gb: null
+  gpu_model: null
+  memory_gb: 32.0
+maximum_inference_cost:
+  cpu_hours: 4.0
+  gpu_hours: null
+  peak_memory_gb: null
+  wall_clock_hours: 2.0
+maximum_training_cost:
+  cpu_hours: 48.0
+  gpu_hours: null
+  peak_memory_gb: null
+  wall_clock_hours: 24.0
+metric_code_hash: null
+metric_direction:
+  crps: lower_is_better
+  ign: lower_is_better
+  mis: lower_is_better
+metric_implementation: evaluation.evaluate_submissions (official challenge repository)
+minimum_seed_count: 5
+notes:
+- 'Verified directly from the repository README: the metric names are ''crps'', ''ign'' and ''mis''; aggregation
+  levels are country-month (cm) and PRIO-GRID-month (pgm); the retrospective windows are Y2018-Y2021;
+  and the entrypoint is `python -m evaluation.evaluate_submissions -s <submissions> -a <actuals>`.'
+- The true-future window (July 2024 - June 2025) is already past, so this is a retrospective evaluation
+  and the challenge's own held-out guarantee no longer applies to it. Any claim built on it must say so.
+- Data arrives through a Dropbox link rather than a versioned release. Until it is hashed, no run against
+  it can be shown to have used the same bytes twice.
+official_code_hash: null
+official_commit: null
+official_release_or_tag: null
+official_repository: https://github.com/prio-data/prediction_competition_2023
+paired_test:
+  alternative: greater
+  name: paired_sign_permutation
+  resamples: 10000
+paper_reference:
+  citation: 'Hegre et al., The 2023/24 VIEWS Prediction Challenge: Predicting the Number of Fatalities
+    in Armed Conflict, with Uncertainty, Journal of Peace Research'
+  identifier: doi:10.1177/00223433241300862 / arXiv:2407.11045
+  kind: paper
+  retrieved_hash: null
+  url: https://journals.sagepub.com/doi/10.1177/00223433241300862
+paper_title: 'The 2023/24 VIEWS Prediction Challenge: Predicting the Number of Fatalities in Armed Conflict,
+  with Uncertainty'
+primary_metric: crps
+published_score: []
+redistribution_allowed: null
+reproduction_tolerance:
+  crps:
+    absolute: null
+    relative: 0.05
+  ign:
+    absolute: null
+    relative: 0.05
+  mis:
+    absolute: null
+    relative: 0.05
+schema_version: 2
+secondary_metrics:
+- ign
+- mis
+seed_list:
+- 11
+- 23
+- 37
+- 53
+- 71
+software_environment:
+  container_digest: null
+  container_image: null
+  cuda_version: null
+  environment_files:
+  - requirements.txt
+  python_version: null
+software_lock_hash: null
+spatial_unit: country-month (cm) and PRIO-GRID-month (pgm)
+split_hash: null
+status: contract_incomplete
+target_definition: the full predictive distribution of state-based battle-related fatalities, submitted
+  as samples per unit-month
+task_name: 'VIEWS 2023/24 prediction challenge: fatality distribution'
+temporal_unit: calendar month
+test_period: null
+training_period: null
+validation_period: null

@@ -1,0 +1,40 @@
+# Defaults for `python -m pramaanx.benchmarks`.
+#
+# Paths are relative to the repository root. Every command also accepts them as
+# explicit options, so nothing here is required for the CLI to work -- this file
+# documents the layout rather than configuring behaviour behind the caller's
+# back.
+version: 1
+
+registry: research/benchmarks/registry.yaml
+contracts: research/benchmarks/contracts
+reproductions: research/benchmarks/reproductions
+
+# Where third-party benchmark code and data may be cached. Outside the source
+# tree and git-ignored: official repositories are never vendored into this
+# repository, and downloaded data is never committed -- several of the datasets
+# in the registry forbid redistribution outright.
+third_party_cache: .cache/benchmarks
+
+# Dry run is the default for anything that would execute third-party code.
+# Running someone else's benchmark is an explicit act.
+defaults:
+  dry_run: true
+  json: false
+
+# The reproduction protocol this project applies, distinct from anything a paper
+# reports. Five seeds because a single run cannot separate an improvement from
+# an initialisation.
+protocol:
+  seed_list: [11, 23, 37, 53, 71]
+  minimum_seed_count: 5
+  confidence:
+    resamples: 10000
+    alpha: 0.05
+    # Set for temporally dependent units. Adjacent months are correlated, and an
+    # i.i.d. bootstrap over them reports an interval that is far too narrow.
+    block_length: 3
+  paired_test:
+    name: paired_sign_permutation
+    resamples: 10000
+    alternative: greater

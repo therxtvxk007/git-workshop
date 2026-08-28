@@ -105,12 +105,16 @@ class TestNestedTypos:
         assert load_settings(config, environ={}).evaluation.match_min_score == 0.9
 
 
+# configs/benchmarks/ holds the WP-B0 benchmark harness settings, which are not
+# pipeline Settings documents and deliberately do not validate as one. They have
+# their own contract in tests/contracts/test_benchmark_registry.py.
+PIPELINE_CONFIGS = sorted(
+    path for path in Path("configs").rglob("*.yaml") if "benchmarks" not in path.parts
+)
+
+
 class TestShippedConfigs:
-    @pytest.mark.parametrize(
-        "path",
-        sorted(Path("configs").rglob("*.yaml")),
-        ids=lambda p: str(p),
-    )
+    @pytest.mark.parametrize("path", PIPELINE_CONFIGS, ids=lambda p: str(p))
     def test_every_shipped_config_validates(self, path: Path) -> None:
         # Catches a typo committed into the repository's own configs.
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}

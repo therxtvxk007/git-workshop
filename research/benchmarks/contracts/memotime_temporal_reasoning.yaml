@@ -1,0 +1,156 @@
+benchmark_family: memotime
+benchmark_id: memotime_temporal_reasoning
+blockers:
+- code: missing_field
+  detail: the repository publishes no release or tag tied to the WWW 2026 paper
+  field: official_commit
+- code: missing_field
+  detail: no checkout has been taken, so no tree hash exists
+  field: official_code_hash
+- code: missing_field
+  detail: the official metric implementation has not been checked out
+  field: metric_code_hash
+- code: missing_field
+  detail: no environment has been resolved or locked
+  field: software_lock_hash
+- code: missing_field
+  detail: the MultiTQ and TimeQuestions releases used have not been identified
+  field: data_version
+- code: missing_field
+  detail: the datasets have not been obtained, so they have not been hashed
+  field: data_hash
+- code: licence_unknown
+  detail: 'GitHub reports the repository licence as NOASSERTION: a LICENSE file exists but does not match
+    a recognised licence, so the terms have not been established. The dataset licences are separate and
+    also unread.'
+  field: data_license
+- code: missing_field
+  detail: undetermined until the licence is read
+  field: redistribution_allowed
+- code: missing_field
+  detail: the paper's scoring script and answer-matching rule have not been identified
+  field: metric_implementation
+- code: unverified_source
+  detail: 'no score recorded: the paper''s own table was unreachable (arxiv.org, aclanthology.org and
+    journals.sagepub.com were unreachable (egress proxy refusal) when this contract was written; the value
+    was not read from the paper''s own table), and this contract will not carry a number nobody read'
+  field: published_score
+- code: missing_field
+  detail: the official split has not been read from the primary source
+  field: training_period
+- code: missing_field
+  detail: as above
+  field: validation_period
+- code: missing_field
+  detail: as above
+  field: test_period
+- code: missing_field
+  detail: no split is pinned while the periods are unknown
+  field: split_hash
+calibration_period: null
+challenger_run_ids: []
+confidence_method:
+  alpha: 0.05
+  block_length: null
+  name: paired_percentile_bootstrap
+  resamples: 10000
+contract_schema_version: 1
+contract_version: 1
+control_run_id: null
+data_hash: null
+data_license: null
+data_name: MultiTQ (ICEWS05-15 derived) and TimeQuestions
+data_version: null
+final_test_policy:
+  authorisation_id: null
+  description: the datasets' standard test splits; opened once, under authorisation
+  max_openings: 1
+  opened: false
+  requires_frozen_artefacts: true
+  requires_frozen_configs: true
+  requires_frozen_contract: true
+forecast_horizon: not applicable (retrieval and reasoning over a fixed graph)
+hardware_requirements:
+  cpu_cores: 8
+  disk_gb: null
+  gpu_count: 1
+  gpu_memory_gb: 48.0
+  gpu_model: null
+  memory_gb: 64.0
+maximum_inference_cost:
+  cpu_hours: 16.0
+  gpu_hours: 8.0
+  peak_memory_gb: null
+  wall_clock_hours: 8.0
+maximum_training_cost:
+  cpu_hours: 48.0
+  gpu_hours: 24.0
+  peak_memory_gb: null
+  wall_clock_hours: 48.0
+metric_code_hash: null
+metric_direction:
+  exact_match: higher_is_better
+  hit_at_1: higher_is_better
+metric_implementation: null
+minimum_seed_count: 5
+notes:
+- 'Verified directly from the GitHub API: the repository exists, is not a fork, its default branch is
+  main, it was created 2026-02-18 and last pushed 2026-06-15, and its licence is reported as NOASSERTION.'
+- The paper is reported to claim improvements 'by up to 24.0%' over baselines. That is a relative figure
+  over an unnamed baseline and is not a benchmark score; it is recorded here as context and is deliberately
+  absent from published_score.
+- This benchmark calls a large language model, so cost is dominated by inference, not training. The inference
+  budget is the one that matters and must appear in any report.
+official_code_hash: null
+official_commit: null
+official_release_or_tag: null
+official_repository: https://github.com/SteveTANTAN/MemoTime
+paired_test:
+  alternative: greater
+  name: paired_sign_permutation
+  resamples: 10000
+paper_reference:
+  citation: 'MemoTime: Memory-Augmented Temporal Knowledge Graph Enhanced Large Language Model Reasoning,
+    WWW 2026'
+  identifier: arXiv:2510.13614
+  kind: paper
+  retrieved_hash: null
+  url: https://arxiv.org/abs/2510.13614
+paper_title: 'MemoTime: Memory-Augmented Temporal Knowledge Graph Enhanced Large Language Model Reasoning'
+primary_metric: hit_at_1
+published_score: []
+redistribution_allowed: null
+reproduction_tolerance:
+  exact_match:
+    absolute: 0.01
+    relative: 0.03
+  hit_at_1:
+    absolute: 0.01
+    relative: 0.03
+schema_version: 2
+secondary_metrics:
+- exact_match
+seed_list:
+- 11
+- 23
+- 37
+- 53
+- 71
+software_environment:
+  container_digest: null
+  container_image: null
+  cuda_version: null
+  environment_files:
+  - requirements.txt
+  python_version: null
+software_lock_hash: null
+spatial_unit: not applicable
+split_hash: null
+status: contract_incomplete
+target_definition: answer temporal questions over a temporal knowledge graph; the answer is an entity
+  or a timestamp
+task_name: Temporal knowledge graph question answering (MultiTQ, TimeQuestions)
+temporal_unit: question instance
+test_period: null
+training_period: null
+validation_period: null
