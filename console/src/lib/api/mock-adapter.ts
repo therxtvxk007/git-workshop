@@ -28,6 +28,7 @@ import {
   MOCK_LINEAGE,
   MOCK_REVIEW_TASKS,
   MOCK_RUNS,
+  MOCK_TASK_FORECASTS,
   MOCK_SNAPSHOT,
   WORLD,
 } from "@/lib/mock/dataset";
@@ -154,7 +155,8 @@ export class MockPramaanXAdapter implements PramaanXApiAdapter {
   async getReviewTask(taskId: string) {
     const summary = MOCK_REVIEW_TASKS.find((t) => t.task_id === taskId);
     if (!summary) throw new ApiUnavailableError(`/v1/review/tasks/${taskId}`, "No such review task");
-    const entry = WORLD.find((w) => w.detail.forecast_id === `fc_${taskId.slice(5)}`);
+    const forecastId = MOCK_TASK_FORECASTS[taskId];
+    const entry = forecastId ? WORLD.find((w) => w.detail.forecast_id === forecastId) : undefined;
     if (!entry) throw new ApiUnavailableError(`/v1/review/tasks/${taskId}`, "Task is not linked to a forecast");
 
     // Note what is *absent*: no probability, no status, no model identity. The

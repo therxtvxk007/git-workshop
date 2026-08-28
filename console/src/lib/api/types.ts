@@ -168,26 +168,35 @@ const forecastSummaryBase = z.object({
 });
 
 /**
- * The two cross-field rules the engine enforces on every record, applied here
- * as well so a serving layer cannot quietly relax them. They are attached with
- * a helper rather than inline so `forecastDetailSchema` can extend the object
- * and re-apply the same rules instead of dropping them.
+ * The two cross-field rules the engine enforces on every record.
+ *
+ * Written as a `superRefine` callback rather than a generic wrapper: a helper
+ * of the form `<T extends z.ZodTypeAny>(schema: T) => schema.refine(...)`
+ * type-checks happily and then collapses the inferred output to `any`, which
+ * disables every downstream field check without producing a single error. The
+ * callback keeps `forecastSummaryBase`'s inferred shape intact on both schemas.
  */
-function withForecastInvariants<T extends z.ZodTypeAny>(schema: T) {
-  return schema
-    .refine(
-      (f: z.infer<typeof forecastSummaryBase>) =>
-        Date.parse(f.created_at) >= Date.parse(f.cutoff_at),
-      "created_at precedes cutoff_at",
-    )
-    .refine(
-      (f: z.infer<typeof forecastSummaryBase>) =>
-        f.independent_cluster_count <= f.evidence_count,
-      "independent clusters cannot outnumber evidence items",
-    );
+function checkForecastInvariants(
+  value: z.infer<typeof forecastSummaryBase>,
+  ctx: z.RefinementCtx,
+): void {
+  if (Date.parse(value.created_at) < Date.parse(value.cutoff_at)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["created_at"],
+      message: "created_at precedes cutoff_at",
+    });
+  }
+  if (value.independent_cluster_count > value.evidence_count) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["independent_cluster_count"],
+      message: "independent clusters cannot outnumber evidence items",
+    });
+  }
 }
 
-export const forecastSummarySchema = withForecastInvariants(forecastSummaryBase);
+export const forecastSummarySchema = forecastSummaryBase.superRefine(checkForecastInvariants);
 
 export const evidenceRefSchema = z.object({
   observation_id: z.string().min(1),
@@ -239,14 +248,14 @@ export const observedOutcomeSchema = z.object({
   note: z.string().nullable(),
 });
 
-export const forecastDetailSchema = withForecastInvariants(
-  forecastSummaryBase.extend({
+export const forecastDetailSchema = forecastSummaryBase
+  .extend({
     hypothesis: hypothesisSchema,
     evidence: z.array(evidenceRefSchema),
     provenance: provenanceSchema,
     observed_outcome: observedOutcomeSchema.nullable(),
-  }),
-);
+  })
+  .superRefine(checkForecastInvariants);
 
 export const historyPointSchema = z.object({
   cutoff_at: utcDatetimeSchema,

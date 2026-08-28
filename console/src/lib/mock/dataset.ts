@@ -299,7 +299,7 @@ function buildHistory(
     points.push({
       cutoff_at: cutoff,
       calibrated_probability: Number(probability.toFixed(4)),
-      raw_probability: Number(Math.min(0.99, probability * rng.float(1.05, 1.4)).toFixed(4)),
+      raw_probability: Number(probability.toFixed(4)),
       interval: makeInterval(probability, 0.09 + w * 0.004, rng),
       status: w === 0 ? status : probability > 0.45 ? "watch" : "monitor",
       forecast_id: w === 0 ? forecastId : `${forecastId}_h${w}`,
@@ -377,7 +377,11 @@ function buildWorld() {
         cutoff_at: MOCK_CUTOFF,
         created_at: CREATED_AT,
         horizon_days: 30,
-        raw_probability: Number(Math.min(0.99, calibrated * rng.float(1.1, 1.5)).toFixed(4)),
+        // Identical to the calibrated value on purpose. This run records
+        // calibration=identity@uncalibrated, which passes generator output
+        // through unchanged -- so fixtures where the two differ would
+        // contradict the provenance the same record carries.
+        raw_probability: Number(calibrated.toFixed(4)),
         calibrated_probability: Number(calibrated.toFixed(4)),
         interval,
         epistemic_uncertainty: Number(
@@ -466,6 +470,17 @@ export const MOCK_SNAPSHOT: SnapshotInfo = {
 
 /* -------------------------------------------------------------- review */
 
+/**
+ * Which forecast each task is about.
+ *
+ * Kept as an explicit map rather than recovered by slicing the task id back
+ * into a forecast id. The first version of this file did the latter, the two
+ * slice lengths disagreed by four characters, and every task detail request
+ * failed -- an id is an opaque handle, and reconstructing one from another is
+ * a join waiting to break.
+ */
+export const MOCK_TASK_FORECASTS: Record<string, string> = {};
+
 export const MOCK_REVIEW_TASKS: ReviewTaskSummary[] = WORLD.slice(0, 14).map((w, i) => ({
   task_id: `task_${w.detail.forecast_id.slice(3, 15)}`,
   event_family: w.detail.event_family,
@@ -480,6 +495,10 @@ export const MOCK_REVIEW_TASKS: ReviewTaskSummary[] = WORLD.slice(0, 14).map((w,
   reviews_submitted: i === 2 || i === 3 ? 2 : i === 4 ? 1 : 0,
   own_review_submitted: i === 3 || i === 4,
 }));
+
+for (const [index, task] of MOCK_REVIEW_TASKS.entries()) {
+  MOCK_TASK_FORECASTS[task.task_id] = WORLD[index]!.detail.forecast_id;
+}
 
 /* ------------------------------------------------------------ backtests */
 
