@@ -1,0 +1,43 @@
+date,state,city,target_class,fatalities,note
+1993-03-12,Maharashtra,Mumbai,market,257,serial bombings
+1998-02-14,Tamil Nadu,Coimbatore,market,58,serial bombings
+2000-12-22,Delhi,New Delhi,government,3,Red Fort
+2001-10-01,Jammu and Kashmir,Srinagar,government,38,state legislature complex
+2001-12-13,Delhi,New Delhi,government,14,Parliament House
+2002-09-24,Gujarat,Gandhinagar,religious,33,Akshardham temple
+2003-08-25,Maharashtra,Mumbai,market,54,Gateway of India and Zaveri Bazaar
+2005-07-05,Uttar Pradesh,Ayodhya,religious,6,Ram Janmabhoomi complex
+2005-10-29,Delhi,New Delhi,market,62,pre-Diwali market blasts
+2006-03-07,Uttar Pradesh,Varanasi,religious,20,Sankat Mochan temple and rail station
+2006-07-11,Maharashtra,Mumbai,transit,189,suburban rail network
+2006-09-08,Maharashtra,Malegaon,religious,37,mosque and cemetery
+2007-02-18,Haryana,Panipat,transit,68,Samjhauta Express
+2007-05-18,Telangana,Hyderabad,religious,16,Mecca Masjid
+2007-08-25,Telangana,Hyderabad,market,42,Lumbini Park and Gokul Chat
+2007-10-11,Rajasthan,Ajmer,religious,3,Ajmer Sharif Dargah
+2008-05-13,Rajasthan,Jaipur,market,63,serial blasts
+2008-07-25,Karnataka,Bengaluru,market,2,serial low-intensity blasts
+2008-07-26,Gujarat,Ahmedabad,market,56,serial blasts
+2008-09-13,Delhi,New Delhi,market,30,serial market blasts
+2008-10-30,Assam,Guwahati,market,81,coordinated blasts across Assam
+2008-11-26,Maharashtra,Mumbai,hospitality,175,coordinated assault on hotels and transit
+2010-02-13,Maharashtra,Pune,hospitality,17,German Bakery
+2010-04-06,Chhattisgarh,Dantewada,security,76,CRPF ambush
+2010-12-07,Uttar Pradesh,Varanasi,religious,2,Sheetla Ghat
+2011-07-13,Maharashtra,Mumbai,market,26,triple blasts
+2011-09-07,Delhi,New Delhi,government,15,Delhi High Court
+2013-02-21,Telangana,Hyderabad,market,17,Dilsukhnagar
+2013-04-17,Karnataka,Bengaluru,government,0,Malleswaram party office
+2013-05-25,Chhattisgarh,Sukma,security,27,Jhiram Ghati convoy ambush
+2013-07-07,Bihar,Bodh Gaya,religious,0,Mahabodhi temple complex
+2013-10-27,Bihar,Patna,market,6,rally ground blasts
+2015-07-27,Punjab,Gurdaspur,security,10,Dinanagar police station
+2016-01-02,Punjab,Pathankot,security,14,air force station
+2016-09-18,Jammu and Kashmir,Uri,security,19,army brigade headquarters
+2016-11-29,Jammu and Kashmir,Nagrota,security,7,army unit
+2017-07-10,Jammu and Kashmir,Anantnag,religious,8,Amarnath pilgrim bus
+2019-02-14,Jammu and Kashmir,Pulwama,security,40,CRPF convoy
+2021-06-27,Jammu and Kashmir,Jammu,security,0,air force station
+2023-12-21,Jammu and Kashmir,Poonch,security,4,army vehicles
+2024-06-09,Jammu and Kashmir,Reasi,transit,9,pilgrim bus
+2025-04-22,Jammu and Kashmir,Pahalgam,hospitality,26,tourists at Baisaran
