@@ -1,0 +1,29 @@
+{
+  "status": "ok",
+  "payload": {
+    "articles": [
+      {
+        "id": "api-77001",
+        "canonical": "https://example-publisher.test/story/77001?utm_medium=email",
+        "title": "District administration reviews security arrangements",
+        "text": "The district administration reviewed security arrangements at a meeting on Sunday.",
+        "published": "2026-03-01T08:00:00+05:30",
+        "updated": null,
+        "lang": "en",
+        "author": "Correspondent",
+        "agency": null
+      },
+      {
+        "id": "api-77002",
+        "canonical": "https://example-publisher.test/story/77002",
+        "title": "Wire: forces deployed ahead of polls",
+        "text": "Additional forces have been deployed ahead of the scheduled polls, officials said.",
+        "published": "2026-03-01T09:00:00+05:30",
+        "updated": null,
+        "lang": "en",
+        "author": null,
+        "agency": "PTI"
+      }
+    ]
+  }
+}

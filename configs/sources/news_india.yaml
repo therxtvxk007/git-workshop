@@ -1,0 +1,212 @@
+# The Indian news layer: which sources exist, and what may be kept from each.
+#
+# Layer over the base config:
+#   uv run pramaanx version --config configs/sources/news_india.yaml
+#
+# The registry lives under `extras` rather than under `sources`. That is not a
+# workaround. `sources` holds *connector options*, validated against the model
+# registered for each source id in pramaanx.config.SOURCE_OPTION_MODELS, and the
+# news connector is deliberately unregistered until WP9 wires it (see
+# docs/integration/wp01_news.md). `extras` is validated and hashed as part of
+# Settings, so the registry still travels in the config hash of every run that
+# uses it -- which is the property that matters: a run performed under different
+# licence terms must not be mistakable for one performed under these.
+#
+# NO CREDENTIALS APPEAR IN THIS FILE, and NewsSourceEntry rejects anything that
+# looks like one. Where a source needs a credential, the entry names the
+# environment variable it is read from and nothing more.
+#
+# Every licence_class below is the conservative reading, not the hopeful one.
+# `unknown` is a real and expected state: it stores hashes only, which is enough
+# to detect syndication and revision without retaining a single character of
+# text nobody cleared. Raising a source to `full_text_permitted` is a decision a
+# person makes after reading the terms, and it belongs in a commit with their
+# name on it.
+include: ../base.yaml
+
+extras:
+  news_registry:
+    registry_version: news-registry/1.0.0
+    sources:
+      # -- Government feeds -------------------------------------------------
+      # Government of India releases carry an explicit reuse policy, publish
+      # timestamps that can be checked against the release archive, and are the
+      # one family here whose publication times are trusted for cutoff purposes.
+      - source_id: pib_releases
+        display_name: Press Information Bureau releases
+        publisher: Government of India
+        homepage: https://pib.gov.in/
+        acquisition: government_feed
+        languages: ["en", "hi"]
+        scripts: ["Latin", "Devanagari"]
+        regions: ["All India"]
+        licence_class: full_text_permitted
+        redistribution: public
+        licence_url: https://www.data.gov.in/government-open-data-license-india
+        permitted_fields: ["headline", "body", "byline", "url", "timestamps", "hashes"]
+        expected_items_per_day: 60.0
+        normal_publication_delay_seconds: 3600.0
+        resolvability_policy: publication
+        reliability_prior: 0.7
+        provenance_notes: >-
+          Official releases. Authoritative for what the government said and when
+          it said it; not an independent account of what happened.
+        enabled: true
+        effective_from: "2024-01-01T00:00:00Z"
+
+      # -- Humanitarian reporting ------------------------------------------
+      # Already reachable through the existing ReliefWeb connector. Listed here
+      # so that its articles participate in syndication and coverage accounting
+      # alongside news, rather than being counted in a separate universe.
+      - source_id: reliefweb_india_reports
+        display_name: ReliefWeb reports, India
+        publisher: UN OCHA
+        homepage: https://reliefweb.int/
+        acquisition: reliefweb_report
+        languages: ["en"]
+        scripts: ["Latin"]
+        regions: ["All India"]
+        licence_class: snippet_only
+        redistribution: internal_only
+        licence_url: https://reliefweb.int/terms-conditions
+        permitted_fields: ["headline", "body", "url", "timestamps", "hashes"]
+        expected_items_per_day: 4.0
+        normal_publication_delay_seconds: 86400.0
+        resolvability_policy: publication
+        reliability_prior: 0.65
+        provenance_notes: >-
+          Posting and revision timestamps are explicit, which is why this source
+          supports honest point-in-time reconstruction where a news archive does
+          not. Terms permit bounded quotation only.
+        enabled: true
+        effective_from: "2024-01-01T00:00:00Z"
+
+      # -- Article URLs surfaced by GDELT -----------------------------------
+      # GDELT indexes the URL and the metadata; it does not license the article
+      # body. Metadata only, and the publication timestamp is GDELT's estimate
+      # rather than the publisher's, so the retrieval policy applies.
+      - source_id: gdelt_article_index
+        display_name: GDELT-indexed article URLs, India
+        publisher: The GDELT Project
+        homepage: https://www.gdeltproject.org/
+        acquisition: gdelt_article_url
+        languages: ["en", "hi", "ta", "te", "ml", "bn", "mr", "gu", "kn", "pa", "or", "ur"]
+        scripts:
+          ["Latin", "Devanagari", "Tamil", "Telugu", "Malayalam", "Bengali",
+           "Gujarati", "Kannada", "Gurmukhi", "Oriya", "Arabic"]
+        regions: ["All India"]
+        licence_class: metadata_only
+        redistribution: internal_only
+        licence_url: https://www.gdeltproject.org/about.html#termsofuse
+        permitted_fields: ["headline", "url", "timestamps", "hashes"]
+        expected_items_per_day: 400.0
+        normal_publication_delay_seconds: 900.0
+        resolvability_policy: retrieval
+        reliability_prior: 0.4
+        provenance_notes: >-
+          Breadth, not depth: an index of what was published, useful for
+          coverage and syndication accounting. The body is not licensed here and
+          is not stored.
+        enabled: true
+        effective_from: "2024-01-01T00:00:00Z"
+
+      # -- Wire services ----------------------------------------------------
+      # The reason the syndication layer exists. A single PTI file appears under
+      # many mastheads within the hour; grouping keyed on the declared wire
+      # service collapses those to one information lineage. Terms for retention
+      # have not been established, so this entry stores hashes only -- which is
+      # all the independence accounting needs.
+      - source_id: pti_wire
+        display_name: Press Trust of India wire copy
+        publisher: Press Trust of India
+        homepage: https://www.ptinews.com/
+        acquisition: licensed_archive
+        languages: ["en", "hi"]
+        scripts: ["Latin", "Devanagari"]
+        regions: ["All India"]
+        licence_class: unknown
+        redistribution: none
+        permitted_fields: ["hashes"]
+        expected_items_per_day: 250.0
+        normal_publication_delay_seconds: 1800.0
+        resolvability_policy: retrieval
+        reliability_prior: 0.6
+        wire_service: PTI
+        credential_env: PRAMAANX_PTI_ARCHIVE_TOKEN
+        provenance_notes: >-
+          No subscription agreement has been read. Hash-only retention is the
+          fail-closed default; it still lets five mastheads carrying one file be
+          counted as one lineage, which is the property the model needs.
+        enabled: true
+        effective_from: "2024-01-01T00:00:00Z"
+
+      - source_id: ani_wire
+        display_name: Asian News International wire copy
+        publisher: Asian News International
+        homepage: https://www.aninews.in/
+        acquisition: licensed_archive
+        languages: ["en", "hi"]
+        scripts: ["Latin", "Devanagari"]
+        regions: ["All India"]
+        licence_class: unknown
+        redistribution: none
+        permitted_fields: ["hashes"]
+        expected_items_per_day: 200.0
+        normal_publication_delay_seconds: 1800.0
+        resolvability_policy: retrieval
+        reliability_prior: 0.55
+        wire_service: ANI
+        credential_env: PRAMAANX_ANI_ARCHIVE_TOKEN
+        provenance_notes: >-
+          As for PTI: no agreement read, hash-only retention, present so that
+          syndicated copy does not inflate apparent corroboration.
+        enabled: true
+        effective_from: "2024-01-01T00:00:00Z"
+
+      # -- Regional-language coverage ---------------------------------------
+      # The districts this project cares most about are covered first, and
+      # sometimes only, in the regional-language press. A registry that lists
+      # only English sources would report excellent coverage of India while
+      # being blind to most of it -- and source_health would have no way to say
+      # so, because it can only report a gap in a language somebody declared.
+      - source_id: regional_ml_feed
+        display_name: Licensed Malayalam regional feed
+        publisher: (licensee-supplied)
+        acquisition: rss
+        languages: ["ml"]
+        scripts: ["Malayalam"]
+        regions: ["Kerala"]
+        licence_class: snippet_only
+        redistribution: internal_only
+        permitted_fields: ["headline", "body", "url", "timestamps", "hashes"]
+        expected_items_per_day: 40.0
+        normal_publication_delay_seconds: 5400.0
+        resolvability_policy: retrieval
+        reliability_prior: 0.5
+        credential_env: PRAMAANX_REGIONAL_ML_FEED_TOKEN
+        provenance_notes: >-
+          Placeholder for a licensed regional feed. Disabled until an agreement
+          exists; kept in the registry so that its absence is visible as an
+          uncovered language rather than as an unremarkable silence.
+        enabled: false
+        effective_from: "2024-01-01T00:00:00Z"
+
+      - source_id: regional_bn_feed
+        display_name: Licensed Bengali regional feed
+        publisher: (licensee-supplied)
+        acquisition: rss
+        languages: ["bn"]
+        scripts: ["Bengali"]
+        regions: ["West Bengal", "Tripura"]
+        licence_class: snippet_only
+        redistribution: internal_only
+        permitted_fields: ["headline", "body", "url", "timestamps", "hashes"]
+        expected_items_per_day: 45.0
+        normal_publication_delay_seconds: 5400.0
+        resolvability_policy: retrieval
+        reliability_prior: 0.5
+        credential_env: PRAMAANX_REGIONAL_BN_FEED_TOKEN
+        provenance_notes: >-
+          As above. Disabled, and deliberately still listed.
+        enabled: false
+        effective_from: "2024-01-01T00:00:00Z"

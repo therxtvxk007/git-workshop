@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Licensed regional feed</title>
+  <entry>
+    <id>regional-2026-03-01-a</id>
+    <title>Patrol reports calm along the district border</title>
+    <link href="https://example-regional.test/news/2026/03/01/patrol-report"/>
+    <summary>A routine patrol reported no incidents along the district border.</summary>
+    <published>2026-03-01T05:00:00+00:00</published>
+    <updated>2026-03-01T06:15:00+00:00</updated>
+    <author><name>Staff Reporter</name></author>
+  </entry>
+</feed>

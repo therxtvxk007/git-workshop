@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Press Information Bureau</title>
+    <link>https://pib.gov.in/</link>
+    <description>Recorded fixture. Synthetic content, real envelope shape.</description>
+    <item>
+      <guid>pib-2026-03-01-0001</guid>
+      <title>Security review meeting held in the state capital</title>
+      <link>https://pib.gov.in/PressRelease.aspx?PRID=2000001&amp;utm_source=newsletter</link>
+      <description>A review meeting on internal security arrangements was held today.</description>
+      <pubDate>Sun, 01 Mar 2026 09:30:00 +0530</pubDate>
+      <author>Ministry Spokesperson</author>
+    </item>
+    <item>
+      <guid>pib-2026-03-01-0002</guid>
+      <title>Additional forces deployed ahead of scheduled polls</title>
+      <link>https://www.pib.gov.in/PressRelease.aspx?PRID=2000002</link>
+      <description>Additional central forces will be deployed in the district ahead of scheduled polls.</description>
+      <pubDate>Sun, 01 Mar 2026 14:05:00 +0530</pubDate>
+    </item>
+  </channel>
+</rss>
