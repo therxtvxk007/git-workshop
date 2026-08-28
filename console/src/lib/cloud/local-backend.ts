@@ -49,7 +49,7 @@ function write<T>(key: string, value: T): void {
 }
 
 function uid(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  return `${nowUtc().getTime().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 /** FNV-1a. Not cryptographic; enough to show a chain break in the demo. */

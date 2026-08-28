@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { nowUtc } from "@/lib/format";
 import type {
   Adjudication,
   AppRole,
@@ -267,7 +268,7 @@ export class SupabaseCloudBackend implements CloudBackend {
       taskId,
       raisedBy: user.displayName,
       reason,
-      raisedAt: new Date().toISOString(),
+      raisedAt: nowUtc().toISOString(),
       resolved: false,
     };
   }

@@ -12,7 +12,6 @@ import type { EventFamily, ForecastStatus, Interval } from "@/lib/api/types";
 
 /** The single clock. Wrapped so tests can freeze it and cutoff logic stays honest. */
 export function nowUtc(): Date {
-  // eslint-disable-next-line no-restricted-globals
   return new Date();
 }
 

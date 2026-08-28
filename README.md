@@ -37,6 +37,23 @@ impressive number.
 
 Acceptance criteria and the test that proves each one: **[docs/M0_ACCEPTANCE.md](docs/M0_ACCEPTANCE.md)**.
 
+## The analyst console
+
+**[console/](console/)** is a separate frontend that displays what this engine
+produces: district-level forecasts, their evidence, calibration diagnostics and
+provenance. It reimplements no forecasting logic — every probability, status and
+metric on screen comes from `src/pramaanx/`.
+
+It runs with no engine and no database against a deterministic demo dataset:
+
+```bash
+cd console && npm install && npm run dev
+```
+
+See **[console/README.md](console/README.md)**, and
+**[console/docs/API_INTEGRATION.md](console/docs/API_INTEGRATION.md)** for the
+contract a serving API has to satisfy.
+
 Phase 1C adds one strict data.gov.in resource connector. It is evidence
 acquisition infrastructure, not a forecasting model or a real-data performance
 result. See **[docs/M1C_ACCEPTANCE.md](docs/M1C_ACCEPTANCE.md)**.

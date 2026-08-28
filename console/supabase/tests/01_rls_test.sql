@@ -5,10 +5,16 @@
 -- blinding works?" — not "we wrote a policy", but "here is the escalation
 -- attempt, and here is it being refused".
 --
+-- Requires a FRESH database: the script inserts fixture users and reviews, so
+-- a second run against the same database fails on their unique constraints
+-- rather than on a policy. Create, apply, assert, drop.
+--
 -- Run with:
---   psql -v ON_ERROR_STOP=1 -f supabase/tests/00_local_auth_shim.sql
---   psql -v ON_ERROR_STOP=1 -f supabase/migrations/*.sql
---   psql -v ON_ERROR_STOP=1 -f supabase/tests/01_rls_test.sql
+--   createdb console_test
+--   psql -d console_test -v ON_ERROR_STOP=1 -f supabase/tests/00_local_auth_shim.sql
+--   for f in supabase/migrations/*.sql; do \
+--     psql -d console_test -v ON_ERROR_STOP=1 -f "$f"; done
+--   psql -d console_test -v ON_ERROR_STOP=1 -f supabase/tests/01_rls_test.sql
 
 \set ON_ERROR_STOP on
 
