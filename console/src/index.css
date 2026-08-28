@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --surface: 255 255 255;
+    --surface-raised: 248 250 252;
+    --surface-sunken: 241 245 249;
+    --border: 203 213 225;
+    --text: 15 23 42;
+    --text-muted: 71 85 105;
+  }
+
+  .dark {
+    --surface: 11 18 32;
+    --surface-raised: 20 30 51;
+    --surface-sunken: 8 13 24;
+    --border: 45 64 104;
+    --text: 226 232 240;
+    --text-muted: 148 163 184;
+  }
+
+  html { color-scheme: light dark; }
+  .dark { color-scheme: dark; }
+
+  body {
+    @apply bg-[rgb(var(--surface))] text-[rgb(var(--text))] antialiased;
+    font-feature-settings: "tnum" 1, "cv05" 1;
+  }
+
+  /* Numbers in tables must align on the decimal point or they cannot be
+     scanned down a column. */
+  .tabular { font-variant-numeric: tabular-nums; }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-navy-400 ring-offset-2 ring-offset-[rgb(var(--surface))];
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .surface { @apply bg-[rgb(var(--surface-raised))] border border-[rgb(var(--border))]; }
+  .muted { @apply text-[rgb(var(--text-muted))]; }
+  .card { @apply surface rounded-lg; }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded border border-[rgb(var(--border))]
+           bg-[rgb(var(--surface-sunken))] px-1.5 py-0.5 font-mono text-2xs;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md border
+           border-[rgb(var(--border))] bg-[rgb(var(--surface-raised))] px-3 py-1.5
+           text-sm font-medium transition-colors
+           hover:bg-navy-100 dark:hover:bg-navy-800
+           disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn border-navy-600 bg-navy-600 text-white hover:bg-navy-500 dark:hover:bg-navy-500;
+  }
+  .field {
+    @apply w-full rounded-md border border-[rgb(var(--border))]
+           bg-[rgb(var(--surface))] px-2.5 py-1.5 text-sm
+           placeholder:text-[rgb(var(--text-muted))];
+  }
+  .label { @apply block text-2xs font-semibold uppercase tracking-wide muted; }
+  .th {
+    @apply px-3 py-2 text-left text-2xs font-semibold uppercase tracking-wide muted
+           border-b border-[rgb(var(--border))];
+  }
+  .td { @apply px-3 py-2 text-sm border-b border-[rgb(var(--border))]; }
+}
+
+/* Export and print must carry the safety banner: a printed page that has lost
+   its "synthetic data" header is exactly the artefact this console exists to
+   prevent. */
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  body { @apply bg-white text-black; }
+}
+.print-only { display: none; }
