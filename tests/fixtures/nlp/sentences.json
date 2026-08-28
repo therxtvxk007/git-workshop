@@ -1,0 +1,112 @@
+{
+  "_readme": [
+    "Short test sentences written for this test suite. Not copied from any",
+    "publication. Every one is a plain, factually empty statement chosen to",
+    "exercise a script, a terminator or a normalisation edge -- deliberately",
+    "mundane, so that no fixture asserts anything about a real place, person or",
+    "incident. Copying real reporting here would put licensed article text into",
+    "a public repository, which is the exact failure WP1's licence layer exists",
+    "to prevent."
+  ],
+  "languages": {
+    "en": {
+      "script": "Latn",
+      "text": "The officer said the road was closed. Traffic moved slowly.",
+      "sentences": 2
+    },
+    "hi": {
+      "script": "Deva",
+      "text": "अधिकारी ने कहा कि सड़क बंद है। यातायात धीमा रहा।",
+      "sentences": 2
+    },
+    "mr": {
+      "script": "Deva",
+      "text": "अधिकाऱ्याने सांगितले की रस्ता बंद आहे। वाहतूक संथ होती।",
+      "sentences": 2
+    },
+    "bn": {
+      "script": "Beng",
+      "text": "কর্মকর্তা বলেছেন রাস্তা বন্ধ ছিল। যানবাহন ধীরে চলেছে।",
+      "sentences": 2
+    },
+    "as": {
+      "script": "Beng",
+      "text": "বিষয়াই ক'লে বাটটো বন্ধ আছিল। যান-বাহন লাহে লাহে গ'ল।",
+      "sentences": 2
+    },
+    "ml": {
+      "script": "Mlym",
+      "text": "റോഡ് അടച്ചിരുന്നു എന്ന് ഉദ്യോഗസ്ഥൻ പറഞ്ഞു. ഗതാഗതം സാവധാനമായിരുന്നു.",
+      "sentences": 2
+    },
+    "ta": {
+      "script": "Taml",
+      "text": "சாலை மூடப்பட்டதாக அதிகாரி கூறினார். போக்குவரத்து மெதுவாக இருந்தது.",
+      "sentences": 2
+    },
+    "te": {
+      "script": "Telu",
+      "text": "రహదారి మూసివేయబడిందని అధికారి చెప్పారు. రాకపోకలు నెమ్మదిగా సాగాయి.",
+      "sentences": 2
+    },
+    "kn": {
+      "script": "Knda",
+      "text": "ರಸ್ತೆ ಮುಚ್ಚಲಾಗಿದೆ ಎಂದು ಅಧಿಕಾರಿ ಹೇಳಿದರು. ಸಂಚಾರ ನಿಧಾನವಾಗಿತ್ತು.",
+      "sentences": 2
+    },
+    "gu": {
+      "script": "Gujr",
+      "text": "અધિકારીએ કહ્યું કે રસ્તો બંધ હતો. વાહનવ્યવહાર ધીમો રહ્યો.",
+      "sentences": 2
+    },
+    "pa": {
+      "script": "Guru",
+      "text": "ਅਧਿਕਾਰੀ ਨੇ ਕਿਹਾ ਕਿ ਸੜਕ ਬੰਦ ਸੀ। ਆਵਾਜਾਈ ਹੌਲੀ ਰਹੀ।",
+      "sentences": 2
+    },
+    "or": {
+      "script": "Orya",
+      "text": "ଅଧିକାରୀ କହିଲେ ରାସ୍ତା ବନ୍ଦ ଥିଲା। ଯାନବାହନ ଧୀରେ ଚାଲିଲା।",
+      "sentences": 2
+    },
+    "ur": {
+      "script": "Arab",
+      "text": "افسر نے کہا کہ سڑک بند تھی۔ ٹریفک آہستہ چل رہی تھی۔",
+      "sentences": 2
+    }
+  },
+  "edge_cases": {
+    "mixed_script": {
+      "text": "पुलिस ने कहा the road was closed. यातायात धीमा रहा।",
+      "note": "Devanagari and Latin in one sentence, as Indian reporting routinely mixes them."
+    },
+    "repeated_substring": {
+      "text": "Kishtwar and Kishtwar and Kishtwar again in Kishtwar district.",
+      "note": "Four identical tokens: substring search would find the wrong one."
+    },
+    "zero_width": {
+      "text": "Kish​twar dis­trict was quiet.",
+      "note": "Zero-width space and soft hyphen inside words."
+    },
+    "joiner_preserved": {
+      "text": "क्‍ष और क्ष",
+      "note": "ZWJ changes the conjunct; removing it would change the word."
+    },
+    "abbreviations": {
+      "text": "Dr. R. K. Sharma met Shri Verma at 3.30 p.m. The meeting ended.",
+      "note": "Honorifics, initials and a decimal must not split a sentence."
+    },
+    "ellipsis": {
+      "text": "He paused... then continued speaking. The room was quiet.",
+      "note": "A mid-sentence ellipsis is not a boundary."
+    },
+    "danda": {
+      "text": "पहला वाक्य। दूसरा वाक्य॥ तीसरा वाक्य।",
+      "note": "Danda and double danda both terminate."
+    },
+    "quote_with_terminator": {
+      "text": "\"The road was closed,\" the officer said. Traffic resumed later.",
+      "note": "A terminator inside a quotation keeps the closing mark."
+    }
+  }
+}
