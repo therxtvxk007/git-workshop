@@ -1,0 +1,113 @@
+name: Console
+
+# Scoped to console/ so a change to the Python engine does not spend six
+# minutes reinstalling npm, and a change to the console does not look green
+# because the engine's suite passed.
+on:
+  push:
+    branches: ["**"]
+    paths: ["console/**", ".github/workflows/console.yaml"]
+  pull_request:
+    paths: ["console/**", ".github/workflows/console.yaml"]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: console
+
+jobs:
+  quality:
+    name: types, lint, unit tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+
+      - run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  policies:
+    name: Postgres row level security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # The policies are the security model. Asserting them in a document is not
+    # the same as executing them, so CI runs the escalation attempts.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+        ports: ["5432:5432"]
+    env:
+      PGPASSWORD: postgres
+      PSQL: psql -h localhost -U postgres -v ON_ERROR_STOP=1
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create a fresh database
+        run: $PSQL -d postgres -c "create database console_test;"
+
+      - name: Apply the local auth shim
+        run: $PSQL -d console_test -f supabase/tests/00_local_auth_shim.sql
+
+      - name: Apply migrations
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "-- $f"
+            $PSQL -d console_test -f "$f"
+          done
+
+      - name: Assert the security model
+        run: $PSQL -d console_test -f supabase/tests/01_rls_test.sql
+
+  e2e:
+    name: end-to-end specs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+
+      - run: npm ci
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the specs
+        run: npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: console/playwright-report/
+          retention-days: 7

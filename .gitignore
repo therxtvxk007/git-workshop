@@ -28,3 +28,6 @@ data/replays/**
 runs/
 mlruns/
 outputs/
+
+# Vitest cache, if a runner is invoked from the repository root.
+.vite/
