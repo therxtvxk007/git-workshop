@@ -1,0 +1,29 @@
+name: chrono_calib_v1
+description: >
+  Strictly chronological calibration experiment. A long rolling walk on the
+  synthetic world, used to select a calibration method under nested temporal
+  validation and then to test the frozen choice on an untouched future block.
+
+  This experiment does not replace e2e_v1. e2e_v1 remains the M0 control result
+  and is scored with the identity calibrator exactly as before.
+
+  A calibrator here is fitted only on folds whose entire target horizon AND
+  reporting delay closed before the forecast cutoff being calibrated. Skill is
+  reported against earlier-period climatology and persistence, never against the
+  base rate of the sample being scored.
+
+base_config: configs/base.yaml
+
+backtest:
+  # Long enough that the 33-day maturity lag still leaves a development block
+  # and an untouched test block behind it.
+  start: "2025-03-04T00:00:00Z"
+  end: "2026-03-24T00:00:00Z"
+  step_days: 7
+  horizon_days: 30
+
+settings:
+  generators:
+    proposal_budget: 400
+  evaluation:
+    proposal_budgets: [25, 50, 100]

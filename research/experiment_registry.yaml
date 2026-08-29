@@ -39,3 +39,35 @@ experiments:
     purpose: Two cutoffs; used by the integration suite.
     evidence: synthetic world only
     claims_supported: []
+
+  - id: chrono_calib_v1
+    status: research
+    config: configs/experiments/chrono_calib_v1.yaml
+    driver: scripts/chrono_calibration.py
+    run_id: chrono_5b21941cae7d4e10
+    purpose: >
+      Select a calibration method under strictly chronological nested temporal
+      validation, then test the frozen choice on an untouched future block.
+      A calibrator may only be fitted on folds whose target horizon AND
+      reporting delay both closed before the forecast cutoff.
+    evidence: synthetic world only
+    claims_supported: []
+    controls:
+      - "e2e_v1 is not modified or replaced by this experiment. Its configuration
+         is untouched and its pre-change result is frozen at
+         research/controls/e2e_v1_control_cb34f9b.json."
+      - "Adding any module to src/pramaanx changes code_hash, hence every
+         snapshot hash and forecast_id, hence tie-break order in
+         recall_at_budget. Every probability metric in the control is
+         bit-identical; 7 of 36 budget cells moved by one hit. See
+         docs/CHRONO_CALIBRATION.md."
+    interpretation_limits:
+      - "Synthetic evidence; no real-world forecasting skill is demonstrated."
+      - "Outcomes are machine-derived and unadjudicated."
+      - "Skill is measured against earlier-period climatology and persistence,
+         never against the base rate of the sample being scored."
+      - "Intervals come from a moving-block bootstrap over folds. Ordinary
+         t-tests are invalid here because a 30-day horizon at a 7-day step puts
+         the same days in five consecutive folds."
+      - "Reported both under the shipped many-to-one matcher and under an
+         enforced one-to-one assignment, because the two disagree materially."
