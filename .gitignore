@@ -11,6 +11,8 @@ dist/
 .ruff_cache/
 .mypy_cache/
 .coverage
+# coverage's parallel mode and COVERAGE_FILE writes named data files too.
+.coverage.*
 htmlcov/
 
 # Secrets
