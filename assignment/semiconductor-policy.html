@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>India's Semiconductor Industrial Policy</title>
+<style>
+@page { size: A4; margin: 17mm 18mm 16mm 18mm; }
+
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  margin: 0;
+  font-family: "Liberation Serif", "DejaVu Serif", serif;
+  font-size: 10.3pt;
+  line-height: 1.34;
+  color: #14161a;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+p { margin: 0 0 6.5pt 0; }
+p.tight { margin-bottom: 4pt; }
+
+/* ---------- title block ---------- */
+.eyebrow {
+  font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  font-size: 7.6pt; letter-spacing: .11em; text-transform: uppercase;
+  color: #6a6f78; text-align: left; margin: 0 0 4pt 0;
+}
+h1 {
+  font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  font-size: 20pt; line-height: 1.1; font-weight: 700; letter-spacing: -.012em;
+  margin: 0 0 5pt 0; text-align: left; color: #0d0f13;
+}
+.standfirst {
+  font-size: 10.4pt; color: #3c424c; margin: 0 0 9pt 0; text-align: left;
+  max-width: 95%;
+}
+.rule { border: 0; border-top: 1.6pt solid #14161a; margin: 0 0 7pt 0; }
+.rule-thin { border: 0; border-top: .5pt solid #c8ccd2; margin: 8pt 0; }
+
+.fields {
+  display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0 14pt;
+  font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  font-size: 8pt; color: #5a606a; margin: 0 0 6pt 0;
+}
+.fields div { border-bottom: .5pt solid #9aa0aa; padding-bottom: 13pt; }
+.fields span { letter-spacing: .05em; text-transform: uppercase; font-size: 7.2pt; }
+.datenote {
+  font-size: 8.4pt; color: #6a6f78; text-align: left; font-style: italic;
+  margin: 0 0 12pt 0;
+}
+
+/* ---------- headings ---------- */
+h2 {
+  font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  font-size: 11.6pt; font-weight: 700; letter-spacing: -.005em;
+  margin: 13pt 0 5pt 0; padding-bottom: 2.5pt;
+  border-bottom: .6pt solid #14161a;
+  break-after: avoid; page-break-after: avoid; text-align: left;
+}
+h2 .num { color: #8a9099; margin-right: 6pt; font-weight: 700; }
+h3 {
+  font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  font-size: 9.5pt; font-weight: 700; color: #22262d;
+  margin: 9pt 0 3.5pt 0; break-after: avoid; page-break-after: avoid;
+  text-align: left;
+}
+h2:first-of-type { margin-top: 4pt; }
+
+/* ---------- callout ---------- */
+.callout {
+  border-left: 2.2pt solid #14161a; background: #f3f4f6;
+  padding: 6.5pt 9pt 4pt 9pt; margin: 9pt 0 9pt 0;
+  break-inside: avoid; page-break-inside: avoid;
+}
+.callout .lbl {
+  font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  font-size: 7.4pt; letter-spacing: .1em; text-transform: uppercase;
+  color: #5a606a; margin: 0 0 3pt 0; text-align: left;
+}
+.callout p { font-size: 9.9pt; margin-bottom: 4pt; }
+
+/* ---------- figures ---------- */
+figure { margin: 8pt 0 9pt 0; break-inside: avoid; page-break-inside: avoid; }
+figure svg { width: 100%; height: auto; display: block; }
+figcaption {
+  font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  font-size: 7.8pt; line-height: 1.32; color: #4a505a;
+  margin-top: 3.5pt; text-align: left; border-top: .5pt solid #d7dade; padding-top: 3pt;
+}
+figcaption b { color: #14161a; }
+
+/* ---------- tables ---------- */
+table {
+  width: 100%; border-collapse: collapse; margin: 7pt 0 3pt 0;
+  font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  font-size: 7.9pt; line-height: 1.26;
+  break-inside: avoid; page-break-inside: avoid;
+}
+thead th {
+  text-align: left; font-weight: 700; font-size: 7.4pt; letter-spacing: .03em;
+  text-transform: uppercase; color: #22262d;
+  border-top: 1.2pt solid #14161a; border-bottom: .6pt solid #14161a;
+  padding: 4pt 6pt 4pt 0; vertical-align: bottom;
+}
+tbody td {
+  padding: 3.6pt 6pt 3.6pt 0; vertical-align: top;
+  border-bottom: .4pt solid #d7dade; text-align: left;
+}
+tbody tr:last-child td { border-bottom: 1.2pt solid #14161a; }
+td.num, th.num { white-space: nowrap; }
+td b { color: #0d0f13; }
+.tnote {
+  font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+  font-size: 7.6pt; color: #4a505a; margin: 0 0 8pt 0; text-align: left;
+}
+
+/* ---------- references ---------- */
+.refs { font-size: 9.1pt; line-height: 1.34; text-align: left; }
+.refs p { padding-left: 14pt; text-indent: -14pt; margin-bottom: 4.4pt; }
+
+.avoid { break-inside: avoid; page-break-inside: avoid; }
+.newpage { break-before: page; page-break-before: always; }
+
+/* svg type */
+.sl { font-family: "Liberation Sans","DejaVu Sans",sans-serif; font-size: 8.4px; fill: #3c424c; }
+.sl-b { font-family: "Liberation Sans","DejaVu Sans",sans-serif; font-size: 8.6px; fill: #14161a; font-weight: 700; }
+.sl-s { font-family: "Liberation Sans","DejaVu Sans",sans-serif; font-size: 7.6px; fill: #6a6f78; }
+.ax { stroke: #14161a; stroke-width: 1.1; fill: none; }
+.curve { stroke: #14161a; stroke-width: 1.7; fill: none; }
+.curve2 { stroke: #8a9099; stroke-width: 1.2; fill: none; }
+.dash { stroke: #14161a; stroke-width: 1.4; fill: none; stroke-dasharray: 5 3.5; }
+.guide { stroke: #a8aeb6; stroke-width: .8; fill: none; stroke-dasharray: 3 2.5; }
+</style>
+</head>
+<body>
+
+<p class="eyebrow">Economics for Engineers &nbsp;·&nbsp; Assignment</p>
+<h1>India's Semiconductor Industrial Policy</h1>
+<p class="standfirst">Can ₹1,27,500 crore of fiscal incentives convert import dependence into competitive capability? A microeconomic evaluation of Semicon 2.0.</p>
+<hr class="rule">
+<div class="fields">
+  <div><span>Name</span></div>
+  <div><span>Roll No.</span></div>
+  <div><span>Course / Semester</span></div>
+  <div><span>Date</span></div>
+</div>
+<p class="datenote">Evidence current to 31 August 2026, the date on which the Semicon 2.0 guidelines were notified.</p>
+
+<h2><span class="num">1</span>Introduction: Scarcity, Choice and a ₹1.27 Lakh Crore Commitment</h2>
+
+<p>Semiconductors are strange economic goods, because they are physically tiny inputs that nevertheless govern the output of industries worth many hundreds of times their own market value. When chips stop arriving, production halts across automobiles, telecommunications, medical devices, defence systems and data centres, so the scarcity propagates far beyond electronics itself. The Economic Survey 2025–26 records that the pandemic-era shortage disrupted more than 169 industries worldwide (Ministry of Finance, 2026). Entry is correspondingly difficult, since a leading-edge fabrication plant costs upwards of US$10 billion and the critical equipment comes from a handful of suppliers.</p>
+
+<p>India therefore confronts, in unusually sharp form, the basic economic problem of allocating scarce resources among competing ends. The question is not whether chips matter, since that is not in dispute, but rather what India should produce, by which technique, and at whose expense. On 15 July 2026 the Union Cabinet answered part of that question by approving Semicon 2.0 with an outlay of ₹1,27,500 crore, and the operational guidelines were notified on 31 August 2026 (PIB, 2026a; Business Today, 2026). That commitment is about 68 per cent larger than the ₹76,000 crore framework of the first programme, and worth roughly US$14–15 billion at prevailing exchange rates, against US$52.7 billion under the American CHIPS and Science Act and more than €43 billion of policy-driven investment targeted by the European Chips Act.</p>
+
+<p>This assignment has three objectives: to identify the market failures that could justify an outlay of this size, to test the notified design against standard cost and market-structure theory, and to propose measurable criteria by which the programme should later be judged.</p>
+
+<h3>1.1&ensp;The production possibility curve makes the real cost visible</h3>
+
+<p>Every rupee committed to semiconductors is a rupee unavailable for schools, ports, transmission lines or public health, and the production possibility curve is the cleanest way to state that trade-off. Figure 1 places semiconductor capability on one axis and all other public investment on the other, so the slope of the frontier measures the opportunity cost of the programme in units of forgone alternatives. Movement from A to B buys chip capability by surrendering other capital formation, and the concavity of the curve tells us that each further increment of chip capacity costs progressively more of everything else, because the resources best suited to semiconductors are drawn in first.</p>
+
+<p>The more interesting possibility is that India is not on the frontier at all. A coordination failure in which fabs wait for suppliers while suppliers wait for fabs leaves the economy at an interior point such as C, where capability that is technically feasible simply never gets built. Policy that breaks such a deadlock moves the economy toward the frontier rather than along it, which is a genuine efficiency gain rather than a mere reallocation. Sustained capability growth then shifts the entire frontier outward, and that shift is the only outcome that can ultimately repay the opportunity cost incurred today.</p>
+
+<figure>
+<svg viewBox="0 0 520 246" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,1 L9,5 L0,9 z" fill="#14161a"/>
+    </marker>
+    <marker id="ahg" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,1 L9,5 L0,9 z" fill="#6a6f78"/>
+    </marker>
+  </defs>
+  <!-- axes -->
+  <path class="ax" d="M62,222 L62,20" marker-end="url(#ah)"/>
+  <path class="ax" d="M62,222 L470,222" marker-end="url(#ah)"/>
+  <text class="sl" x="70" y="16">Other public investment</text>
+  <text class="sl" x="470" y="238" text-anchor="end">Semiconductor capability</text>
+
+  <!-- outward-shifted frontier -->
+  <path class="dash" d="M64,30 Q330,86 486,214" stroke="#8a9099"/>
+  <!-- current frontier -->
+  <path class="curve" d="M64,46 Q296,98 432,214"/>
+
+  <!-- points -->
+  <circle cx="196" cy="83" r="3.4" fill="#14161a"/>
+  <text class="sl-b" x="186" y="76">A</text>
+  <circle cx="318" cy="134" r="3.4" fill="#14161a"/>
+  <text class="sl-b" x="325" y="130">B</text>
+  <circle cx="178" cy="158" r="3.4" fill="#14161a"/>
+  <text class="sl-b" x="166" y="156">C</text>
+
+  <!-- A to B arrow -->
+  <path d="M206,92 L306,127" stroke="#14161a" stroke-width="1.1" fill="none" marker-end="url(#ah)"/>
+  <text class="sl-s" x="228" y="118">opportunity cost</text>
+  <!-- C to frontier arrow -->
+  <path d="M188,153 L246,124" stroke="#6a6f78" stroke-width="1.1" fill="none" marker-end="url(#ahg)"/>
+
+  <text class="sl-s" x="352" y="196">frontier today</text>
+  <text class="sl-s" x="392" y="72">frontier after</text>
+  <text class="sl-s" x="392" y="83">capability growth</text>
+  <text class="sl-s" x="72" y="182">coordination failure leaves</text>
+  <text class="sl-s" x="72" y="193">the economy inside the frontier</text>
+</svg>
+<figcaption><b>Figure 1.</b> The production possibility curve for public capital. A → B measures opportunity cost along the frontier; C → frontier is the efficiency gain available from correcting a coordination failure; the dashed curve is the outward shift that must eventually justify the outlay. Author's diagram.</figcaption>
+</figure>
+
+<h3>1.2&ensp;What the notified scheme actually pays for</h3>
+
+<p>The notified guidelines matter more than the headline outlay, because they reveal which activities the state believes are under-supplied and by how much. Support is deepest where the output is closest to a public good and shallowest where the activity is closest to routine assembly, which is a defensible ordering on economic grounds. The silicon fab rate has also been reduced from the 50 per cent available under the first programme to 40 per cent, so a larger share of the fixed cost now falls on the investor.</p>
+
+<table>
+<thead><tr><th style="width:20%">Category</th><th class="num" style="width:13%">Capex support</th><th style="width:31%">Entry threshold</th><th style="width:36%">Economic reading</th></tr></thead>
+<tbody>
+<tr><td><b>Silicon wafer fab</b></td><td class="num">40%</td><td>₹20,000 cr capex; ₹7,500 cr revenue; 300 mm; ≥40,000 wafer starts/month</td><td>Thresholds are an explicit statement of minimum efficient scale</td></tr>
+<tr><td><b>Compound, photonics, sensor and display fabs</b></td><td class="num">35%</td><td>₹500 cr capex; ₹200 cr revenue; ≥500 wafer starts/month</td><td>Smaller scale economies permit a far lower entry ticket</td></tr>
+<tr><td><b>Advanced packaging</b> (2.5D/3D, WLCSP)</td><td class="num">35%</td><td>₹1,000 cr capex; ₹200 cr revenue</td><td>Rewards the segment where value is now migrating</td></tr>
+<tr><td><b>Legacy packaging</b></td><td class="num">25%</td><td>as above</td><td>Lowest rate for the lowest value-added tier</td></tr>
+<tr><td><b>Equipment and materials</b></td><td class="num">up to 30%</td><td>₹300 cr (equipment); ₹50 cr (raw materials)</td><td>Directly attacks the supplier-side coordination failure</td></tr>
+<tr><td><b>Advanced R&amp;D and talent</b></td><td class="num">up to 75%</td><td>project-based</td><td>Highest rate where spillovers are largest and appropriability weakest</td></tr>
+<tr><td><b>Design start-ups</b></td><td class="num">₹15 cr seed</td><td>equity or royalty finance; 9% of net sales for five years; MSME and start-up eligibility</td><td>Substitutes for a missing deep-technology venture capital market</td></tr>
+</tbody>
+</table>
+<p class="tnote"><b>Table 1.</b> The Semicon 2.0 support architecture as notified on 31 August 2026. Sources: Business Today (2026); ANI (2026); PIB (2026a). Interpretation column is the author's.</p>
+
+<div class="callout">
+<p class="lbl">Central argument</p>
+<p>India should not replicate every layer of the global chain, because the opportunity cost of doing so exceeds any plausible resilience benefit. The state should share risk temporarily where private returns fall short of social returns, build a dense ecosystem across design, packaging, mature nodes, compound semiconductors and local suppliers, and add silicon fabrication selectively where export economics are credible. Export discipline, not plant count, must govern the programme.</p>
+</div>
+
+<h2><span class="num">2</span>Demand, Supply and the Violent Equilibrium of 2026</h2>
+
+<p>The memory shock that dominated world semiconductor markets through 2026 is the clearest demonstration of price theory the industry has offered in decades, and it deserves analysis before any policy conclusion is drawn. The World Semiconductor Trade Statistics organisation raised its forecast for global semiconductor sales to US$1.51 trillion for 2026, a rise of roughly 90 per cent year on year, with memory alone expected to grow close to 250 per cent to more than US$800 billion (WSTS, 2026). Conventional DRAM contract prices rose 90 to 95 per cent quarter on quarter in the first quarter of 2026, personal-computer DRAM rose 105 to 110 per cent, and spot prices were reported up almost 700 per cent over twelve months (J.P. Morgan, 2026).</p>
+
+<h3>2.1&ensp;Demand is derived, shifted, and unequally elastic</h3>
+
+<p>Chip demand is derived demand, since nobody wants a memory die for its own sake and its price descends entirely from the value of the final goods it makes possible. The standard determinants therefore act indirectly: buyer income appears as hyperscaler capital expenditure, the price of related goods appears as the cost of accelerators with which memory is a technical complement, and expectations appear as the belief that capacity secured today will be scarce tomorrow. Artificial-intelligence data centres were forecast to absorb about 70 per cent of world memory output in 2026, against 20 to 30 per cent in 2022, which is a violent rightward shift of the demand curve rather than a movement along it.</p>
+
+<p>The two halves of this market differ sharply in price elasticity of demand, and the law of diminishing marginal utility explains why. A household gains far less additional satisfaction from the thirty-second gigabyte of memory than from the sixteenth, so its willingness to pay falls steeply and consumer demand is comparatively elastic. A data-centre operator, by contrast, requires memory in nearly fixed proportion to its accelerators, has no substitute available, and spends on memory only a modest share of a very large budget, which are three textbook conditions for inelastic demand. When these buyers bid against each other, the inelastic buyer captures the capacity and the elastic buyer is simply priced out, which is precisely what happened to consumer memory during 2026.</p>
+
+<h3>2.2&ensp;Supply is almost perfectly inelastic in the short run</h3>
+
+<p>The law of supply holds in this industry, but only over a horizon long enough for capacity to be built, and that horizon is two to three years. A fab cannot raise output by hiring another shift, because the binding constraint is installed lithography capacity rather than labour, and the equipment itself is rationed by a single supplier. Within any given year the supply curve is therefore close to vertical, so a demand shift of the magnitude described above must be absorbed almost entirely by price rather than by quantity.</p>
+
+<figure>
+<svg viewBox="0 0 520 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5.6" markerHeight="5.6" orient="auto-start-reverse">
+      <path d="M0,1 L9,5 L0,9 z" fill="#14161a"/>
+    </marker>
+  </defs>
+
+  <!-- ===== LEFT PANEL : inelastic short-run supply ===== -->
+  <g>
+    <path class="ax" d="M46,172 L46,24" marker-end="url(#ah2)"/>
+    <path class="ax" d="M46,172 L240,172" marker-end="url(#ah2)"/>
+    <text class="sl" x="12" y="20">Price</text>
+    <text class="sl" x="240" y="188" text-anchor="end">Quantity</text>
+
+    <!-- guides to the two equilibria -->
+    <path class="guide" d="M46,139 L151,139"/>
+    <path class="guide" d="M46,79 L160,79"/>
+
+    <!-- demand curves -->
+    <path class="curve2" d="M62,74 L196,172"/>
+    <text class="sl-b" x="52" y="68" fill="#6a6f78">D</text>
+    <path class="curve" d="M107,40 L234,133" stroke="#4a505a"/>
+    <text class="sl-b" x="236" y="130" fill="#4a505a">D′</text>
+
+    <!-- near-vertical supply -->
+    <path class="curve" d="M146,172 L168,28"/>
+    <text class="sl-b" x="172" y="36">S</text>
+    <text class="sl-s" x="172" y="46">short run</text>
+
+    <!-- equilibria -->
+    <circle cx="151" cy="139" r="3" fill="#14161a"/>
+    <circle cx="160" cy="79" r="3" fill="#14161a"/>
+    <text class="sl-b" x="30" y="142">P₀</text>
+    <text class="sl-b" x="30" y="82">P₁</text>
+    <text class="sl-s" x="52" y="188">price trebles, output +17%</text>
+  </g>
+
+  <!-- divider -->
+  <path d="M258,26 L258,182" stroke="#d7dade" stroke-width=".8"/>
+
+  <!-- ===== RIGHT PANEL : elastic long-run supply, same D and D′ ===== -->
+  <g transform="translate(272,0)">
+    <path class="ax" d="M46,172 L46,24" marker-end="url(#ah2)"/>
+    <path class="ax" d="M46,172 L240,172" marker-end="url(#ah2)"/>
+    <text class="sl" x="12" y="20">Price</text>
+    <text class="sl" x="240" y="188" text-anchor="end">Quantity</text>
+
+    <path class="guide" d="M46,139 L151,139"/>
+    <path class="guide" d="M46,120 L216,120"/>
+
+    <path class="curve2" d="M62,74 L196,172"/>
+    <text class="sl-b" x="52" y="68" fill="#6a6f78">D</text>
+    <path class="curve" d="M107,40 L234,133" stroke="#4a505a"/>
+    <text class="sl-b" x="236" y="130" fill="#4a505a">D′</text>
+
+    <!-- gently sloped supply -->
+    <path class="curve" d="M56,168 L234,114"/>
+    <text class="sl-b" x="212" y="108">S</text>
+    <text class="sl-s" x="192" y="98">long run</text>
+
+    <circle cx="151" cy="139" r="3" fill="#14161a"/>
+    <circle cx="216" cy="120" r="3" fill="#14161a"/>
+    <text class="sl-b" x="30" y="142">P₀</text>
+    <text class="sl-b" x="30" y="123">P₁</text>
+    <text class="sl-s" x="52" y="188">output absorbs the shift</text>
+  </g>
+</svg>
+<figcaption><b>Figure 2.</b> The same rightward shift in demand under inelastic (left) and elastic (right) supply. Because fab capacity takes years to install, the 2026 memory market behaved like the left-hand panel, and almost the whole adjustment appeared in price. Author's diagram; magnitudes from WSTS (2026) and J.P. Morgan (2026).</figcaption>
+</figure>
+
+<p>The available figures let us estimate this directly. If memory revenue rose about 250 per cent while the average transaction price roughly trebled, then physical shipments increased by only about 17 per cent, which implies a price elasticity of supply of roughly 0.1 over the year. A supply elasticity near zero means the industry converts demand growth into producer surplus rather than into output, and consumers of the final goods pay for the entire adjustment. One methodological caution follows: because the variable that moved was demand, the observed price and quantity pairs trace out the supply curve, so these data identify the elasticity of supply and say nothing direct about the elasticity of demand.</p>
+
+<h2><span class="num">3</span>Why the Market Under-Supplies Capability</h2>
+
+<p>A subsidy is economically defensible only where private incentives fall short of social returns, and four such gaps are plausible here. The first is a <b>learning spillover</b>, since knowledge accumulated by engineers, process teams and suppliers migrates to other firms through labour mobility and supplier relationships, so the first investor cannot capture the full benefit of its own outlay. The second is the <b>coordination problem</b> already noted, in which a fab wants local suppliers of chemicals and services while those suppliers want a committed customer base before they invest. The third is the sheer size of the <b>fixed cost</b>, which combines with lumpy indivisible capacity to make entry a discrete gamble rather than a marginal decision. The fourth has the character of <b>insurance</b>, because domestic or diversified capacity protects the wider economy during a geopolitical shock while a private buyer optimises only for normal conditions.</p>
+
+<p>In each case the divergence is between private and social cost, or equivalently between private and social benefit, and the standard consequence follows: where marginal social benefit exceeds marginal private benefit, the competitive market produces less than the socially efficient quantity. Design tools, metrology, training and pre-competitive research come closest to genuine public goods, which is why the 75 per cent support rate for research and talent in Table 1 is better economics than any capital subsidy.</p>
+
+<p>The accounting must run in both directions, however, if the argument is to be honest. Fabs consume large volumes of ultrapure water, continuous high-quality power and hazardous process chemicals, and those burdens are social costs that do not appear in the promoter's project report. A complete test asks whether spillovers, cluster effects, resilience value and additional domestic value added together exceed the fiscal outlay, the resources diverted from other uses, the higher input costs borne by downstream firms, and the environmental and infrastructure load. Applying that test is what prevents the word "strategic" from functioning as automatic approval for public money.</p>
+
+<h3>3.1&ensp;A second-best world of competing subsidies</h3>
+
+<p>India does not make this decision in a neutral market, because the advanced economies subsidise the same capacity and firms choose locations accordingly. Direct comparison across programmes is unsound, since definitions of eligible cost and the public and private shares differ, but the direction of the incentive environment is unambiguous. This creates a classic second-best problem: all countries would gain from fewer distortive subsidies, yet unilateral withdrawal simply moves the investment to whoever still pays. An International Monetary Fund study of July 2026 finds that industrial subsidies do redirect trade toward targeted strategic sectors, while poorly aimed subsidy-and-tariff spirals reduce world welfare (Rotunno, Ruta, &amp; Verma, 2026). The implication for India is selection rather than matching, since a budget of US$14 billion cannot win a bidding war against US$52.7 billion.</p>
+
+<h2><span class="num">4</span>Production and Cost: What a Fab Actually Is</h2>
+
+<h3>4.1&ensp;The production function and where the binding constraint lies</h3>
+
+<p>A semiconductor fab can be represented by a Cobb–Douglas production function of the form <i>Q</i> = <i>A K<sup>α</sup>L<sup>β</sup></i>, in which <i>K</i> is installed equipment, <i>L</i> is engineering labour, and <i>A</i> is total factor productivity. Three features of the parameters explain almost everything about the industry. The capital exponent α is very large, since output scales with lithography tools rather than with headcount; the sum α + β exceeds one over the relevant range, giving increasing returns to scale; and <i>A</i>, which captures process recipes, yield learning and defect control, differs enormously across firms holding equipment constant.</p>
+
+<p>This last point is the one industrial policy most often misses. Two fabs with identical tool sets can differ by twenty percentage points in yield, and that gap in <i>A</i> decides profitability far more surely than the gap in <i>K</i>. Capital subsidies raise <i>K</i>, which is the input India can most easily buy, whereas the scarce input is the tacit knowledge embedded in <i>A</i> and in experienced <i>L</i>. Semicon 2.0 partially recognises this by funding research, talent and design at up to 75 per cent of project cost, a higher rate than any manufacturing category receives.</p>
+
+<p>In the short run the fab illustrates the law of variable proportions exactly as the textbook describes: with the cleanroom and tool set fixed, adding engineers and shifts raises wafer output at first, then at a diminishing rate, and eventually not at all once the lithography step is saturated. The economically meaningful short-run margin is therefore not throughput but yield, and yield improves along a learning curve whose slope depends on cumulative production rather than on current input. That is precisely why a late entrant faces a cost disadvantage that no one-time capital grant can remove.</p>
+
+<h3>4.2&ensp;Cost curves, minimum efficient scale and the meaning of the thresholds</h3>
+
+<p>Short-run cost curves for a fab have an unusual shape, because average fixed cost is enormous and falls steeply across the entire feasible output range. Marginal cost, by contrast, is the cost of processing one more wafer through an already-running line, and it remains far below average total cost at every relevant volume. A firm that priced at marginal cost would therefore never recover its fixed investment, which tells us immediately that this industry cannot be organised as perfect competition and must rely on scale, differentiation or public support.</p>
+
+<p>The long-run average cost curve in Figure 3 falls sharply until it reaches minimum efficient scale and then flattens. The Semicon 2.0 thresholds are best read as an official estimate of where that point lies: a silicon fab qualifies only at 300 mm wafers, at least 40,000 wafer starts per month, at least ₹20,000 crore of capital expenditure and at least ₹7,500 crore of annual revenue. Setting the bar there is a deliberate refusal to fund sub-scale plants that would sit on the steep portion of the curve and require subsidy forever.</p>
+
+<figure>
+<svg viewBox="0 0 520 210" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah3" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5.6" markerHeight="5.6" orient="auto-start-reverse">
+      <path d="M0,1 L9,5 L0,9 z" fill="#14161a"/>
+    </marker>
+  </defs>
+  <path class="ax" d="M64,180 L64,20" marker-end="url(#ah3)"/>
+  <path class="ax" d="M64,180 L474,180" marker-end="url(#ah3)"/>
+  <text class="sl" x="10" y="16">Cost per wafer</text>
+  <text class="sl" x="474" y="198" text-anchor="end">Output (wafer starts / month)</text>
+
+  <!-- short run average cost curves -->
+  <path class="curve2" d="M78,58 Q108,120 140,104"/>
+  <path class="curve2" d="M126,86 Q166,132 208,96"/>
+  <path class="curve2" d="M188,92 Q232,132 278,100"/>
+  <path class="curve2" d="M262,96 Q306,130 352,106"/>
+  <path class="curve2" d="M336,100 Q380,128 426,110"/>
+  <text class="sl-s" x="120" y="66">short-run average</text>
+  <text class="sl-s" x="120" y="77">cost curves</text>
+
+  <!-- LRAC envelope -->
+  <path class="curve" d="M76,50 C140,138 196,124 288,116 C350,111 400,110 452,110"/>
+  <text class="sl-b" x="440" y="102">LRAC</text>
+
+  <!-- MES marker -->
+  <path class="guide" d="M288,116 L288,180"/>
+  <circle cx="288" cy="116" r="3.2" fill="#14161a"/>
+  <text class="sl-b" x="296" y="140">minimum efficient scale</text>
+  <text class="sl-s" x="296" y="151">≈ 40,000 wafer starts / month</text>
+
+  <!-- sub-scale annotation -->
+  <path d="M150,44 L112,72" stroke="#6a6f78" stroke-width="1" fill="none" marker-end="url(#ah3)"/>
+  <text class="sl-s" x="154" y="36">sub-scale plants sit here:</text>
+  <text class="sl-s" x="154" y="47">permanently uncompetitive without subsidy</text>
+</svg>
+<figcaption><b>Figure 3.</b> The long-run average cost envelope for wafer fabrication, with the Semicon 2.0 eligibility thresholds interpreted as an official estimate of minimum efficient scale. Author's diagram.</figcaption>
+</figure>
+
+<h3>4.3&ensp;Cost concepts that decide whether the policy succeeds</h3>
+
+<table>
+<thead><tr><th style="width:17%">Concept</th><th style="width:43%">Application to the Indian programme</th><th style="width:40%">Consequence for policy design</th></tr></thead>
+<tbody>
+<tr><td><b>Opportunity cost</b></td><td>₹1,27,500 crore forgone from every alternative public use, plus the land, water and power allocated to fabs</td><td>The comparison is against the best alternative project, not against doing nothing</td></tr>
+<tr><td><b>Explicit cost</b></td><td>Capital subsidy disbursed, land at concessional rates, interest on borrowing to fund the outlay</td><td>Appears in the budget, and is therefore politically visible and easily audited</td></tr>
+<tr><td><b>Implicit cost</b></td><td>Scarce engineering talent and industrial infrastructure drawn away from other tradable sectors</td><td>Invisible in accounts, yet decisive for whether the net social return is positive</td></tr>
+<tr><td><b>Sunk cost</b></td><td>Fab capital is almost entirely irreversible, since a cleanroom has no alternative use</td><td>Creates lobbying pressure for further support; must be excluded from continuation decisions</td></tr>
+<tr><td><b>Private vs. social cost</b></td><td>Water, power and chemical burdens borne locally; learning spillovers conferred on rivals</td><td>Justifies subsidy where spillovers dominate, and regulation where externalities dominate</td></tr>
+</tbody>
+</table>
+<p class="tnote"><b>Table 2.</b> Standard cost concepts applied to the semiconductor programme. Author's framework.</p>
+
+<p>The sunk-cost entry deserves the last word here, because it is where good policy usually fails. Once ₹20,000 crore is committed to a cleanroom, that money is irrecoverable, and the rational decision rule is to continue only if expected future revenue exceeds future avoidable cost. Political economy pushes in the opposite direction, since promoters and officials both find it easier to argue that one further tranche will protect the investment already made.</p>
+
+<h3>4.4&ensp;Revenue, break-even and what the 40 per cent rate really does</h3>
+
+<p>Break-even analysis turns the subsidy debate into arithmetic, and the notified thresholds supply every number required. Take the minimum qualifying fab: ₹20,000 crore of capital expenditure, 480,000 wafer starts a year at the 40,000 monthly minimum, and ₹7,500 crore of qualifying revenue, which implies an average realisation of about ₹1.56 lakh per wafer and is consistent with mature-node pricing. Depreciating the plant over ten years gives an annual fixed cost of ₹2,000 crore, and assuming average variable cost of ₹1.10 lakh per wafer leaves a contribution margin of ₹46,000 per wafer.</p>
+
+<table>
+<thead><tr><th style="width:34%">Scenario</th><th class="num" style="width:22%">Annual fixed cost</th><th class="num" style="width:22%">Break-even wafers</th><th class="num" style="width:22%">Required utilisation</th></tr></thead>
+<tbody>
+<tr><td><b>No subsidy</b></td><td class="num">₹2,000 cr</td><td class="num">434,800</td><td class="num">90.6% of capacity</td></tr>
+<tr><td><b>Semicon 1.0 rate (50%)</b></td><td class="num">₹1,000 cr</td><td class="num">217,400</td><td class="num">45.3% of capacity</td></tr>
+<tr><td><b>Semicon 2.0 rate (40%)</b></td><td class="num">₹1,200 cr</td><td class="num">260,900</td><td class="num">54.3% of capacity</td></tr>
+</tbody>
+</table>
+<p class="tnote"><b>Table 3.</b> Illustrative break-even calculation for a minimum-qualifying silicon fab, computed by the author from the notified thresholds. The variable-cost assumption is illustrative; the ranking of the three scenarios is not sensitive to it.</p>
+
+<p>The result is instructive in two ways. Without support the plant must run at more than 90 per cent utilisation merely to break even, which no new fab achieves during the years when yields are still climbing, so unsubsidised entry by a late entrant is close to impossible. With support the required utilisation falls to roughly half of capacity, which is attainable during a ramp, and this is the precise economic content of the claim that the state is sharing risk temporarily. The reduction from 50 to 40 per cent then reads as a deliberate transfer of risk back to the investor, since it lifts required utilisation by about nine percentage points.</p>
+
+<p>On the revenue side, the distinction between average and marginal revenue matters as well. A fab selling standardised mature-node wafers into world markets is close to a price taker, so average revenue equals marginal revenue equals the world price, and any cost disadvantage cannot be passed on. A design firm selling differentiated intellectual property faces a downward-sloping demand curve, so marginal revenue lies below average revenue and the firm retains genuine pricing power.</p>
+
+<h2><span class="num">5</span>Market Structure: Who India Is Actually Competing Against</h2>
+
+<p>Every segment of this industry has a different market structure, and India's realistic strategy differs accordingly. The upstream equipment layer is the starkest case, since ASML supplies essentially 100 per cent of extreme-ultraviolet lithography systems and around 83 to 94 per cent of lithography overall, at roughly €180 million for a standard tool and €380 to 400 million for a high-numerical-aperture machine (CNBC, 2026). This is a monopoly in the textbook sense, protected by patents, tacit process knowledge and a supplier network that took decades to assemble, and it restricts output while pricing far above marginal cost. The uncomfortable implication is that a large share of any Indian fab subsidy is ultimately capitalised into the equipment monopolist's margin.</p>
+
+<p>Foundry services and memory are oligopolies, and the concentration is extreme. TSMC held about 73 per cent of the pure-play foundry market in the second quarter of 2026 against Samsung's 7 per cent, while Samsung, SK Hynix and Micron together control more than 95 per cent of DRAM output (Counterpoint Research, 2026; J.P. Morgan, 2026). Memory pricing before 2026 displayed exactly the rigidity that the kinked demand curve predicts, since each producer expected rivals to match a price cut but to ignore a price rise, which makes demand elastic above the prevailing price and inelastic below it. The resulting discontinuity in marginal revenue allows marginal cost to move within a range without disturbing price, and it took a demand shock large enough to jump that gap entirely to break the pattern in 2026.</p>
+
+<figure>
+<svg viewBox="0 0 520 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ah4" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5.6" markerHeight="5.6" orient="auto-start-reverse">
+      <path d="M0,1 L9,5 L0,9 z" fill="#14161a"/>
+    </marker>
+    <marker id="ah4b" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M0,1.5 L8,5 L0,8.5 z" fill="#14161a"/>
+    </marker>
+  </defs>
+  <path class="ax" d="M72,176 L72,20" marker-end="url(#ah4)"/>
+  <path class="ax" d="M72,176 L466,176" marker-end="url(#ah4)"/>
+  <text class="sl" x="20" y="16">Price</text>
+  <text class="sl" x="466" y="194" text-anchor="end">Quantity</text>
+
+  <!-- kinked demand: shallow (elastic) above the kink, steep (inelastic) below -->
+  <path class="curve" d="M72,47 L198,66"/>
+  <path class="curve" d="M198,66 L420,170"/>
+  <circle cx="198" cy="66" r="3.4" fill="#14161a"/>
+  <text class="sl-b" x="424" y="167">D (kinked)</text>
+
+  <!-- marginal revenue: twice the slope of each demand segment, same price intercept -->
+  <path class="curve" d="M72,47 L198,86" stroke="#6a6f78" stroke-dasharray="4 3"/>
+  <path class="curve" d="M198,125 L252,176" stroke="#6a6f78" stroke-dasharray="4 3"/>
+  <text class="sl-b" x="256" y="172" fill="#6a6f78">MR</text>
+
+  <!-- the discontinuity in marginal revenue -->
+  <path d="M198,86 L198,125" stroke="#14161a" stroke-width="1.3" fill="none"
+        marker-start="url(#ah4b)" marker-end="url(#ah4b)"/>
+  <path d="M176,132 L196,107" stroke="#8a9099" stroke-width=".8" fill="none"/>
+  <text class="sl-s" x="84" y="140">gap in MR: marginal</text>
+  <text class="sl-s" x="84" y="151">cost can move in this</text>
+  <text class="sl-s" x="84" y="162">range without</text>
+  <text class="sl-s" x="84" y="173">changing price</text>
+
+  <!-- P* and Q* -->
+  <path class="guide" d="M72,66 L198,66"/>
+  <path class="guide" d="M198,66 L198,176"/>
+  <text class="sl-b" x="56" y="69">P*</text>
+  <text class="sl-b" x="194" y="190">Q*</text>
+
+  <text class="sl-s" x="128" y="34">elastic above P*: rivals do not follow a rise</text>
+  <path d="M345,102 L338,128" stroke="#8a9099" stroke-width=".8" fill="none"/>
+  <text class="sl-s" x="326" y="86">inelastic below P*:</text>
+  <text class="sl-s" x="326" y="97">rivals match a cut</text>
+</svg>
+<figcaption><b>Figure 4.</b> The kinked demand curve of oligopoly, which accounts for the long stability of memory prices before the 2026 shock. Author's diagram.</figcaption>
+</figure>
+
+<table>
+<thead><tr><th style="width:19%">Structure</th><th style="width:22%">Segment</th><th style="width:29%">Evidence, 2026</th><th style="width:30%">India's realistic position</th></tr></thead>
+<tbody>
+<tr><td><b>Monopoly</b></td><td>EUV lithography</td><td>ASML at ~100% of EUV; €180–400 m per tool</td><td>Price taker on inputs; no domestic policy can alter this</td></tr>
+<tr><td><b>Tight oligopoly</b></td><td>Advanced foundry; DRAM</td><td>TSMC ~73% of foundry; three firms &gt;95% of DRAM</td><td>Entry at the frontier is not credible in this decade</td></tr>
+<tr><td><b>Monopolistic competition</b></td><td>Fabless design and IP blocks</td><td>105 supported start-ups; design captures up to 50% of value</td><td>Genuine opportunity: differentiation, low fixed capital, free entry</td></tr>
+<tr><td><b>Near price-taking</b></td><td>Mature-node wafers and legacy packaging</td><td>Standardised output; many suppliers across Asia</td><td>Viable only at minimum efficient scale with world-class yield</td></tr>
+</tbody>
+</table>
+<p class="tnote"><b>Table 4.</b> Market structure by segment. Sources: CNBC (2026); Counterpoint Research (2026); J.P. Morgan (2026); PIB (2026b). Assessment column is the author's.</p>
+
+<p>The design layer is the one that behaves like monopolistic competition, and it is where India's advantages are real. Many firms sell differentiated intellectual property, fixed capital requirements are modest, and entry is comparatively free, so each firm faces its own downward-sloping demand curve while long-run profits are competed toward normal levels. Government material on the Design Linked Incentive scheme notes that design can account for as much as half of total value addition and that fabless firms hold roughly 30 to 35 per cent of world semiconductor sales (PIB, 2026b). The corresponding warning is equally standard: subsidised entry without real differentiation simply dissipates the rent across more firms, each operating below minimum average cost with excess capacity. Mature-node fabrication sits at the opposite pole, since 28-nanometre wafers are close to a homogeneous product supplied by many Asian competitors, so an Indian entrant faces a nearly horizontal demand curve and must match world cost rather than set price. That is the analytical basis for export discipline, because a firm that survives only by selling into a protected domestic market has never demonstrated that it can match world cost at all.</p>
+
+<h2><span class="num">6</span>The Evidence to 31 August 2026, and Its Limits</h2>
+
+<p>India begins this push from a much larger electronics base than a decade ago, and the growth is genuine. Electronics production rose from about ₹1.90 lakh crore in FY2014–15 to ₹13.11 lakh crore in FY2025–26, and exports rose from ₹38,263 crore to ₹4.24 lakh crore over the same period, which are compound annual growth rates of roughly 19.2 and 24.4 per cent respectively. The ratio of exports to production therefore climbed from about 20 to 32 per cent, output grew 15.8 per cent in the most recent year alone, and smartphones displaced petroleum and gems to become India's single largest export commodity (PIB, 2026c; ANI, 2026). Domestic value addition improved from 15 to 23 per cent, which is real progress and simultaneously a reminder that imported components still supply most of the value.</p>
+
+<p>On the semiconductor programme itself, twelve manufacturing units carrying more than ₹1.64 lakh crore of committed investment have been approved across six states, comprising one silicon fab, one silicon-carbide fab, an integrated gallium-nitride micro-LED display fab and nine packaging units. Three were in commercial production by August 2026: Micron's Sanand plant, inaugurated on 28 February 2026, together with Kaynes Semicon and CG Semi. The Tata–PSMC fab at Dholera is past the halfway mark in construction, will run 28-nanometre processes at 50,000 wafer starts per month, and is targeting first patterned silicon around December 2026, with ASML supplying the lithography.</p>
+
+<div class="callout">
+<p class="lbl">The counterfactual problem</p>
+<p>All three operational units currently package chips fabricated elsewhere, so approved investment remains an input rather than a result. Three questions stay open, and none can be answered by announcements. How much of this investment would have arrived without the incentive? How much value will be created domestically once equipment, wafers, chemicals and licensed intellectual property are netted out? Will the supported firms become competitive enough to export without further support?</p>
+</div>
+
+<p>NITI Aayog's report of May 2026 supplies the scale of the underlying problem and a recommended direction. India still imports 90 to 95 per cent of its semiconductor demand, spent close to US$150 billion on such imports between FY2017 and FY2025, and faces an annual import bill near US$240 billion by 2035 if nothing changes. The report sets a target of 35 to 50 per cent self-sufficiency and a 10 to 13 per cent world market share by 2035, requiring US$135 to 180 billion of investment, and it explicitly advises concentrating on mature nodes, advanced packaging, design and compound semiconductors rather than the leading edge (NITI Aayog, 2026). That advice is consistent with everything the cost and market-structure analysis above implies.</p>
+
+<p>The distinction between gross and net effects must also be maintained when employment is discussed. Fabs are highly automated, so a plant should never be justified primarily as a mass-employment project, and the Dholera figure of roughly 21,000 jobs is dominated by construction and ecosystem roles rather than by fab operators. Electronics manufacturing as a whole supports about 25 lakh direct and indirect jobs, and the meaningful labour effects run through supplier firms, equipment maintenance, product engineering and design rather than through the cleanroom itself.</p>
+
+<h2><span class="num">7</span>A Better Test: From Plant Counts to Capability Density</h2>
+
+<p>The central policy conclusion of this assignment is that India should measure <i>capability density</i> rather than the number of plants approved. Capability density is the quantity of durable, tradable capability generated per rupee of public support, and it includes commercial design wins, process know-how, supplier depth, domestic value addition, skilled labour and export performance. Framing the objective this way converts a national ambition into quantities that can actually be measured and audited, each of which maps onto a standard economic concept.</p>
+
+<table>
+<thead><tr><th style="width:17%">Test</th><th style="width:30%">Indicator</th><th style="width:20%">Underlying concept</th><th style="width:33%">Why it matters</th></tr></thead>
+<tbody>
+<tr><td><b>Additionality</b></td><td>Private investment mobilised per rupee of public support</td><td>Opportunity cost</td><td>Separates investment the policy caused from investment that would have happened anyway</td></tr>
+<tr><td><b>Domestic value capture</b></td><td>Value added, local supplier spend, Indian IP and licence income</td><td>Value added vs. gross output</td><td>Measures depth rather than final assembly</td></tr>
+<tr><td><b>Competitiveness</b></td><td>Export share, yield, unit cost and on-time delivery against world peers</td><td>Average cost vs. world price</td><td>Shows whether firms can survive outside a protected market</td></tr>
+<tr><td><b>Spillovers</b></td><td>Private R&amp;D, patents, tape-outs, first-pass success, wage growth</td><td>External benefit</td><td>Measures the externality that is the whole justification for subsidy</td></tr>
+<tr><td><b>Resilience</b></td><td>Share of critical demand with two or more independent geographic sources</td><td>Insurance value</td><td>Prevents resilience being confused with autarky</td></tr>
+<tr><td><b>Fiscal exit</b></td><td>Falling subsidy per unit of value added; milestone-based sunset dates</td><td>Descent along the LRAC</td><td>Prevents permanent dependence and forces capability to grow</td></tr>
+</tbody>
+</table>
+<p class="tnote"><b>Table 5.</b> A capability-density scoreboard. Author's framework, developed from the market-failure and export-discipline literature.</p>
+
+<p>Four design rules follow. Payments should be milestone-based and tied to construction, qualification, yield, supplier development, research and export targets rather than to capital expenditure alone, since capital expenditure measures spending and not capability. Export discipline should be written into the evaluation, because Cherif, Hasanov and Xie (2026) show that competition in international markets forces firms to upgrade technology and scale, whereas protected import substitution keeps weak firms alive indefinitely. Shared capabilities such as training, metrology, prototype services, design-tool access and supplier qualification deserve the most generous support, because they benefit many firms rather than one recipient. Openness must be retained alongside strategic diversification, since tariffs on critical equipment and inputs would raise costs for exactly the firms the policy is trying to make competitive.</p>
+
+<p>Institutional quality determines whether any of this survives contact with politics. Cherif et al. (2026) argue that effective industrial policy requires agencies that learn from market signals, coordinate across ministries, and combine ambition with autonomy and accountability. For the India Semiconductor Mission this means two concrete things: technical appraisal must be insulated from short-term political pressure, and the Mission must retain a credible power to stop disbursement when a firm misses its milestones. A subsidy that cannot be withdrawn is not an incentive but an entitlement.</p>
+
+<h2><span class="num">8</span>Conclusion</h2>
+
+<p>India's semiconductor strategy has moved from aspiration to a large and now fully specified fiscal commitment. Twelve projects carrying more than ₹1.64 lakh crore are approved, three are in commercial production, the Dholera fab is targeting first silicon around the end of 2026, and Semicon 2.0 adds a ₹1,27,500 crore envelope notified in detail on 31 August 2026. Electronics production reached ₹13.11 lakh crore with exports of ₹4.24 lakh crore in FY2025–26, which are favourable preconditions for a deeper ecosystem but are not evidence that the subsidy caused an efficient outcome.</p>
+
+<p>The economic case for intervention is strongest precisely where markets under-supply learning spillovers, coordination, research infrastructure and resilience, and weakest wherever a subsidy merely substitutes for productivity. The cost and market-structure analysis points to a clear sequence: deepen design and Indian intellectual property, expand advanced packaging and test, build competitive mature-node and compound-semiconductor capacity, localise materials and equipment services, and add silicon fabrication selectively where demand, technology and export economics are all credible.</p>
+
+<div class="callout">
+<p class="lbl">The decisive test</p>
+<p>Public support must create firms and capabilities that can compete later with less support, and that claim is testable. The Government should publish a capability scoreboard reporting additional private investment, domestic value addition, export performance, yields, research spending, supplier localisation and subsidy intensity per unit of value added. If those indicators improve, the programme is a temporary and well-judged sharing of risk that lifts India into a high-productivity global value chain. If they do not, the same programme is an expensive subsidy race — and the size of the outlay will not determine which outcome occurs.</p>
+</div>
+
+<h2 class="newpage"><span class="num"></span>Note on Sources and Method</h2>
+
+<p>All quantitative claims in this assignment are drawn from official notifications, government statistical releases and published market research, and every figure is identified in its caption. The four diagrams are the author's own constructions rather than reproductions: each is drawn to illustrate the argument in the accompanying text, with magnitudes taken from the sources named in the caption. The break-even calculation in Table 3 is computed by the author from the eligibility thresholds in the notified guidelines, and its variable-cost assumption is stated explicitly because the absolute break-even volumes, though not the ranking of the three scenarios, depend on it. The interpretation columns of Tables 1, 2, 4 and 5 are analytical judgements rather than reported facts, and are labelled as such.</p>
+
+<p>Because the programme was notified on 31 August 2026, no outcome data yet exist for Semicon 2.0 itself. Evidence on results therefore comes from the first programme and from the wider electronics sector, and the counterfactual limits of that evidence are set out in Section 6. Where sources disagree on magnitude — as they do on DRAM price increases and on comparative subsidy budgets — the more conservative figure has been used.</p>
+
+<h2><span class="num"></span>References</h2>
+
+<div class="refs">
+<p>ANI. (2026, August 31). <i>Semicon 2.0 sets investment thresholds, offers 40% fab subsidy, Rs 15 crore startup funding.</i> Asian News International.</p>
+<p>Business Today. (2026, August 31). <i>Semicon 2.0 notified: ₹1.27 lakh crore scheme widens India's chip ambitions.</i></p>
+<p>Cherif, R., Hasanov, F., &amp; Xie, G. (2026). <i>Institutions for industrial policy: The foundation of economic development</i> (IMF Working Paper WP/26/63). International Monetary Fund.</p>
+<p>CNBC. (2026, January 29). <i>Why Nvidia's AI boom needs Dutch chip equipment maker ASML.</i></p>
+<p>Counterpoint Research. (2026). <i>Global pure foundry market share, Q2 2026.</i></p>
+<p>European Commission. (n.d.). <i>The EU budget bolsters Europe's technological leadership: European Chips Act.</i> Retrieved August 31, 2026.</p>
+<p>India Semiconductor Mission. (n.d.). <i>Semiconductor fabs scheme.</i> Retrieved August 31, 2026, from https://ism.gov.in/semiconductor-fab</p>
+<p>J.P. Morgan Global Research. (2026). <i>The AI-driven memory shortage: DRAM prices, inflation and market risks.</i></p>
+<p>Ministry of Finance, Government of India. (2026). <i>Economic Survey 2025–26, Chapter 8: Industry's next leap — structural transformation and global integration.</i></p>
+<p>NITI Aayog. (2026, May 24). <i>Future of India's semiconductor industry.</i> Government of India.</p>
+<p>Press Information Bureau. (2026a, July 15). <i>Cabinet approves Semicon 2.0 — Government delivers on its commitment for long-term policy support to semiconductors in India.</i></p>
+<p>Press Information Bureau. (2026b, January 4). <i>Design Linked Incentive (DLI) scheme.</i></p>
+<p>Press Information Bureau. (2026c, July 29). <i>Production linked incentive schemes strengthen India's electronics manufacturing ecosystem.</i></p>
+<p>Rotunno, L., Ruta, M., &amp; Verma, P. (2026). <i>Industrial policy and trade tensions in strategic sectors</i> (IMF Working Paper WP/26/155). International Monetary Fund.</p>
+<p>U.S. Department of Commerce. (2024, August). <i>Two years later: Funding from CHIPS and Science Act creating quality jobs, growing local economies, and bringing semiconductor manufacturing back to America.</i></p>
+<p>World Semiconductor Trade Statistics. (2026, June 2). <i>Global semiconductor market forecast, June 2026.</i></p>
+</div>
+
+</body>
+</html>
