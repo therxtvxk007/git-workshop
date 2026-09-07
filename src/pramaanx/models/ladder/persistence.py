@@ -21,7 +21,7 @@ from pramaanx.core.rng import RandomStreams
 from pramaanx.models.base import ForecastArtifact, ModelArtifact
 from pramaanx.models.capabilities import Capability, CapabilityManifest
 from pramaanx.models.ladder._history import build_history, issue_keys, issue_window
-from pramaanx.models.samples import WindowSamples
+from pramaanx.models.samples import ProbabilityMethod, WindowSamples
 from pramaanx.panel.windows import Window
 
 MODEL_ID = "ladder.persistence"
@@ -88,5 +88,10 @@ class Persistence:
             capabilities=self.capabilities(),
             context_identity=ctx.identity(),
             model_identity=model.identity(),
-            windows=WindowSamples(keys=keys, window=Window(start, end), counts=counts),  # type: ignore[arg-type]
+            windows=WindowSamples(
+                keys=keys,
+                window=Window(start, end),  # type: ignore[arg-type]
+                counts=counts,
+                method=ProbabilityMethod.ANALYTIC,
+            ),
         )

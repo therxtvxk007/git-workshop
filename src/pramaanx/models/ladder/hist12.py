@@ -22,6 +22,7 @@ import polars as pl
 from pramaanx.core.contexts import FitContext, ForecastContext
 from pramaanx.core.errors import ContractViolationError
 from pramaanx.core.rng import RandomStreams
+from pramaanx.hashing import utc_isoformat
 from pramaanx.models.base import ForecastArtifact, ModelArtifact
 from pramaanx.models.capabilities import Capability, CapabilityManifest
 from pramaanx.models.ladder._history import build_history, issue_keys, issue_window
@@ -100,7 +101,9 @@ class Hist12:
                 total=len(missing),
             )
 
-        generator = rng.stream("predict", self.model_id, ctx.identity())
+        generator = rng.stream(
+            "predict", self.model_id, utc_isoformat(ctx.issue_time), model.parameter_identity()
+        )
         columns = []
         for key in keys:
             observed = np.asarray(table[f"{key.district_id}|{key.family}"], dtype=np.int64)

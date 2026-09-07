@@ -22,6 +22,7 @@ import polars as pl
 from pramaanx.core.contexts import FitContext, ForecastContext
 from pramaanx.core.errors import ContractViolationError
 from pramaanx.core.rng import RandomStreams
+from pramaanx.hashing import utc_isoformat
 from pramaanx.models.base import ForecastArtifact, ModelArtifact
 from pramaanx.models.capabilities import Capability, CapabilityManifest
 from pramaanx.models.ladder._history import build_history, issue_keys, issue_window
@@ -124,7 +125,12 @@ class Climatology:
             edges=edges,
             n_draws=self.n_draws,
             rng=rng,
-            stream_name=("predict", self.model_id, ctx.identity()),
+            stream_name=(
+                "predict",
+                self.model_id,
+                utc_isoformat(ctx.issue_time),
+                model.parameter_identity(),
+            ),
         )
         return ForecastArtifact(
             model_id=self.model_id,

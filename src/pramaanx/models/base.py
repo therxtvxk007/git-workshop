@@ -43,6 +43,7 @@ class ModelArtifact:
     fit_context: str = ""
 
     def identity(self) -> str:
+        """The full identity, context included. What the ledger records."""
         return hash_object(
             {
                 "model_id": self.model_id,
@@ -50,6 +51,25 @@ class ModelArtifact:
                 "training_rows": self.training_rows,
                 "fit_context": self.fit_context,
                 "capabilities": self.capabilities.to_dict(),
+            }
+        )
+
+    def parameter_identity(self) -> str:
+        """Only what determines the predictive distribution.
+
+        This is what a predictive random stream is keyed on, and the exclusion
+        of ``fit_context`` is deliberate. A context carries the input manifest,
+        which changes whenever *anything* is appended to the store -- including
+        rows dated after the cutoff, which by construction cannot reach this
+        fit. Seeding on the full identity would let evidence from after the
+        origin reseed the sampler and move a forecast it can never inform,
+        which is exactly the invariance the plan requires (S38).
+        """
+        return hash_object(
+            {
+                "model_id": self.model_id,
+                "parameters": self.parameters,
+                "training_rows": self.training_rows,
             }
         )
 

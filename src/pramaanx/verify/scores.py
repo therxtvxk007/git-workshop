@@ -72,9 +72,20 @@ class ScoreResult:
         return self.value is not None and math.isfinite(self.value)
 
     def to_dict(self) -> dict[str, object]:
+        """A JSON-safe rendering that does not throw the infinity away.
+
+        JSON has no infinity, and the project's canonical serialiser rejects
+        non-finite floats on purpose -- a NaN inside a hashed config would make
+        two different configs hash the same. But an infinite log loss is a
+        result, not an error, so ``value`` goes to null and ``value_repr``
+        carries the sign. Dropping the row, or capping it, would report a claim
+        the model did not make (S32.2).
+        """
+        finite = self.finite
         return {
             "metric": self.metric,
-            "value": self.value,
+            "value": self.value if finite else None,
+            "value_repr": "" if finite else repr(self.value),
             "orientation": str(self.orientation),
             "n": self.n,
             "non_finite": self.non_finite,

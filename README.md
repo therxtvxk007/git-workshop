@@ -101,6 +101,15 @@ uv run pramaanx backtest --experiment configs/experiments/e2e_v1.yaml
 uv run pramaanx report --run-id <run-id>
 ```
 
+The forecast-contract stack has its own surface, offline and deterministic:
+
+```bash
+uv run pramaanx offline run --root runs/offline --seed 0   # ladder end to end
+uv run pramaanx offline run --root runs/x --outage 201     # and with a coverage gap
+uv run pramaanx store verify --root runs/offline           # replay a pinned manifest
+uv run pramaanx store recover --root runs/offline          # classify what a crash left
+```
+
 Every command prints a canonical-JSON manifest to stdout and accepts `--output`
 to write it to a file. Commands that *write* something also take `--dry-run`
 (`ingest`, `snapshot build`, `extract`, `candidates generate`, `outcomes build`,
@@ -339,6 +348,7 @@ research/           preregistration, experiment registry, benchmark cards
 scripts/            bootstrap and operational entry points
 src/pramaanx/       the package
 tests/              unit / contracts / leakage / metamorphic / integration
+                    core / registry / geo / panel / models / verify / protocol / runtime
 ```
 
 `data/` contents are git-ignored: bronze is reproducible from connectors, and
@@ -348,6 +358,32 @@ Configuration is strict throughout, including per-source options: an unknown
 source name or a misspelled connector option (`publication_lag_minuts`) raises
 when settings load, rather than being ignored in favour of a default nobody
 chose.
+
+## The forecast contract stack
+
+A second layer sits alongside the M0 evidence pipeline, built from the code
+plan's own first-month priorities. It is not a replacement: M0's `CutoffGuard`
+and evidence ledger still run the connector path, while this layer carries the
+panel, the ladder and the protocol.
+
+| Package | What it settles |
+| --- | --- |
+| `core/` | Revisions with their own availability; three information profiles; an as-of store whose read order is the correctness argument |
+| `registry/` | Source tiers and recorded approvals; the parameter-cutoff gate that catches a leak living inside model weights |
+| `geo/`, `panel/` | Versioned districts, multi-label family counting, half-open windows, and outcomes that stay null when nobody observed them |
+| `models/` | Daily path samples where a model has a daily process, and a declared refusal where it does not |
+| `verify/` | Proper scores that keep their infinities, with the denominator attached |
+| `protocol/`, `runtime/` | Role manifests, a lockbox that opens once, and run attempts written before the work starts |
+
+What each of those closes, what the tests prove, and the substantial list of
+what is still absent: **[docs/PLAN_EXECUTION.md](docs/PLAN_EXECUTION.md)**.
+
+Three things worth knowing before reading any number it produces. The offline
+run is a **generated world** and says nothing about real forecasting skill. No
+source in this repository has a recorded collection approval, so `may_collect`
+refuses every one of them — that is the correct state, not a bug. And a
+severity head does not exist, so the VIEWS fatality contract is declared
+unsupported rather than approximated with event counts.
 
 ## Next milestone
 

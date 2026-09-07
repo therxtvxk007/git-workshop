@@ -21,7 +21,7 @@ from pramaanx.core.rng import RandomStreams
 from pramaanx.models.base import ForecastArtifact, ModelArtifact
 from pramaanx.models.capabilities import Capability, CapabilityManifest
 from pramaanx.models.ladder._history import issue_keys, issue_window
-from pramaanx.models.samples import WindowSamples
+from pramaanx.models.samples import ProbabilityMethod, WindowSamples
 from pramaanx.panel.windows import Window
 
 MODEL_ID = "ladder.zero"
@@ -87,5 +87,6 @@ class ZeroBaseline:
                 keys=keys,
                 window=Window(start, end),  # type: ignore[arg-type]
                 counts=np.zeros((self.n_draws, len(keys)), dtype=np.int64),
+                method=ProbabilityMethod.ANALYTIC,
             ),
         )

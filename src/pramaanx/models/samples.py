@@ -211,6 +211,14 @@ class WindowSamples:
     #: ``[draw, panel_row]``, non-negative integers.
     counts: np.ndarray
     draw_kind: DrawKind = DrawKind.PREDICTIVE
+    #: How the resulting probability should be read. A degenerate model -- one
+    #: whose "draws" enumerate its whole distribution rather than sample from
+    #: it -- declares ANALYTIC, because it has no sampling error and its zero
+    #: is an assertion rather than a miss. Getting this wrong in either
+    #: direction misfiles a lint: a sampled zero reported as analytic looks
+    #: like a claim of impossibility, and an asserted zero reported as sampled
+    #: escapes the rule that exists to catch it.
+    method: ProbabilityMethod = ProbabilityMethod.MONTE_CARLO
 
     def __post_init__(self) -> None:
         _check_counts(self.counts, expected_dims=2, rows=len(self.keys))
@@ -225,7 +233,7 @@ class WindowSamples:
                 self.counts[:, index],
                 key=key,
                 window=self.window,
-                method=ProbabilityMethod.MONTE_CARLO,
+                method=self.method,
                 k=k,
             )
             for index, key in enumerate(self.keys)
@@ -253,7 +261,7 @@ class WindowSamples:
                     totals,
                     key=PanelKey(district_id=name, family="aggregate"),
                     window=self.window,
-                    method=ProbabilityMethod.MONTE_CARLO,
+                    method=self.method,
                     k=k,
                 )
             )
@@ -275,6 +283,7 @@ class PathSamples:
     edges: tuple[datetime, ...]
     counts: np.ndarray
     draw_kind: DrawKind = DrawKind.PREDICTIVE
+    method: ProbabilityMethod = ProbabilityMethod.MONTE_CARLO
 
     def __post_init__(self) -> None:
         _check_counts(self.counts, expected_dims=3, rows=len(self.keys))
@@ -324,6 +333,7 @@ class PathSamples:
             window=requested,
             counts=self.counts[:, :, first:last].sum(axis=2, dtype=np.int64),
             draw_kind=self.draw_kind,
+            method=self.method,
         )
 
 

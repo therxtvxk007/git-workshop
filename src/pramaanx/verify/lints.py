@@ -113,7 +113,12 @@ def check_monte_carlo_zeros(
             ),
         )
         for forecast in forecasts
-        if forecast.p_occ_mc == 0.0 and forecast.n_draws < min_draws
+        # Analytic forecasts are exempt: they have no sampling error, so a
+        # zero from one is an assertion, and check_no_hard_zero is the rule
+        # that applies to it.
+        if forecast.method is ProbabilityMethod.MONTE_CARLO
+        and forecast.p_occ_mc == 0.0
+        and forecast.n_draws < min_draws
     ]
     return LintReport(tuple(findings))
 
