@@ -58,6 +58,18 @@ demo:  ## End-to-end M0 demo on the synthetic world (no network, no credentials)
 	$(RUN) pramaanx audit leakage --cutoff $(DEMO_CUTOFF)
 	$(RUN) pramaanx backtest --experiment $(DEMO_EXPERIMENT)
 
+# The forecast-contract stack's own smoke run. Generated world, no network, no
+# credentials, deterministic given the seed. It proves the joins between the
+# store, the panel, the ladder and the scorer -- and nothing about real skill.
+OFFLINE_ROOT ?= runs/offline
+OFFLINE_SEED ?= 0
+
+.PHONY: offline
+offline:  ## Composed offline run: as-of store -> panel -> ladder -> frozen forecast -> score
+	$(RUN) pramaanx offline run --root $(OFFLINE_ROOT) --seed $(OFFLINE_SEED)
+	$(RUN) pramaanx store verify --root $(OFFLINE_ROOT)
+	$(RUN) pramaanx store recover --root $(OFFLINE_ROOT)
+
 .PHONY: clean
 clean:  ## Remove caches and run outputs (bronze/silver/gold are kept)
 	rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov .coverage

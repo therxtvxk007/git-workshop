@@ -22,7 +22,6 @@ from pramaanx.models.base import ForecastArtifact, ModelArtifact
 from pramaanx.models.capabilities import Capability, CapabilityManifest
 from pramaanx.models.ladder._history import build_history, issue_keys, issue_window
 from pramaanx.models.samples import ProbabilityMethod, WindowSamples
-from pramaanx.panel.windows import Window
 
 MODEL_ID = "ladder.persistence"
 
@@ -78,7 +77,7 @@ class Persistence:
         rng: RandomStreams,  # noqa: ARG002 -- deterministic
     ) -> ForecastArtifact:
         keys = issue_keys(issue_rows)
-        start, end = issue_window(issue_rows)
+        window = issue_window(issue_rows)
         table = model.parameters.get("last_count", {})
         counts = np.array(
             [[table.get(f"{key.district_id}|{key.family}", 0) for key in keys]], dtype=np.int64
@@ -90,7 +89,7 @@ class Persistence:
             model_identity=model.identity(),
             windows=WindowSamples(
                 keys=keys,
-                window=Window(start, end),  # type: ignore[arg-type]
+                window=window,
                 counts=counts,
                 method=ProbabilityMethod.ANALYTIC,
             ),

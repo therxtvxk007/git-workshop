@@ -17,6 +17,7 @@ metrics this forecast supports before it computes one.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Protocol, runtime_checkable
 
 import polars as pl
@@ -106,7 +107,7 @@ class ForecastArtifact:
     def n_draws(self) -> int:
         return (self.paths or self.windows).n_draws  # type: ignore[union-attr]
 
-    def window(self, start: Any, end: Any) -> WindowSamples:
+    def window(self, start: datetime, end: datetime) -> WindowSamples:
         """Totals for a window, if this artifact can honestly produce them."""
         if self.paths is not None:
             return self.paths.window(start, end)
@@ -125,10 +126,10 @@ class ForecastArtifact:
             )
         return self.windows
 
-    def summarise(self, start: Any, end: Any) -> tuple[WindowForecast, ...]:
+    def summarise(self, start: datetime, end: datetime) -> tuple[WindowForecast, ...]:
         return self.window(start, end).summarise()
 
-    def to_frame(self, start: Any, end: Any) -> pl.DataFrame:
+    def to_frame(self, start: datetime, end: datetime) -> pl.DataFrame:
         """One row per panel row, in the layout the verifier and report read."""
         return pl.DataFrame([forecast.to_dict() for forecast in self.summarise(start, end)])
 

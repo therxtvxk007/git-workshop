@@ -22,7 +22,6 @@ from pramaanx.models.base import ForecastArtifact, ModelArtifact
 from pramaanx.models.capabilities import Capability, CapabilityManifest
 from pramaanx.models.ladder._history import issue_keys, issue_window
 from pramaanx.models.samples import ProbabilityMethod, WindowSamples
-from pramaanx.panel.windows import Window
 
 MODEL_ID = "ladder.zero"
 
@@ -77,7 +76,7 @@ class ZeroBaseline:
         rng: RandomStreams,  # noqa: ARG002 -- deterministic
     ) -> ForecastArtifact:
         keys = issue_keys(issue_rows)
-        start, end = issue_window(issue_rows)
+        window = issue_window(issue_rows)
         return ForecastArtifact(
             model_id=self.model_id,
             capabilities=self.capabilities(),
@@ -85,7 +84,7 @@ class ZeroBaseline:
             model_identity=model.identity(),
             windows=WindowSamples(
                 keys=keys,
-                window=Window(start, end),  # type: ignore[arg-type]
+                window=window,
                 counts=np.zeros((self.n_draws, len(keys)), dtype=np.int64),
                 method=ProbabilityMethod.ANALYTIC,
             ),

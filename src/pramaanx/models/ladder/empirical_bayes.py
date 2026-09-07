@@ -28,7 +28,7 @@ from pramaanx.models.capabilities import Capability, CapabilityManifest
 from pramaanx.models.ladder._history import build_history, issue_keys, issue_window
 from pramaanx.models.ladder.climatology import DAILY_CONSTRUCTION, daily_paths
 from pramaanx.models.samples import PathSamples
-from pramaanx.panel.windows import CalendarContract, Window
+from pramaanx.panel.windows import CalendarContract
 
 MODEL_ID = "ladder.empirical_bayes"
 
@@ -123,8 +123,8 @@ class EmpiricalBayes:
         rng: RandomStreams,
     ) -> ForecastArtifact:
         keys = issue_keys(issue_rows)
-        start, end = issue_window(issue_rows)
-        edges = self.calendar.daily_edges(Window(start, end))  # type: ignore[arg-type]
+        window = issue_window(issue_rows)
+        edges = self.calendar.daily_edges(window)
         table = model.parameters.get("rate_per_day", {})
         rates = np.array(
             [table.get(f"{key.district_id}|{key.family}", 0.0) for key in keys], dtype=float

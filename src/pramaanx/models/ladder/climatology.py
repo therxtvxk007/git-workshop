@@ -26,8 +26,8 @@ from pramaanx.hashing import utc_isoformat
 from pramaanx.models.base import ForecastArtifact, ModelArtifact
 from pramaanx.models.capabilities import Capability, CapabilityManifest
 from pramaanx.models.ladder._history import build_history, issue_keys, issue_window
-from pramaanx.models.samples import PathSamples
-from pramaanx.panel.windows import CalendarContract, Window
+from pramaanx.models.samples import PanelKey, PathSamples
+from pramaanx.panel.windows import CalendarContract
 
 MODEL_ID = "ladder.climatology"
 DAILY_CONSTRUCTION = "homogeneous_poisson_from_long_run_rate"
@@ -98,11 +98,10 @@ class Climatology:
             fit_context=ctx.identity(),
         )
 
-    def _rates(self, model: ModelArtifact, keys: tuple[object, ...]) -> np.ndarray:
+    def _rates(self, model: ModelArtifact, keys: tuple[PanelKey, ...]) -> np.ndarray:
         table = model.parameters.get("rate_per_day", {})
         return np.array(
-            [table.get(f"{key.district_id}|{key.family}", 0.0) for key in keys],  # type: ignore[attr-defined]
-            dtype=float,
+            [table.get(f"{key.district_id}|{key.family}", 0.0) for key in keys], dtype=float
         )
 
     def predict(
@@ -114,8 +113,7 @@ class Climatology:
         rng: RandomStreams,
     ) -> ForecastArtifact:
         keys = issue_keys(issue_rows)
-        start, end = issue_window(issue_rows)
-        window = Window(start, end)  # type: ignore[arg-type]
+        window = issue_window(issue_rows)
         edges = self.calendar.daily_edges(window)
         if len(edges) < 2:
             raise ContractViolationError("window is shorter than one day")

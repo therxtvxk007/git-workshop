@@ -255,3 +255,21 @@ def test_unresolved_mass_travels_with_the_aggregate() -> None:
     (result,) = allocate_counts({"101": 10}, partial)
     assert result.value == pytest.approx(5.0)
     assert result.unresolved == pytest.approx(2.5)
+
+
+def test_looking_up_a_district_outside_its_version_is_refused() -> None:
+    """Rather than returning a state that belonged to a different roster."""
+    assert V2.state_of("102") == "bihar"
+    with pytest.raises(ContractViolationError, match="not in this boundary version"):
+        V1.state_of("102")
+
+
+def test_repeated_version_names_are_refused() -> None:
+    """Two rosters under one name make ``get`` a coin toss."""
+    with pytest.raises(ContractViolationError, match="version names repeat"):
+        Roster(versions=(V1, V1))
+
+
+def test_an_unknown_version_is_refused() -> None:
+    with pytest.raises(ContractViolationError, match="no such boundary version"):
+        Roster(versions=(V1, V2)).get("lgd-2030")

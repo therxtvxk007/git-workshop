@@ -27,7 +27,6 @@ from pramaanx.models.base import ForecastArtifact, ModelArtifact
 from pramaanx.models.capabilities import Capability, CapabilityManifest
 from pramaanx.models.ladder._history import build_history, issue_keys, issue_window
 from pramaanx.models.samples import WindowSamples
-from pramaanx.panel.windows import Window
 
 MODEL_ID = "ladder.hist12"
 DEFAULT_LOOKBACK = 12
@@ -87,7 +86,7 @@ class Hist12:
         rng: RandomStreams,
     ) -> ForecastArtifact:
         keys = issue_keys(issue_rows)
-        start, end = issue_window(issue_rows)
+        window = issue_window(issue_rows)
         table = model.parameters.get("recent_counts", {})
 
         missing = [
@@ -116,7 +115,7 @@ class Hist12:
             model_identity=model.identity(),
             windows=WindowSamples(
                 keys=keys,
-                window=Window(start, end),  # type: ignore[arg-type]
+                window=window,
                 counts=np.stack(columns, axis=1).astype(np.int64),
             ),
         )

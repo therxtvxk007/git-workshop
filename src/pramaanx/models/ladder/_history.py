@@ -14,6 +14,7 @@ import polars as pl
 
 from pramaanx.core.errors import ContractViolationError
 from pramaanx.models.samples import PanelKey
+from pramaanx.panel.windows import Window
 
 REQUIRED_COLUMNS: tuple[str, ...] = (
     "origin",
@@ -87,7 +88,7 @@ def issue_keys(issue_rows: pl.DataFrame) -> tuple[PanelKey, ...]:
     )
 
 
-def issue_window(issue_rows: pl.DataFrame) -> tuple[object, object]:
+def issue_window(issue_rows: pl.DataFrame) -> Window:
     """The one window an issue batch forecasts.
 
     Every row in a batch shares an origin and therefore a window. A batch that
@@ -103,4 +104,4 @@ def issue_window(issue_rows: pl.DataFrame) -> tuple[object, object]:
             distinct_starts=len(starts),
             distinct_ends=len(ends),
         )
-    return starts.pop(), ends.pop()
+    return Window(starts.pop(), ends.pop())
