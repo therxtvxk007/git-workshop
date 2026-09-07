@@ -94,7 +94,14 @@ class WindowForecast:
 
     @property
     def mc_standard_error(self) -> float:
-        """Binomial standard error of the sampled frequency."""
+        """Binomial standard error of the sampled frequency.
+
+        Zero for an analytic forecast, which has no sampling error at all. A
+        degenerate model reporting a standard error computed from its own
+        certainty would widen every downstream tolerance for no reason.
+        """
+        if self.method is ProbabilityMethod.ANALYTIC:
+            return 0.0
         if self.n_draws <= 0:
             return float("nan")
         p = self.p_occ_mc
@@ -106,14 +113,22 @@ class WindowForecast:
         With zero positives the Wald interval collapses to a point, which is
         exactly the misreading this module exists to prevent: it would say the
         model is certain when the sampler merely ran out of draws. The
-        rule-of-three upper bound ``3/n`` is the honest replacement.
+        rule-of-three upper bound ``3/n`` is the honest replacement, clamped to
+        one -- with very few draws ``3/n`` exceeds a probability.
+
+        An analytic forecast gets a point interval, because its probability
+        does not come from a sample and no interval around it would mean
+        anything.
         """
+        if self.method is ProbabilityMethod.ANALYTIC:
+            return (self.p_occ, self.p_occ)
         if self.n_draws <= 0:
             return (float("nan"), float("nan"))
+        rule_of_three = min(3.0 / self.n_draws, 1.0)
         if self.p_occ_mc == 0.0:
-            return (0.0, 3.0 / self.n_draws)
+            return (0.0, rule_of_three)
         if self.p_occ_mc == 1.0:
-            return (1.0 - 3.0 / self.n_draws, 1.0)
+            return (1.0 - rule_of_three, 1.0)
         half = z * self.mc_standard_error
         return (max(0.0, self.p_occ_mc - half), min(1.0, self.p_occ_mc + half))
 

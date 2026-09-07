@@ -221,3 +221,42 @@ def test_summarising_zero_draws_is_refused() -> None:
             method=ProbabilityMethod.MONTE_CARLO,
             k=5,
         )
+
+
+def test_the_rule_of_three_bound_is_clamped_to_one() -> None:
+    """With two draws, 3/n exceeds a probability."""
+    forecast = _summarise(
+        np.zeros(2, dtype=np.int64),
+        key=KEYS[0],
+        window=IST.window(date(2026, 1, 1), 30),
+        method=ProbabilityMethod.MONTE_CARLO,
+        k=5,
+    )
+    low, high = forecast.mc_interval()
+    assert (low, high) == (0.0, 1.0)
+
+
+def test_an_analytic_forecast_reports_no_sampling_uncertainty() -> None:
+    """It has none. A degenerate model that claimed a standard error would
+    widen every downstream tolerance for nothing."""
+    forecast = _summarise(
+        np.zeros(1, dtype=np.int64),
+        key=KEYS[0],
+        window=IST.window(date(2026, 1, 1), 30),
+        method=ProbabilityMethod.ANALYTIC,
+        k=5,
+    )
+    assert forecast.mc_standard_error == 0.0
+    assert forecast.mc_interval() == (0.0, 0.0)
+
+
+def test_the_method_travels_from_the_model_through_the_window() -> None:
+    """A degenerate model's declaration must survive summing days."""
+    window = IST.window(date(2026, 1, 1), 30)
+    paths = PathSamples(
+        keys=KEYS,
+        edges=IST.daily_edges(window),
+        counts=np.zeros((1, len(KEYS), 30), dtype=np.int64),
+        method=ProbabilityMethod.ANALYTIC,
+    )
+    assert paths.window(paths.edges[0], paths.edges[7]).method is ProbabilityMethod.ANALYTIC
