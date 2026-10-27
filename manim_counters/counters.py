@@ -6,6 +6,11 @@ Render all scenes (720p):
 then concatenate in SCENE_ORDER with ./render.sh.
 """
 
+import hashlib
+import os
+import wave
+from pathlib import Path
+
 from manim import *
 
 FONT = "DejaVu Sans"
@@ -191,7 +196,52 @@ class Caption:
 
 
 def clear_all(scene):
+    sync(scene)
     scene.play(*[FadeOut(m) for m in scene.mobjects], run_time=0.8)
+
+
+# ---------------------------------------------------------------- voiceover
+# Narration is synthesised offline with Kokoro TTS (pip install kokoro-onnx soundfile) and
+# cached as WAV files in ./voiceover, so a re-render only synthesises lines that changed.
+# Model files (kokoro-v1.0.int8.onnx, voices-v1.0.bin) are read from $KOKORO_DIR.
+VO_VOICE = os.environ.get("VO_VOICE", "af_heart")
+VO_SPEED = float(os.environ.get("VO_SPEED", "1.0"))
+VO_MODEL_DIR = Path(os.environ.get("KOKORO_DIR", Path.home() / ".cache" / "kokoro"))
+VO_CACHE = Path(__file__).resolve().parent / "voiceover"
+_kokoro = None
+
+
+def tts(text):
+    """Return (wav path, duration in seconds) for a narration line."""
+    global _kokoro
+    VO_CACHE.mkdir(exist_ok=True)
+    key = hashlib.sha1(f"{VO_VOICE}|{VO_SPEED}|{text}".encode()).hexdigest()[:16]
+    path = VO_CACHE / f"{key}.wav"
+    if not path.exists():
+        import soundfile as sf
+        from kokoro_onnx import Kokoro
+        if _kokoro is None:
+            _kokoro = Kokoro(str(VO_MODEL_DIR / "kokoro-v1.0.int8.onnx"), str(VO_MODEL_DIR / "voices-v1.0.bin"))
+        samples, sr = _kokoro.create(text, voice=VO_VOICE, speed=VO_SPEED, lang="en-us")
+        sf.write(str(path), samples, sr)
+    with wave.open(str(path)) as w:
+        return path, w.getnframes() / w.getframerate()
+
+
+def sync(scene, pad=0.4):
+    """Wait until the current narration line has finished."""
+    rem = getattr(scene, "_vo_end", 0.0) - scene.renderer.time + pad
+    if rem > 0.05:
+        scene.wait(rem)
+    scene._vo_end = 0.0
+
+
+def say(scene, text):
+    """Start a narration line; animations that follow play while it is spoken."""
+    sync(scene, pad=0.15)
+    path, dur = tts(text)
+    scene.add_sound(str(path))
+    scene._vo_end = scene.renderer.time + dur
 
 
 # ---------------------------------------------------------------- scenes
@@ -201,6 +251,7 @@ class S01_Intro(Scene):
         title = T("Counters", 72, YELLOW, weight=BOLD)
         sub = T("Asynchronous Binary & Non-Binary  •  Up & Down Counters", 28, GREY_B)
         sub.next_to(title, DOWN, buff=0.4)
+        say(self, "In this video we'll study counters: asynchronous binary and non-binary counters, counting both up and down.")
         self.play(Write(title), run_time=1.5)
         self.play(FadeIn(sub, shift=UP * 0.2))
         self.wait(1.5)
@@ -208,9 +259,11 @@ class S01_Intro(Scene):
 
         b1 = T("•  A type of sequential circuit", 32).to_edge(LEFT, buff=1).shift(UP * 2)
         b2 = T("•  It counts the number of clock pulses", 32).next_to(b1, DOWN, aligned_edge=LEFT, buff=0.4)
+        say(self, 'A counter is a type of sequential circuit. It counts the number of clock pulses applied to it.')
         self.play(FadeIn(b1, shift=RIGHT * 0.3))
         self.play(FadeIn(b2, shift=RIGHT * 0.3))
 
+        say(self, 'Every time a clock pulse arrives, the stored count goes up by one.')
         clk = waveform([0, 1] * 8, -5.5, -0.6, 0.55, 0.7, BLUE)
         self.play(Create(clk), run_time=2)
         count = T("0", 48, GREEN).next_to(clk, RIGHT, buff=0.5)
@@ -225,6 +278,7 @@ class S01_Intro(Scene):
         clear_all(self)
         cap.cur = None
 
+        say(self, 'An n-bit binary number has two to the power n possible states. So a two-bit counter needs two flip-flops, and an n-bit counter needs n flip-flops.')
         h = heading("n-bit counter")
         self.play(FadeIn(h))
         l1 = T("n-bit binary number  →  2ⁿ possible states", 34, ORANGE).shift(UP * 1.9)
@@ -235,6 +289,7 @@ class S01_Intro(Scene):
         self.play(FadeIn(l3, shift=UP * 0.2))
         self.wait(1)
 
+        say(self, 'Counters come in two kinds: up counters, which count upward, and down counters, which count downward.')
         root = T("Counters", 32, RED).shift(DOWN * 1.0)
         up = T("Up counter", 30, RED).shift(DOWN * 2.3 + LEFT * 3)
         dn = T("Down counter", 30, RED).shift(DOWN * 2.3 + RIGHT * 3)
@@ -248,6 +303,7 @@ class S01_Intro(Scene):
 class S02_UpDownModN(Scene):
     def construct(self):
         cap = Caption(self)
+        say(self, 'Take a two-bit counter. The up counter goes zero zero, zero one, one zero, one one, and wraps back to zero zero. The down counter goes the other way: zero zero, one one, one zero, zero one.')
         h = heading("2-bit Up vs Down Counter")
         self.play(FadeIn(h))
         upc = state_cycle(["00", "01", "10", "11"]).shift(LEFT * 3.3 + UP * 0.2)
@@ -265,6 +321,7 @@ class S02_UpDownModN(Scene):
         clear_all(self)
         cap.cur = None
 
+        say(self, 'A counter can be described as a mod N counter, where N is the number of states. A two-bit counter has two squared, which is four states, so it is a mod four counter.')
         h = heading("Mod-N Counter")
         self.play(FadeIn(h))
         l1 = T("A counter can be represented as a  Mod-N counter", 32, ORANGE).shift(UP * 2)
@@ -273,6 +330,7 @@ class S02_UpDownModN(Scene):
         self.play(Write(l1))
         self.play(FadeIn(l2, shift=UP * 0.2))
         self.play(FadeIn(l3, shift=UP * 0.2))
+        say(self, 'In general, two to the power n equals N. So the number of flip-flops, n, is log base two of N.')
         f1 = T("2ⁿ = N", 40, YELLOW)
         f2 = T("n = log₂ N", 40, YELLOW)
         fg = VGroup(f1, f2).arrange(RIGHT, buff=1.5).shift(DOWN * 1.2)
@@ -283,6 +341,7 @@ class S02_UpDownModN(Scene):
         clear_all(self)
         cap.cur = None
 
+        say(self, "For example, a mod six counter. n equals log base two of six, which is about two point five eight. We can't build part of a flip-flop, so we round up to three flip-flops.")
         h = heading("Example: Mod-6 Counter")
         self.play(FadeIn(h))
         steps = VGroup(
@@ -300,6 +359,7 @@ class S02_UpDownModN(Scene):
 class S03_BinaryNonBinary(Scene):
     def construct(self):
         cap = Caption(self)
+        say(self, 'Counters are also classified as binary or non-binary. A three-bit binary counter goes through all eight states, from zero zero zero up to one one one.')
         root = T("Counter", 34, YELLOW).shift(UP * 3.1)
         bl = T("Binary Counter", 32, YELLOW).shift(UP * 2.0 + LEFT * 3.5)
         nl = T("Non-Binary Counter", 32, YELLOW).shift(UP * 2.0 + RIGHT * 3.5)
@@ -317,6 +377,7 @@ class S03_BinaryNonBinary(Scene):
         note1 = T("3-bit: 2³ = 8\nexplores ALL\npossible states", 24, GREEN).next_to(col, LEFT, buff=0.6)
         self.play(FadeIn(note1))
 
+        say(self, 'A non-binary counter does not explore all the possible states. A mod six counter stops at one zero one and returns to zero, so one one zero and one one one are never used.')
         mod6 = VGroup(*[T(bits(i), 26, BLUE_B) for i in range(6)]).arrange(DOWN, buff=0.15)
         mod6.next_to(nl, DOWN, buff=0.35).shift(LEFT * 1.3)
         unused = VGroup(T("110", 26, GREY), T("111", 26, GREY)).arrange(DOWN, buff=0.15)
@@ -333,6 +394,7 @@ class S03_BinaryNonBinary(Scene):
         clear_all(self)
         cap.cur = None
 
+        say(self, 'To summarise: a two-bit counter has four states, so a mod four counter is a binary counter. But a mod three or mod two counter, built with two flip-flops, skips states, so it is a non-binary counter.')
         h = heading("Summary")
         self.play(FadeIn(h))
         r1 = T("2-bit counter  ⇒  N = 4  ⇒  Mod-4  ⇒  Binary counter", 32).shift(UP * 1.8)
@@ -350,6 +412,7 @@ class S03_BinaryNonBinary(Scene):
 
 class S04_AsyncVsSync(Scene):
     def construct(self):
+        say(self, 'Counters are either asynchronous or synchronous. In an asynchronous counter there is no single clock for all the flip-flops; each one is clocked by the stage before it, so it is slower. It is designed using J K or T flip-flops only, and it cannot generate random sequences. A synchronous counter uses one common clock, is faster, can be designed with any flip-flop, and can generate random sequences.')
         h = heading("Asynchronous vs Synchronous Counters")
         self.play(FadeIn(h))
         a = T("Asynchronous", 32, YELLOW).move_to([-3.4, 2.3, 0])
@@ -401,6 +464,7 @@ def update_board(scene, board, new, run_time=0.5, color=YELLOW, flash_color=GREE
 class S05_AsyncUp(Scene):
     def construct(self):
         cap = Caption(self)
+        say(self, "Let's build an asynchronous three-bit binary up counter. It has eight states and needs three J K flip-flops, with J and K tied to one so that each flip-flop toggles.")
         h = heading("Asynchronous 3-bit Binary Up Counter")
         self.play(FadeIn(h))
         info = T("8 states  •  3 JK flip-flops  •  J = K = 1 (toggle)  •  negative-edge triggered",
@@ -409,9 +473,11 @@ class S05_AsyncUp(Scene):
         ffs, clk, links = ripple_chain(neg_edge=True, y=0.9)
         self.play(LaggedStart(*[FadeIn(f) for f in ffs], lag_ratio=0.3), run_time=1.5)
         self.play(Create(clk[0]), FadeIn(clk[1]), Create(links), run_time=1.5)
+        say(self, 'The external clock drives only the first flip-flop. Its output, Q naught, clocks the second flip-flop, and Q one clocks the third. The change ripples through the chain.')
         cap.say("External clock drives only FF0.  Q₀ clocks FF1, Q₁ clocks FF2 — a ripple chain.", 2.5)
         cap.say("J = K = 1  ⇒  Qₙ₊₁ = Q̄ₙ : each FF toggles on a falling edge of its clock.", 2.5)
 
+        say(self, 'The flip-flops are negative edge triggered. On every falling clock edge Q naught toggles, and whenever a stage falls from one to zero, the next stage toggles. Watch it count from zero up to seven, then wrap around.')
         board = state_board(self, [0, -2.0, 0])
         self.play(FadeIn(board))
         state = 0
@@ -456,6 +522,7 @@ def timing_diagram(scene, title, clk_levels, state_fn, edge):
             d = DOWN if edge == "fall" else UP
             marks.add(Arrow([x, ys[0] + hgt / 2 - d[1] * 0.25, 0], [x, ys[0] + hgt / 2 + d[1] * 0.2, 0],
                             buff=0, color=YELLOW, stroke_width=3, max_tip_length_to_length_ratio=0.5))
+    say(scene, 'In the timing diagram, each output toggles on the triggering edge of the stage before it. Q naught runs at half the clock frequency, Q one at a quarter, and Q two at an eighth. Reading the three outputs together gives the count.')
     scene.play(Create(waves[0]), run_time=2)
     scene.play(FadeIn(marks))
     for w in waves[1:]:
@@ -480,6 +547,7 @@ def timing_diagram(scene, title, clk_levels, state_fn, edge):
 class S06_Observations(Scene):
     def construct(self):
         cap = Caption(self)
+        say(self, 'Here is a useful observation. Treat Q as positive and Q bar as negative. Negative edge triggering with Q driving the next clock gives an up counter. Positive edge with Q gives a down counter. Positive edge with Q bar gives an up counter, and negative edge with Q bar gives a down counter. If the signs differ, it counts up. If they are the same, it counts down.')
         h = heading("Observations")
         self.play(FadeIn(h))
         tbl_hdr = VGroup(T("Edge trigger", 28, YELLOW), T("Next clock from", 28, YELLOW),
@@ -499,6 +567,7 @@ class S06_Observations(Scene):
         self.wait(1)
         cap.say("Treat Q as +ve and Q̄ as −ve:  signs differ ⇒ UP,  signs same ⇒ DOWN", 3.5)
 
+        say(self, 'And from the J K truth table: when J and K are both one, the next state is the complement of the present state, so the flip-flop toggles.')
         jk_rows = [("J", "K", "Qₙ₊₁"), ("0", "0", "Qₙ"), ("0", "1", "0"), ("1", "0", "1"), ("1", "1", "Q̄ₙ")]
         jk = VGroup()
         for r, row in enumerate(jk_rows):
@@ -542,10 +611,12 @@ def cell(km, m):
 class S07_Mod5Up(Scene):
     def construct(self):
         cap = Caption(self)
+        say(self, 'Now a non-binary counter: the asynchronous mod five up counter. Two flip-flops give only four states, so we need at least three.')
         h = heading("Asynchronous Mod-5 Up Counter  (Non-Binary)")
         self.play(FadeIn(h))
         l1 = T("N = 5  ⇒  n = log₂ 5 ≈ 2.32  ⇒  at least 3 FFs   (2 FFs → only 4 states ✗)", 26).shift(UP * 2.2)
         self.play(Write(l1))
+        say(self, 'It counts from zero zero zero to one zero zero, which is five states. As soon as the counter reaches one zero one, it must be reset to zero zero zero.')
         seq = VGroup(*[T(bits(i), 32, GREEN) for i in range(5)]).arrange(DOWN, buff=0.25).shift(LEFT * 5.3 + DOWN * 0.5)
         nums = VGroup(*[T(f"({i + 1})", 22, RED).next_to(seq[i], RIGHT, buff=0.3) for i in range(5)])
         self.play(LaggedStart(*[FadeIn(s) for s in seq], lag_ratio=0.2), FadeIn(nums))
@@ -553,6 +624,7 @@ class S07_Mod5Up(Scene):
         self.play(FadeIn(bad, shift=DOWN * 0.2))
         arr = CurvedArrow(bad.get_left() + LEFT * 0.1, seq[0].get_left() + LEFT * 0.1, angle=-PI / 2, color=RED)
         self.play(Create(arr))
+        say(self, 'Flip-flops have two asynchronous inputs: preset, which forces Q to one, and clear, which forces Q to zero. For up counting we use clear. Detecting the state one zero one needs an extra combinational circuit.')
         side = VGroup(
             T("Asynchronous inputs:", 26, GREEN),
             T("Preset (Pr)  →  forces Q = 1", 26, GREEN),
@@ -568,6 +640,7 @@ class S07_Mod5Up(Scene):
         cap.cur = None
 
         # Truth table + K-map
+        say(self, "Let's design the clear logic. For an active low clear, the output stays at one for the valid states and drops to zero at one zero one. An active high clear is the opposite. The states one one zero and one one one never occur, so they are don't cares.")
         h = heading("Designing the Clear Logic", PINK)
         self.play(FadeIn(h))
         hdr = VGroup(*[T(s, 24, YELLOW) for s in ["Q₂", "Q₁", "Q₀", "Clr̄ (low)", "Clr (high)"]])
@@ -590,6 +663,7 @@ class S07_Mod5Up(Scene):
         cap.say("Active-low clear: Clr̄ = 0 clears.   Active-high clear: Clr = 1 clears.", 2.5)
         cap.say("110 and 111 never occur → don't care (X).", 2)
 
+        say(self, 'On the K-map for the active low clear, the top row gives Q two bar, and the two corner columns give Q naught bar.')
         km = kmap(clr_low, "K-map for Clr̄ (active low)").scale(0.85).move_to([-4.0, 1.0, 0])
         self.play(FadeIn(km))
         g1 = SurroundingRectangle(VGroup(cell(km, 0), cell(km, 2)), color=PINK, buff=0.05)
@@ -599,6 +673,7 @@ class S07_Mod5Up(Scene):
         cap.say("Top row  →  Q̄₂", 1.2)
         self.play(Create(g2a), Create(g2b))
         cap.say("Corner columns (Q₀ = 0)  →  Q̄₀", 1.2)
+        say(self, 'So clear bar equals Q two bar plus Q naught bar, which is the NAND of Q two and Q naught. For an active high clear, clear equals Q two AND Q naught, which is just an AND gate.')
         eq = VGroup(T("Clr̄ = Q̄₂ + Q̄₀ = NOT(Q₂·Q₀)", 28, PINK),
                     T("⇒  NAND gate of Q₂ and Q₀", 28, PINK),
                     T("Active-high:  Clr = Q₂·Q₀  ⇒  AND gate", 28, ORANGE)
@@ -610,6 +685,7 @@ class S07_Mod5Up(Scene):
         cap.cur = None
 
         # Circuit
+        say(self, 'Here is the full circuit. A NAND gate watches Q naught and Q two, and its output drives the clear input of every flip-flop.')
         h = heading("Mod-5 Up Counter Circuit (active-low clear)", PINK)
         self.play(FadeIn(h))
         ffs, clk, links = ripple_chain(neg_edge=True, clr=True, xs=(-5.2, -2.0, 1.2), y=0.6)
@@ -637,6 +713,7 @@ class S07_Mod5Up(Scene):
             update_board(self, board, bits(s), run_time=0.45)
             if s < 5:
                 self.wait(0.4)
+        say(self, 'The moment the count reaches one zero one, the NAND output drops to zero and clears the counter back to zero zero zero. The state one zero one lasts only for an instant.')
         nl = T("Clr̄ = 0 !", 24, RED).move_to(out_lbl)
         self.play(Transform(out_lbl, nl), Flash(gate.out, color=RED), wout.animate.set_color(RED),
                   drops.animate.set_color(RED), run_time=0.6)
@@ -650,6 +727,7 @@ class S07_Mod5Up(Scene):
 class S08_AsyncDown(Scene):
     def construct(self):
         cap = Caption(self)
+        say(self, 'Next, the asynchronous three-bit binary down counter. It starts at one one one. J and K are still tied to one, but now the flip-flops are positive edge triggered, and Q drives the next clock.')
         h = heading("Asynchronous 3-bit Binary Down Counter")
         self.play(FadeIn(h))
         info = T("Initial state 111  •  J = K = 1  ⇒  Qₙ₊₁ = Q̄ₙ  •  positive-edge triggered, Q → next clk",
@@ -658,6 +736,7 @@ class S08_AsyncDown(Scene):
         ffs, clk, links = ripple_chain(neg_edge=False, y=0.9)
         self.play(LaggedStart(*[FadeIn(f) for f in ffs], lag_ratio=0.3), run_time=1.5)
         self.play(Create(clk[0]), FadeIn(clk[1]), Create(links), run_time=1.5)
+        say(self, 'Each rising edge makes the count go down by one: seven, six, five, all the way to zero, and then back to seven.')
         board = state_board(self, [0, -2.0, 0], init="111", color=ORANGE)
         self.play(FadeIn(board))
         state = 7
@@ -678,6 +757,7 @@ class S08_AsyncDown(Scene):
 class S09_Mod5Down(Scene):
     def construct(self):
         cap = Caption(self)
+        say(self, 'Finally, the asynchronous mod five down counter, again with three flip-flops. For down counting we use the preset input. An active low preset sets the flip-flops to one one one when it goes to zero. An active high preset does the same when it goes to one.')
         h = heading("Asynchronous Mod-5 Down Counter  (3 FFs)")
         self.play(FadeIn(h))
         side = VGroup(
@@ -687,6 +767,7 @@ class S09_Mod5Down(Scene):
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.3).shift(LEFT * 2.8 + UP * 0.8)
         for s in side:
             self.play(FadeIn(s, shift=RIGHT * 0.2), run_time=0.7)
+        say(self, 'The counter goes one one one, one one zero, one zero one, one zero zero, zero one one. As soon as zero one zero appears, it is preset back to one one one.')
         seq = VGroup(*[T(bits(s), 32, ORANGE) for s in [7, 6, 5, 4, 3]]).arrange(DOWN, buff=0.25)
         seq.shift(RIGHT * 3.5 + DOWN * 0.2)
         self.play(LaggedStart(*[FadeIn(s) for s in seq], lag_ratio=0.2))
@@ -698,6 +779,7 @@ class S09_Mod5Down(Scene):
         clear_all(self)
         cap.cur = None
 
+        say(self, "In the truth table, preset bar is one for the five valid states and zero at zero one zero. The states zero zero one and zero zero zero never occur, so they are don't cares.")
         h = heading("Designing the Preset Logic", ORANGE)
         self.play(FadeIn(h))
         pr_low = ["X", "X", "0", "1", "1", "1", "1", "1"]  # indexed by state value
@@ -715,6 +797,7 @@ class S09_Mod5Down(Scene):
                             T(hi, 24, col).move_to([xs[4], y, 0])))
         self.play(FadeIn(hdr), LaggedStart(*[FadeIn(r) for r in rows], lag_ratio=0.1))
         self.play(Create(SurroundingRectangle(rows[5], color=RED)))
+        say(self, 'On the K-map, the bottom row gives Q two, and the two middle columns give Q naught.')
         km = kmap(pr_low, "K-map for Pr̄ (active low)").scale(0.85).move_to([-4.0, 1.0, 0])
         self.play(FadeIn(km))
         g1 = SurroundingRectangle(VGroup(cell(km, 4), cell(km, 6)), color=YELLOW, buff=0.05)
@@ -723,6 +806,7 @@ class S09_Mod5Down(Scene):
         cap.say("Bottom row  →  Q₂", 1.2)
         self.play(Create(g2))
         cap.say("Middle columns (Q₀ = 1)  →  Q₀", 1.2)
+        say(self, 'So preset bar equals Q two plus Q naught, which is an OR gate. At zero one zero, zero plus zero is zero, so the counter presets. For an active high preset, take the complement, which is a NOR gate.')
         eq = VGroup(T("Pr̄ = Q₂ + Q₀   ⇒  OR gate", 28, ORANGE),
                     T("At 010:  0 + 0 = 0  ⇒ preset!", 28, RED),
                     T("Active-high:  Pr = NOT(Q₂ + Q₀)  ⇒  NOR gate", 28, YELLOW)
@@ -733,6 +817,7 @@ class S09_Mod5Down(Scene):
         clear_all(self)
         cap.cur = None
 
+        say(self, 'In the circuit, an OR gate combines Q naught and Q two, and drives the preset input of every flip-flop.')
         h = heading("Mod-5 Down Counter Circuit (active-low preset)", ORANGE)
         self.play(FadeIn(h))
         ffs, clk, links = ripple_chain(neg_edge=False, pre=True, xs=(-5.2, -2.0, 1.2), y=0.2)
@@ -759,6 +844,7 @@ class S09_Mod5Down(Scene):
             update_board(self, board, bits(s), run_time=0.45, color=ORANGE, flash_color=ORANGE)
             if s > 2:
                 self.wait(0.4)
+        say(self, 'When the count reaches zero one zero, the OR output falls to zero, and the counter is preset straight back to one one one.')
         self.play(Transform(out_lbl, T("Pr̄ = 0 !", 24, RED).move_to(out_lbl)), Flash(gate.out, color=RED),
                   wout.animate.set_color(RED), drops.animate.set_color(RED), run_time=0.6)
         update_board(self, board, "111", run_time=0.4, color=ORANGE, flash_color=RED)
@@ -768,6 +854,7 @@ class S09_Mod5Down(Scene):
         clear_all(self)
         cap.cur = None
 
+        say(self, 'To wrap up. n flip-flops give up to two to the n states, and a mod N counter needs log two of N flip-flops, rounded up. Binary counters use every state; non-binary counters skip some. In a ripple counter, each flip-flop clocks the next. If the edge and output signs differ it counts up, otherwise it counts down. A mod N up counter clears to zero, and a mod N down counter presets to one one one.')
         h = heading("Key Takeaways")
         self.play(FadeIn(h))
         pts = VGroup(

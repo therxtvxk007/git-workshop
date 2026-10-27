@@ -3,6 +3,11 @@
 Render all scenes and stitch them with ./render.sh  (needs manim + ffmpeg, no LaTeX).
 """
 
+import hashlib
+import os
+import wave
+from pathlib import Path
+
 from manim import *
 
 FONT = "DejaVu Sans"
@@ -52,6 +57,7 @@ class Caption:
 
 
 def clear_all(scene):
+    sync(scene)
     if scene.mobjects:
         scene.play(*[FadeOut(m) for m in scene.mobjects], run_time=0.7)
 
@@ -167,6 +173,50 @@ def bits(v, n):
     return format(v, f"0{n}b")
 
 
+# ---------------------------------------------------------------- voiceover
+# Narration is synthesised offline with Kokoro TTS (pip install kokoro-onnx soundfile) and
+# cached as WAV files in ./voiceover, so a re-render only synthesises lines that changed.
+# Model files (kokoro-v1.0.int8.onnx, voices-v1.0.bin) are read from $KOKORO_DIR.
+VO_VOICE = os.environ.get("VO_VOICE", "af_heart")
+VO_SPEED = float(os.environ.get("VO_SPEED", "1.0"))
+VO_MODEL_DIR = Path(os.environ.get("KOKORO_DIR", Path.home() / ".cache" / "kokoro"))
+VO_CACHE = Path(__file__).resolve().parent / "voiceover"
+_kokoro = None
+
+
+def tts(text):
+    """Return (wav path, duration in seconds) for a narration line."""
+    global _kokoro
+    VO_CACHE.mkdir(exist_ok=True)
+    key = hashlib.sha1(f"{VO_VOICE}|{VO_SPEED}|{text}".encode()).hexdigest()[:16]
+    path = VO_CACHE / f"{key}.wav"
+    if not path.exists():
+        import soundfile as sf
+        from kokoro_onnx import Kokoro
+        if _kokoro is None:
+            _kokoro = Kokoro(str(VO_MODEL_DIR / "kokoro-v1.0.int8.onnx"), str(VO_MODEL_DIR / "voices-v1.0.bin"))
+        samples, sr = _kokoro.create(text, voice=VO_VOICE, speed=VO_SPEED, lang="en-us")
+        sf.write(str(path), samples, sr)
+    with wave.open(str(path)) as w:
+        return path, w.getnframes() / w.getframerate()
+
+
+def sync(scene, pad=0.4):
+    """Wait until the current narration line has finished."""
+    rem = getattr(scene, "_vo_end", 0.0) - scene.renderer.time + pad
+    if rem > 0.05:
+        scene.wait(rem)
+    scene._vo_end = 0.0
+
+
+def say(scene, text):
+    """Start a narration line; animations that follow play while it is spoken."""
+    sync(scene, pad=0.15)
+    path, dur = tts(text)
+    scene.add_sound(str(path))
+    scene._vo_end = scene.renderer.time + dur
+
+
 # ---------------------------------------------------------------- scenes
 class V01_Boolean(Scene):
     def construct(self):
@@ -175,12 +225,14 @@ class V01_Boolean(Scene):
         topics = T("Boolean algebra • Adders • Subtractors • Overflow • MUX/DEMUX • Decoders\n"
                    "Priority encoder • 7-segment • Flip-flops • Verilog • Testbenches",
                    22, GREY_A, line_spacing=1.2).next_to(t2, DOWN, buff=0.6)
+        say(self, "Welcome to this quick revision of the digital electronics lab viva cheat sheet. We'll cover Boolean algebra, adders and subtractors, overflow, multiplexers, decoders and encoders, seven segment displays, flip-flops, Verilog, and testbenches.")
         self.play(Write(t1), run_time=1.5)
         self.play(FadeIn(t2, shift=UP * 0.2))
         self.play(FadeIn(topics))
         self.wait(2.5)
 
         cap = new_page(self, "1. Boolean Algebra — the main laws")
+        say(self, 'Boolean algebra is the math of zeros and ones. We use it to simplify circuits so that fewer gates are needed. The main laws are identity: A plus zero is A, and A times one is A. Null: A plus one is one, and A times zero is zero. Complement: A plus A prime is one, and A times A prime is zero. Idempotent: A plus A is A. Absorption: A plus A B is A. And the commutative, associative and distributive laws.')
         laws = [("Identity", "A + 0 = A\nA · 1 = A"), ("Null", "A + 1 = 1\nA · 0 = 0"),
                 ("Complement", "A + A' = 1\nA · A' = 0"), ("Idempotent", "A + A = A\nA · A = A"),
                 ("Absorption", "A + AB = A"), ("Comm. / Assoc. / Distrib.", "A + B = B + A\nA(B + C) = AB + AC")]
@@ -195,6 +247,7 @@ class V01_Boolean(Scene):
         cap.say("Boolean algebra is the math of 0 and 1 — used to simplify circuits so fewer gates are needed.", 3)
 
         cap = new_page(self, "De Morgan's Theorems")
+        say(self, "De Morgan's theorems convert between AND and OR forms. The complement of A AND B equals A prime OR B prime, and the complement of A OR B equals A prime AND B prime. Flip the operator, and complement each variable. So a NAND gate is the same as an OR gate with inverted inputs, and a NOR is an AND with inverted inputs. This is how an AND-OR circuit is rebuilt using only NAND gates.")
         d1 = M("(A · B)' = A' + B'", 36, YELLOW).shift(UP * 1.9 + LEFT * 3.3)
         d2 = M("(A + B)' = A' · B'", 36, YELLOW).shift(UP * 1.9 + RIGHT * 3.3)
         self.play(Write(d1), Write(d2))
@@ -214,6 +267,7 @@ class V01_Boolean(Scene):
         cap.say("This is how an AND-OR circuit is rebuilt using only NAND gates.", 2.5)
 
         cap = new_page(self, "Universal Gates: NAND and NOR")
+        say(self, 'NAND and NOR are universal gates: each one alone can build every other gate. Tie both inputs of a NAND together and you get NOT A. An AND needs two NAND gates: a NAND, followed by a NAND used as an inverter.')
         # NOT from NAND
         n1 = gate("NAND", [-3.2, 0.6, 0])
         a_in = T("A", 28).move_to([-5.2, 0.6, 0])
@@ -241,6 +295,7 @@ class V01_Boolean(Scene):
         cap.say("NAND and NOR are universal: each one alone can build every other gate.", 3)
 
         cap = new_page(self, "Propagation Delay & Simplification")
+        say(self, 'Propagation delay is the time from an input change to the output change. Deep chains of gates are slower, so fewer levels of logic means a faster circuit. To simplify logic, use Boolean algebra, or a Karnaugh map, where you group adjacent ones in groups of one, two, four or eight.')
         x0, dx = -3.5, 0.5
         inp = [0] * 4 + [1] * 10
         out = [0] * 7 + [1] * 7
@@ -263,6 +318,7 @@ class V01_Boolean(Scene):
         self.wait(2.5)
 
         cap = new_page(self, "Gate Expressions")
+        say(self, 'Here are the basic gate expressions. AND is A times B. OR is A plus B. NOT is A prime. NAND and NOR are the complements of AND and OR. Ex-or is A B prime plus A prime B, which is one when the inputs differ. And ex-nor is A B plus A prime B prime, which is one when they are equal.')
         et = expr_table([("AND gate", "Y = A·B"), ("OR gate", "Y = A + B"), ("NOT gate", "Y = A'"),
                          ("NAND gate", "Y = (A·B)'"), ("NOR gate", "Y = (A + B)'"),
                          ("XOR gate", "Y = AB' + A'B"), ("XNOR gate", "Y = AB + A'B'")], y0=2.0)
@@ -275,6 +331,7 @@ class V01_Boolean(Scene):
 class V02_Adders(Scene):
     def construct(self):
         cap = new_page(self, "2. Half Adder")
+        say(self, 'A half adder adds two single bits. The sum is A ex-or B, and the carry is A and B. It has no carry-in, so on its own it cannot be chained for multi-bit addition.')
         tb = table([["A", "B", "S", "C"]] + [[a, b, a ^ b, a & b] for a in (0, 1) for b in (0, 1)],
                    xs=[-5.4, -4.6, -3.4, -2.6], y0=1.6, dy=0.6, size=28)
         show_table(self, tb)
@@ -293,6 +350,7 @@ class V02_Adders(Scene):
         cap.say("No carry-in, so a half adder alone cannot be chained for multi-bit addition.", 3)
 
         cap = new_page(self, "Full Adder")
+        say(self, 'A full adder adds two bits plus a carry-in from the previous stage. The sum is A ex-or B ex-or carry-in. The carry-out is A B, plus B carry-in, plus A carry-in, which can also be written as A B plus carry-in times A ex-or B.')
         rows = [[a, b, c, a ^ b ^ c, int(a + b + c >= 2)] for a in (0, 1) for b in (0, 1) for c in (0, 1)]
         tb = table([["A", "B", "Cin", "S", "Cout"]] + rows, xs=[-5.6, -4.9, -4.1, -3.0, -2.1], y0=2.2, dy=0.5, size=26)
         show_table(self, tb, lag=0.08)
@@ -302,6 +360,7 @@ class V02_Adders(Scene):
         self.play(Write(e), run_time=2)
         sum_rows = [i for i, r in enumerate(rows) if r[3]]
         car_rows = [i for i, r in enumerate(rows) if r[4]]
+        say(self, 'Notice that the sum is one when an odd number of inputs are one, which is why ex-or is used for the sum. The carry-out is one when at least two of the three inputs are one.')
         hs = VGroup(*[SurroundingRectangle(tb[i + 1][3], color=BLUE, buff=0.08) for i in sum_rows])
         self.play(Create(hs))
         t1 = T("S = 1 when an ODD number of inputs are 1  → XOR", 24, BLUE).move_to([2.6, -0.3, 0])
@@ -314,6 +373,7 @@ class V02_Adders(Scene):
         cap.say("The carry-in is what lets full adders be chained.", 2)
 
         cap = new_page(self, "Ripple-Carry Adder (4 full adders)")
+        say(self, 'The carry-in is what lets full adders be chained into a ripple-carry adder. Here we add seven and five. Each stage passes its carry to the next, so the last stage has to wait for all the earlier ones. The result is twelve.')
         A, B = 0b0111, 0b0101
         fas = VGroup(*[block(f"FA{i}", 1.4, 1.2, BLUE_B) for i in range(4)]).arrange(LEFT, buff=1.0).shift(UP * 0.2)
         self.play(FadeIn(fas))
@@ -343,6 +403,7 @@ class V02_Adders(Scene):
 class V03_Subtractors(Scene):
     def construct(self):
         cap = new_page(self, "3. Half Subtractor")
+        say(self, 'A half subtractor computes A minus B with no borrow-in. The difference is A ex-or B, which is one when the inputs differ. The borrow is A prime B. It is one only when A is zero and B is one, because zero minus one needs a borrow.')
         tb = table([["A", "B", "D", "Bout"]] + [[a, b, a ^ b, int(a == 0 and b == 1)] for a in (0, 1) for b in (0, 1)],
                    xs=[-5.4, -4.6, -3.4, -2.4], y0=1.6, dy=0.6, size=28)
         show_table(self, tb)
@@ -355,6 +416,7 @@ class V03_Subtractors(Scene):
         cap.say("Half subtractor computes A − B with no borrow-in.", 2.5)
 
         cap = new_page(self, "Full Subtractor:  A − B − Bin")
+        say(self, 'A full subtractor computes A minus B minus borrow-in. The difference is A ex-or B ex-or borrow-in. The borrow-out is one whenever the result is negative. That happens in three cases: A is zero and B is one; A is zero and borrow-in is one; or B and borrow-in are both one. So borrow-out equals A prime B, plus A prime borrow-in, plus B borrow-in.')
         rows = [[a, b, bi, a ^ b ^ bi, int(a - b - bi < 0)] for a in (0, 1) for b in (0, 1) for bi in (0, 1)]
         tb = table([["A", "B", "Bin", "D", "Bout"]] + rows, xs=[-5.6, -4.9, -4.1, -3.0, -2.0], y0=2.2, dy=0.5, size=26)
         show_table(self, tb, lag=0.08)
@@ -374,6 +436,7 @@ class V03_Subtractors(Scene):
         self.wait(2.5)
 
         cap = new_page(self, "Adder-Subtractor (2's complement)")
+        say(self, "An adder-subtractor uses ex-or gates controlled by a mode line, M. When M is zero, B passes through unchanged and the circuit adds. When M is one, the ex-or gates invert B, and M also acts as the carry-in. So the circuit computes A plus the two's complement of B, which is A minus B.")
         xors = VGroup(*[block("XOR", 1.0, 0.7, PINK, 20) for _ in range(4)]).arrange(LEFT, buff=1.1).shift(UP * 1.2)
         adder = Rectangle(width=9.0, height=1.0, color=BLUE_B).shift(DOWN * 0.6)
         adder_t = T("4-bit parallel adder", 24, BLUE_B).move_to(adder)
@@ -399,6 +462,7 @@ class V03_Subtractors(Scene):
         cap.say("M acts both as the XOR control and as the carry-in.", 2.5)
 
         cap = new_page(self, "Example:  5 − 3  using 2's complement")
+        say(self, 'For example, five minus three. Three is zero zero one one. Invert it to get one one zero zero, and add one to get one one zero one, which is minus three. Add that to five, zero one zero one, and we get one zero zero one zero. Drop the final carry, and the answer is zero zero one zero, which is two.')
         steps = VGroup(M("B = 0011  (3)", 32),
                        M("invert  → 1100", 32),
                        M("add 1   → 1101   (= −3)", 32, ORANGE),
@@ -444,6 +508,7 @@ class V04_Overflow(Scene):
 
     def construct(self):
         cap = new_page(self, "4. Overflow — Unsigned")
+        say(self, 'Overflow. For unsigned numbers, overflow means the result needs more bits than are available. Twelve plus six is eighteen, which does not fit in four bits. It is signalled by a carry out of the most significant bit.')
         carry, sums, cout, _ = self.add_cols(0b1100, 0b0110, 4, [-4.6, 1.2, 0])
         self.play(Indicate(cout, color=RED, scale_factor=1.5))
         info = VGroup(T("12 + 6 = 18  >  15  (4-bit max)", 28),
@@ -453,6 +518,7 @@ class V04_Overflow(Scene):
         cap.say("Unsigned overflow: the result needs more bits than are available.", 3)
 
         cap = new_page(self, "Overflow — Signed (2's complement)")
+        say(self, "For signed, two's complement numbers, overflow occurs when the carry into the most significant bit differs from the carry out of it. Plus six plus plus three should be plus nine, but the result, one zero zero one, reads as minus seven. The carry into the M S B is one and the carry out is zero. Overflow is their ex-or, which is one.")
         carry, sums, cout, cars = self.add_cols(0b0110, 0b0011, 4, [-4.6, 1.2, 0])
         cin_msb = cars.get(3)
         if cin_msb is not None:
@@ -472,6 +538,7 @@ class V04_Overflow(Scene):
 class V05_Mux(Scene):
     def construct(self):
         cap = new_page(self, "5. Multiplexer (4:1 MUX)")
+        say(self, 'A multiplexer selects one of many data inputs using select lines, and sends it to a single output. A mux with n select lines has two to the n data inputs, so a four to one mux has four inputs, two select lines and one output. As the select lines step through zero zero, zero one, one zero and one one, the output follows I zero, I one, I two and I three.')
         body = Polygon([-1, 1.8, 0], [-1, -1.8, 0], [1, -1.0, 0], [1, 1.0, 0], color=BLUE_B, stroke_width=3).shift(LEFT * 1.5)
         mux_t = T("MUX", 26, BLUE_B).move_to(body)
         vals = [1, 0, 1, 1]
@@ -503,6 +570,7 @@ class V05_Mux(Scene):
                 anims.append(Transform(path, new_path))
             self.play(*anims, run_time=0.8)
             self.wait(0.6)
+        say(self, 'A two to one mux is simply: Y equals S prime A, plus S B.')
         facts = VGroup(T("n select lines → 2ⁿ data inputs", 24),
                        T("4:1 MUX: 4 inputs, 2 selects, 1 output", 24),
                        M("2:1 MUX:  Y = S'·A + S·B", 24, GREEN)).arrange(DOWN, aligned_edge=LEFT, buff=0.2).move_to([3.9, -1.3, 0])
@@ -510,6 +578,7 @@ class V05_Mux(Scene):
         cap.say("A MUX selects ONE of many inputs and sends it to a single output.", 3)
 
         cap = new_page(self, "Demultiplexer (1:4 DEMUX)")
+        say(self, 'A demultiplexer does the reverse. It routes one input to one of many outputs, chosen by the select lines. A mux can also implement a Boolean function: connect the variables to the select lines, and constants or variables to the data inputs.')
         body = Polygon([-1, 1.0, 0], [-1, -1.0, 0], [1, -1.8, 0], [1, 1.8, 0], color=PINK, stroke_width=3).shift(LEFT * 1.0)
         self.play(Create(body), FadeIn(T("DEMUX", 22, PINK).move_to(body)))
         inl = Line([-3.5, 0, 0], [-2.0, 0, 0], stroke_width=3)
@@ -541,6 +610,7 @@ class V05_Mux(Scene):
 class V06_Decoder(Scene):
     def construct(self):
         cap = new_page(self, "6. 2-to-4 Decoder")
+        say(self, 'A decoder converts an n-bit input into up to two to the n outputs, with exactly one output active for each input code. In a two to four decoder, Y zero is A prime B prime, Y one is A prime B, Y two is A B prime, and Y three is A B. Each output is a minterm of the inputs.')
         box = Rectangle(width=2.0, height=3.4, color=BLUE_B).shift(LEFT * 1.5)
         self.play(Create(box), FadeIn(T("2:4\nDEC", 26, BLUE_B).move_to(box)))
         a_l = VGroup(Line([-4.0, 0.6, 0], box.get_left() + UP * 0.6), Line([-4.0, -0.6, 0], box.get_left() + DOWN * 0.6))
@@ -562,11 +632,13 @@ class V06_Decoder(Scene):
                       Transform(b_t, T(f"B = {b}", 24).move_to(b_t)), run_time=0.6)
             self.wait(0.5)
         cap.say("Exactly one output is active for each input code — each output is a minterm.", 2.5)
+        say(self, 'With an enable input, when the decoder is disabled, all of its outputs are off.')
         en = T("EN = 0", 24, RED).next_to(box, DOWN, buff=0.3)
         self.play(FadeIn(en), Transform(lamps, VGroup(*[lamp(False).move_to(lamps[i]) for i in range(4)])))
         cap.say("Enable input: when disabled, ALL outputs are off.", 2.5)
 
         cap = new_page(self, "Decoder Facts")
+        say(self, 'Two two-to-four decoders with enables can be combined into a three-to-eight decoder. A decoder turns an input code into one active line, while a mux picks one data input and passes it to a single output. To build a Boolean function with a decoder, OR together the minterm outputs you need. For example, Y one plus Y two gives A ex-or B.')
         pts = VGroup(
             T("•  n inputs → up to 2ⁿ outputs (one active per code)", 26),
             T("•  Two 2-to-4 decoders + enables → one 3-to-8 decoder", 26),
@@ -587,6 +659,7 @@ class V06_Decoder(Scene):
 class V07_PriorityEncoder(Scene):
     def construct(self):
         cap = new_page(self, "Encoders — why priority is needed")
+        say(self, 'An encoder does the opposite of a decoder: it converts one active input line into a binary code. But a plain encoder gives a wrong, mixed code when two inputs are active together. Here inputs one and two are both active, and the output, one one, claims input three. A priority encoder fixes this by outputting the code of only the highest active input.')
         c = code("module encoder4to2(input [3:0] in, output [1:0] out);\n"
                  "  assign out[1] = in[2] | in[3];\n"
                  "  assign out[0] = in[1] | in[3];\nendmodule", width=9).shift(UP * 1.2)
@@ -601,6 +674,7 @@ class V07_PriorityEncoder(Scene):
         self.wait(1)
 
         cap = new_page(self, "6A. 9-line Priority Encoder (In9 … In0 → Y4 Y3 Y2 Y1)")
+        say(self, "In the nine-line priority encoder from experiment six, the output bits are the binary index of the highest active input. Inputs below it have no effect, so they are don't cares. For example, input six active gives zero one one zero. Notice the output is zero zero zero zero both when only input zero is active and when no input is active, so real designs add a valid output to tell them apart.")
         n_in = 10
         cells, labels = VGroup(), VGroup()
         for k in range(n_in):
@@ -650,6 +724,7 @@ class V07_PriorityEncoder(Scene):
         cap.say("Inputs below the highest active one are don't-cares (X). A 'valid' output separates In0 from 'none'.", 3)
 
         cap = new_page(self, "6B. Priority Encoder Expressions")
+        say(self, "Each output is one when the highest active input has that bit set. Y four covers inputs eight and nine. Y three covers four to seven. Y two covers two, three, six and seven. And Y one covers the odd inputs. Nine inputs need four output bits, because two cubed, which is eight, is too small. The lab sheet's table uses inputs zero to nine but the circuit uses one to nine, so check which version your teacher expects.")
         ex = VGroup(
             M("Y4 = I8 + I9", 24, GREEN),
             M("Y3 = (I4+I5+I6+I7)·(I8+I9)'", 24, GREEN),
@@ -691,6 +766,7 @@ def seven_seg(center, on="", color=RED, scale=1.0):
 class V08_SevenSeg(Scene):
     def construct(self):
         cap = new_page(self, "7. BCD to 7-Segment Converter")
+        say(self, "A B C D to seven segment converter takes a four-bit B C D input, with A as the most significant bit and D as the least, and drives the seven segments, a to g. Here are the digits zero to nine. Codes ten to fifteen are invalid B C D, so they are treated as don't cares.")
         disp = seven_seg([-3.5, 0.2, 0], SEG[0], scale=1.3)
         names = VGroup(*[T(k, 20, GREY_B).next_to(disp[i], LEFT if k in "fe" else (RIGHT if k in "bc" else UP), buff=0.12)
                          for i, k in enumerate("abcdefg")])
@@ -710,6 +786,7 @@ class V08_SevenSeg(Scene):
         cap.say("A is the MSB, D the LSB. One truth table per segment, simplified with a K-map.", 3)
 
         cap = new_page(self, "Segment a — K-map")
+        say(self, "Write a truth table for each segment, then simplify it with a K-map. For segment a, the ones and don't cares group into A, C, B D, and the four corners, B prime D prime. So a equals A plus C plus B D plus B prime D prime. That is for a common cathode display, where segments light when driven high. A common anode display lights when driven low, so the outputs are inverted.")
         gray = [0, 1, 3, 2]
         cw = 0.85
         cells = {}
@@ -756,6 +833,7 @@ class V08_SevenSeg(Scene):
 class V09_Sequential(Scene):
     def construct(self):
         cap = new_page(self, "8. Latch vs Flip-Flop")
+        say(self, 'A latch changes whenever its enable is active, so its output follows D the whole time the enable is high. A flip-flop changes only on the active clock edge, which makes it suitable for synchronous design.')
         n = 24
         clk = ([0] * 3 + [1] * 3) * 4
         d = [0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1]
@@ -780,6 +858,7 @@ class V09_Sequential(Scene):
         cap.say("Latch: follows D whenever enable is active.  Flip-flop: changes ONLY on the clock edge.", 3.5)
 
         cap = new_page(self, "Flip-Flop Characteristic Equations")
+        say(self, 'The characteristic equations. For a D flip-flop, Q next equals D. For a T flip-flop, Q next equals T ex-or Q. For a J K flip-flop, Q next equals J Q prime plus K prime Q. And for an S R flip-flop, with S and R never both one, Q next equals S plus R prime Q. A synchronous reset acts only on the active clock edge, while an asynchronous reset acts immediately. In a synchronous counter all flip-flops share one clock; in a ripple counter each is clocked by the previous stage, so it is slower.')
         et = expr_table([("D flip-flop", "Q+ = D"), ("T flip-flop", "Q+ = T ⊕ Q"),
                          ("JK flip-flop", "Q+ = JQ' + K'Q"), ("SR flip-flop (S·R = 0)", "Q+ = S + R'Q")], y0=1.8, dy=0.7, size=28)
         self.play(FadeIn(et[0]))
@@ -793,6 +872,7 @@ class V09_Sequential(Scene):
         self.wait(3.5)
 
         cap = new_page(self, "SISO Shift Register")
+        say(self, 'In a serial-in, serial-out shift register, data enters one bit at a time at one end, and leaves one bit at a time at the other, one bit per clock pulse.')
         boxes = VGroup(*[block(f"FF{i}", 1.3, 1.1, BLUE_B, 20) for i in range(4)]).arrange(RIGHT, buff=0.6).shift(UP * 0.4)
         self.play(FadeIn(boxes))
         links = VGroup(*[Arrow(boxes[i].get_right(), boxes[i + 1].get_left(), buff=0, stroke_width=3) for i in range(3)])
@@ -829,6 +909,7 @@ class V09_Sequential(Scene):
 class V10_Verilog(Scene):
     def construct(self):
         cap = new_page(self, "9. Verilog — three modeling levels")
+        say(self, 'Verilog has three modeling levels. Gate level builds circuits from primitive gates; it is close to the hardware but tedious for large designs. Dataflow uses assign statements and expressions, and is shorter for combinational logic. Behavioral uses always blocks and procedural statements.')
         lv = [("Gate-level", "and g1(y, a, b);", "primitive gates — close to hardware,\ntedious for big circuits"),
               ("Dataflow", "assign y = a & b;", "assign + expressions — short,\ngood for combinational logic"),
               ("Behavioral", "always @(*)\n  y = a & b;", "always blocks + procedural\nstatements")]
@@ -843,6 +924,7 @@ class V10_Verilog(Scene):
         self.wait(1.5)
 
         cap = new_page(self, "wire vs reg  •  assign vs always")
+        say(self, 'A wire is a net that is driven continuously, for example by assign. A reg holds a value and is assigned inside always or initial blocks; a reg cannot be driven by assign. Assign is continuous and used for combinational expressions, while always is procedural, for behavioral and sequential logic. The sensitivity list, at star, includes every signal read in the block. A case statement selects a branch by value, and the conditional operator is: condition, question mark, value one, colon, value two.')
         rows = VGroup(
             VGroup(T("wire", 30, BLUE_B), T("net, driven continuously (e.g. by assign)", 24)),
             VGroup(T("reg", 30, BLUE_B), T("holds a value; assigned inside always / initial", 24)),
@@ -861,6 +943,7 @@ class V10_Verilog(Scene):
         self.wait(2.5)
 
         cap = new_page(self, "Blocking ( = ) vs Non-blocking ( <= )")
+        say(self, "Blocking assignments, written with equals, run in order. Non-blocking assignments, written less-than equals, read all the right-hand sides first and then update together. So the non-blocking version swaps a and b, but the blocking version makes both equal to b's old value. Use non-blocking for clocked logic, and blocking for combinational logic.")
         nb = code("always @(posedge clk) begin\n  a <= b;\n  b <= a;\nend", width=5.6, size=22).move_to([-3.4, 1.6, 0])
         bl = code("always @(*) begin\n  a = b;\n  b = a;\nend", width=5.6, size=22).move_to([3.4, 1.6, 0])
         self.play(FadeIn(nb), FadeIn(bl))
@@ -886,6 +969,7 @@ class V10_Verilog(Scene):
         cap.say("Use non-blocking (<=) for clocked logic and blocking (=) for combinational logic.", 3.5)
 
         cap = new_page(self, "Dataflow one-liners")
+        say(self, 'Here are the dataflow one-liners for ex-or, the half adder, the full adder, the full subtractor, and a two to one mux using the conditional operator.')
         et = expr_table([("XOR", "assign y = a ^ b;"), ("Half adder", "sum = a ^ b; carry = a & b;"),
                          ("Full adder", "sum = a ^ b ^ cin;"), ("", "cout = (a & b) | (b & cin) | (a & cin);"),
                          ("Full subtractor", "diff = a ^ b ^ bin;"), ("", "bout = (~a & b) | (~a & bin) | (b & bin);"),
@@ -923,6 +1007,7 @@ class V10_Verilog(Scene):
             if c.height > 5.6:
                 c.set_height(5.6)
             c.next_to(h, DOWN, buff=0.35)
+            say(self, VO_SNIPPETS[title])
             if cur is None:
                 clear_all(self)
                 self.play(FadeIn(h), FadeIn(c, shift=UP * 0.2))
@@ -936,6 +1021,7 @@ class V10_Verilog(Scene):
 class V11_Testbench(Scene):
     def construct(self):
         cap = new_page(self, "10. Testbench for the Full Adder")
+        say(self, 'A testbench is a Verilog module with no ports. It instantiates the design under test, generates the input stimulus, and displays or checks the outputs. Dump file names the waveform file, and dump vars chooses which signals to record, producing a V C D file that G T K Wave can open. Monitor prints automatically whenever a listed signal changes, while display prints once each time it runs. The for loop walks through all eight input combinations.')
         src = ("module tb_full_adder;\n  reg a, b, cin;\n  wire sum, cout;\n  integer i;\n\n"
                "  full_adder uut(.a(a), .b(b), .cin(cin),\n                 .sum(sum), .cout(cout));\n\n"
                "  initial begin\n    $dumpfile(\"fa.vcd\");\n    $dumpvars(0, tb_full_adder);\n"
@@ -964,6 +1050,7 @@ class V11_Testbench(Scene):
         self.wait(3)
 
         cap = new_page(self, "Simulating with iverilog")
+        say(self, 'To simulate, compile the design and testbench with i verilog, dash o sim, then run the simulation with V V P sim. Monitor prints a line for every input combination, and you can then open the V C D file in G T K Wave.')
         term = RoundedRectangle(width=12.5, height=5.6, corner_radius=0.15, color=GREY_D, fill_color="#111118",
                                 fill_opacity=1).shift(DOWN * 0.4)
         self.play(FadeIn(term))
@@ -985,10 +1072,28 @@ class V11_Testbench(Scene):
         cap.say("Then open fa.vcd in GTKWave to see the waveforms.", 3)
 
         clear_all(self)
+        say(self, "That's the whole cheat sheet. Good luck with your viva!")
         end = T("Good luck with the viva!", 48, YELLOW, weight=BOLD)
         self.play(Write(end))
         self.wait(2)
+        sync(self)
         self.play(FadeOut(end))
+
+
+VO_SNIPPETS = {
+    '4:1 MUX — behavioral (case)':
+        'A four to one mux in behavioral style uses a case statement on the select lines.',
+    '4:1 MUX — dataflow (conditional operator)':
+        'The same mux in dataflow style uses nested conditional operators.',
+    '2-to-4 decoder':
+        'A two to four decoder: each output is one minterm of a and b.',
+    '4-to-2 priority encoder (highest wins)':
+        'A four to two priority encoder checks the highest input first, using an if, else-if chain.',
+    'XOR gate — behavioral':
+        'A behavioral ex-or gate: the output is zero if the inputs are equal, otherwise one.',
+    'D flip-flop with synchronous reset':
+        'And a D flip-flop with synchronous reset, using non-blocking assignments on the positive clock edge.',
+}
 
 
 SCENE_ORDER = ["V01_Boolean", "V02_Adders", "V03_Subtractors", "V04_Overflow", "V05_Mux", "V06_Decoder",

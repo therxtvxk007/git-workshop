@@ -3,7 +3,7 @@
 An animated walkthrough of the DE & LD class notes on **Counters**: an introduction,
 followed by asynchronous binary and non-binary up and down counters.
 
-`counters_video.mp4` is the rendered video (1080p, about 5 minutes).
+`counters_video.mp4` is the rendered, narrated video (1080p).
 
 ## Scenes
 
@@ -23,6 +23,22 @@ followed by asynchronous binary and non-binary up and down counters.
 
 You need `manim` (Community Edition ≥ 0.18) and `ffmpeg`. LaTeX is **not** required,
 because all text is drawn with `Text`.
+
+### Voiceover
+
+The narration is generated offline with [Kokoro TTS](https://github.com/thewh1teagle/kokoro-onnx).
+Each `say(self, "...")` call in the script starts a spoken line, and the page waits until it
+finishes. Generated clips are cached in `voiceover/`, so only lines you edit are re-synthesised.
+
+```bash
+pip install kokoro-onnx soundfile
+mkdir -p ~/.cache/kokoro && cd ~/.cache/kokoro
+curl -LO https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/kokoro-v1.0.int8.onnx
+curl -LO https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/voices-v1.0.bin
+```
+
+Set `KOKORO_DIR` to keep the model files elsewhere, `VO_VOICE` to change the voice (default `af_heart`,
+others include `am_michael` and `bf_emma`), and `VO_SPEED` to change the pace.
 
 ```bash
 pip install manim
