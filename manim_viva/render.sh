@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 Q="${1:--qh}"
 MEDIA="${MEDIA_DIR:-media}"
-manim "$Q" --media_dir "$MEDIA" viva.py -a
+manim "$Q" --disable_caching --media_dir "$MEDIA" viva.py -a
 case "$Q" in
   -ql) RES=480p15 ;; -qm) RES=720p30 ;; -qh) RES=1080p60 ;; -qp) RES=1440p60 ;; -qk) RES=2160p60 ;;
   *) echo "unknown quality flag $Q" >&2; exit 1 ;;
