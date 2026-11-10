@@ -1,5 +1,7 @@
 # Full Adder and Full Subtractor with 74HC08 (AND) + 74HC86 (XOR)
 
+![Wiring diagram for both circuits](images/full_adder_subtractor_wiring.png)
+
 Chips used (from the photos):
 
 | Chip | Function | Gates |
@@ -90,7 +92,7 @@ B ──┼──┬─────┤    │      │            ┌─┴─�
 | 74HC86 Gate 2 | pin 4 = X (from 86-pin 3), pin 5 = **Cin** | pin 6 | **SUM** → LED |
 | 74HC08 Gate 1 | pin 1 = **A**, pin 2 = **B** | pin 3 | A·B |
 | 74HC08 Gate 2 | pin 4 = X (from 86-pin 3), pin 5 = **Cin** | pin 6 | Cin·X |
-| 74HC86 Gate 3 | pin 9 = 08-pin 3, pin 10 = 08-pin 6 | pin 8 | **COUT** → LED |
+| 74HC86 Gate 3 | pin 10 = 08-pin 3, pin 9 = 08-pin 6 | pin 8 | **COUT** → LED |
 
 Spare: 74HC86 gate 4 and 74HC08 gates 3 and 4.
 
@@ -155,10 +157,10 @@ B ──┬────┤XOR1├────┬─────────┬�
 |------|--------|--------|--------|
 | 74HC86 Gate 1 | pin 1 = **A**, pin 2 = **B** | pin 3 | X = A⊕B |
 | 74HC86 Gate 2 | pin 4 = X (86-pin 3), pin 5 = **Bin** | pin 6 | **DIFF** → LED |
-| 74HC86 Gate 3 | pin 9 = X (86-pin 3), pin 10 = **+5 V** | pin 8 | X' (NOT X) |
-| 74HC08 Gate 1 | pin 1 = X (86-pin 3), pin 2 = **B** | pin 3 | X·B = A'B |
-| 74HC08 Gate 2 | pin 4 = X' (86-pin 8), pin 5 = **Bin** | pin 6 | X'·Bin |
-| 74HC86 Gate 4 | pin 12 = 08-pin 3, pin 13 = 08-pin 6 | pin 11 | **BOUT** → LED |
+| 74HC86 Gate 4 | pin 13 = X (86-pin 3), pin 12 = **+5 V** | pin 11 | X' (NOT X) |
+| 74HC08 Gate 1 | pin 1 = **B**, pin 2 = X (86-pin 3) | pin 3 | X·B = A'B |
+| 74HC08 Gate 2 | pin 4 = X' (86-pin 11), pin 5 = **Bin** | pin 6 | X'·Bin |
+| 74HC86 Gate 3 | pin 10 = 08-pin 3, pin 9 = 08-pin 6 | pin 8 | **BOUT** → LED |
 
 Spare: 74HC08 gates 3 and 4.
 

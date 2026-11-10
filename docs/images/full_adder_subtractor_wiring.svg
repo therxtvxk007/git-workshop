@@ -1,0 +1,245 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="1534" viewBox="0 0 980 1534" font-family="DejaVu Sans, Arial, sans-serif"><rect width="980" height="1534" fill="#f4f4f4"/><rect x="8" y="8" width="964" height="684" rx="14" fill="#fff" stroke="#888" stroke-width="2"/>
+<text x="490.0" y="40" fill="#111" font-size="19" font-weight="700" text-anchor="middle">FULL ADDER   —   Sum = A⊕B⊕Cin ,  Cout = A·B + Cin·(A⊕B)</text>
+<rect x="274" y="165" width="120" height="370" rx="8" fill="#2b2b2b"/>
+<path d="M319,165 a15,15 0 0 0 30,0" fill="#fff"/>
+<circle cx="288" cy="180" r="4" fill="#bbb"/>
+<rect x="260" y="193" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="206" fill="#fff" font-size="16" font-weight="600" text-anchor="start">1</text>
+<rect x="260" y="243" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="256" fill="#fff" font-size="16" font-weight="600" text-anchor="start">2</text>
+<rect x="260" y="293" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="306" fill="#fff" font-size="16" font-weight="600" text-anchor="start">3</text>
+<rect x="260" y="343" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="356" fill="#fff" font-size="16" font-weight="600" text-anchor="start">4</text>
+<rect x="260" y="393" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="406" fill="#fff" font-size="16" font-weight="600" text-anchor="start">5</text>
+<rect x="260" y="443" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="456" fill="#fff" font-size="16" font-weight="600" text-anchor="start">6</text>
+<rect x="260" y="493" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="506" fill="#fff" font-size="16" font-weight="600" text-anchor="start">7</text>
+<rect x="394" y="493" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="506" fill="#fff" font-size="16" font-weight="600" text-anchor="end">8</text>
+<rect x="394" y="443" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="456" fill="#fff" font-size="16" font-weight="600" text-anchor="end">9</text>
+<rect x="394" y="393" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="406" fill="#fff" font-size="16" font-weight="600" text-anchor="end">10</text>
+<rect x="394" y="343" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="356" fill="#fff" font-size="16" font-weight="600" text-anchor="end">11</text>
+<rect x="394" y="293" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="306" fill="#fff" font-size="16" font-weight="600" text-anchor="end">12</text>
+<rect x="394" y="243" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="256" fill="#fff" font-size="16" font-weight="600" text-anchor="end">13</text>
+<rect x="394" y="193" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="206" fill="#fff" font-size="16" font-weight="600" text-anchor="end">14</text>
+<text x="330" y="350" fill="#ffd54a" font-size="22" font-weight="700" text-anchor="middle" transform="rotate(-90 330 350)">74HC86</text>
+<text x="352" y="350" fill="#ddd" font-size="14" font-weight="400" text-anchor="middle" transform="rotate(-90 352 350)">XOR  (CD74HCT86)</text>
+<rect x="714" y="165" width="120" height="370" rx="8" fill="#2b2b2b"/>
+<path d="M759,165 a15,15 0 0 0 30,0" fill="#fff"/>
+<circle cx="728" cy="180" r="4" fill="#bbb"/>
+<rect x="700" y="193" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="206" fill="#fff" font-size="16" font-weight="600" text-anchor="start">1</text>
+<rect x="700" y="243" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="256" fill="#fff" font-size="16" font-weight="600" text-anchor="start">2</text>
+<rect x="700" y="293" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="306" fill="#fff" font-size="16" font-weight="600" text-anchor="start">3</text>
+<rect x="700" y="343" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="356" fill="#fff" font-size="16" font-weight="600" text-anchor="start">4</text>
+<rect x="700" y="393" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="406" fill="#fff" font-size="16" font-weight="600" text-anchor="start">5</text>
+<rect x="700" y="443" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="456" fill="#fff" font-size="16" font-weight="600" text-anchor="start">6</text>
+<rect x="700" y="493" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="506" fill="#fff" font-size="16" font-weight="600" text-anchor="start">7</text>
+<rect x="834" y="493" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="506" fill="#fff" font-size="16" font-weight="600" text-anchor="end">8</text>
+<rect x="834" y="443" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="456" fill="#fff" font-size="16" font-weight="600" text-anchor="end">9</text>
+<rect x="834" y="393" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="406" fill="#fff" font-size="16" font-weight="600" text-anchor="end">10</text>
+<rect x="834" y="343" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="356" fill="#fff" font-size="16" font-weight="600" text-anchor="end">11</text>
+<rect x="834" y="293" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="306" fill="#fff" font-size="16" font-weight="600" text-anchor="end">12</text>
+<rect x="834" y="243" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="256" fill="#fff" font-size="16" font-weight="600" text-anchor="end">13</text>
+<rect x="834" y="193" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="206" fill="#fff" font-size="16" font-weight="600" text-anchor="end">14</text>
+<text x="770" y="350" fill="#ffd54a" font-size="22" font-weight="700" text-anchor="middle" transform="rotate(-90 770 350)">74HC08</text>
+<text x="792" y="350" fill="#ddd" font-size="14" font-weight="400" text-anchor="middle" transform="rotate(-90 792 350)">AND  (SN74HC08N)</text>
+<polyline points="408,200 434,200" fill="none" stroke="#e01818" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="438" y="206" fill="#e01818" font-size="15" font-weight="700" text-anchor="start">+5V</text>
+<polyline points="260,500 234,500" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="230" y="506" fill="#222" font-size="15" font-weight="700" text-anchor="end">GND</text>
+<polyline points="848,200 874,200" fill="none" stroke="#e01818" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="206" fill="#e01818" font-size="15" font-weight="700" text-anchor="start">+5V</text>
+<polyline points="700,500 674,500" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="670" y="506" fill="#222" font-size="15" font-weight="700" text-anchor="end">GND</text>
+<polyline points="848,250 874,250" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="256" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<polyline points="848,300 874,300" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="306" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<polyline points="848,400 874,400" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="406" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<polyline points="848,450 874,450" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="456" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<text x="854" y="356" fill="#999" font-size="14" font-weight="400" text-anchor="start">NC</text>
+<text x="854" y="506" fill="#999" font-size="14" font-weight="400" text-anchor="start">NC</text>
+<polyline points="408,250 434,250" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="438" y="256" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<polyline points="408,300 434,300" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="438" y="306" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<text x="414" y="356" fill="#999" font-size="14" font-weight="400" text-anchor="start">NC</text>
+<polyline points="70,200 260,200" fill="none" stroke="#1f6fd0" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="230,200 230,130 680,130 680,200 700,200" fill="none" stroke="#1f6fd0" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="230" cy="200" r="7" fill="#1f6fd0"/>
+<rect x="48" y="189" width="22" height="22" rx="4" fill="#1f6fd0"/>
+<text x="44" y="206" fill="#1f6fd0" font-size="17" font-weight="700" text-anchor="end">A</text>
+<polyline points="70,250 260,250" fill="none" stroke="#1a9a3a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="200,250 200,110 660,110 660,250 700,250" fill="none" stroke="#1a9a3a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="200" cy="250" r="7" fill="#1a9a3a"/>
+<rect x="48" y="239" width="22" height="22" rx="4" fill="#1a9a3a"/>
+<text x="44" y="256" fill="#1a9a3a" font-size="17" font-weight="700" text-anchor="end">B</text>
+<polyline points="260,300 170,300" fill="none" stroke="#8a3fd1" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="260,350 170,350 170,90 640,90 640,350 700,350" fill="none" stroke="#8a3fd1" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="170" cy="300" r="7" fill="#8a3fd1"/>
+<text x="420" y="84" fill="#8a3fd1" font-size="15" font-weight="600" text-anchor="middle">X = A⊕B</text>
+<polyline points="70,400 260,400" fill="none" stroke="#f08000" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="140,400 140,600 600,600 600,400 700,400" fill="none" stroke="#f08000" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="140" cy="400" r="7" fill="#f08000"/>
+<rect x="48" y="389" width="22" height="22" rx="4" fill="#f08000"/>
+<text x="44" y="406" fill="#f08000" font-size="17" font-weight="700" text-anchor="end">Cin</text>
+<text x="370" y="622" fill="#f08000" font-size="15" font-weight="600" text-anchor="middle">Cin</text>
+<polyline points="260,450 90,450" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="78" cy="450" r="13" fill="#ffe14a" stroke="#111" stroke-width="3"/>
+<text x="78" y="430" fill="#111" font-size="17" font-weight="700" text-anchor="middle">SUM</text>
+<polyline points="700,300 540,300 540,400 408,400" fill="none" stroke="#0a9aa8" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="470" y="393" fill="#0a9aa8" font-size="15" font-weight="600" text-anchor="middle">A·B</text>
+<polyline points="700,450 408,450" fill="none" stroke="#8a6a00" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="500" y="443" fill="#8a6a00" font-size="15" font-weight="600" text-anchor="middle">Cin·X</text>
+<polyline points="408,500 450,500 450,560" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="450" cy="572" r="13" fill="#ffe14a" stroke="#111" stroke-width="3"/>
+<text x="470" y="578" fill="#111" font-size="17" font-weight="700" text-anchor="start">COUT</text>
+<rect x="8" y="708" width="964" height="684" rx="14" fill="#fff" stroke="#888" stroke-width="2"/>
+<text x="490.0" y="740" fill="#111" font-size="19" font-weight="700" text-anchor="middle">FULL SUBTRACTOR (A − B − Bin)   —   Diff = A⊕B⊕Bin ,  Bout = A'·B + Bin·(A⊕B)'</text>
+<rect x="274" y="865" width="120" height="370" rx="8" fill="#2b2b2b"/>
+<path d="M319,865 a15,15 0 0 0 30,0" fill="#fff"/>
+<circle cx="288" cy="880" r="4" fill="#bbb"/>
+<rect x="260" y="893" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="906" fill="#fff" font-size="16" font-weight="600" text-anchor="start">1</text>
+<rect x="260" y="943" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="956" fill="#fff" font-size="16" font-weight="600" text-anchor="start">2</text>
+<rect x="260" y="993" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="1006" fill="#fff" font-size="16" font-weight="600" text-anchor="start">3</text>
+<rect x="260" y="1043" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="1056" fill="#fff" font-size="16" font-weight="600" text-anchor="start">4</text>
+<rect x="260" y="1093" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="1106" fill="#fff" font-size="16" font-weight="600" text-anchor="start">5</text>
+<rect x="260" y="1143" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="1156" fill="#fff" font-size="16" font-weight="600" text-anchor="start">6</text>
+<rect x="260" y="1193" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="282" y="1206" fill="#fff" font-size="16" font-weight="600" text-anchor="start">7</text>
+<rect x="394" y="1193" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="1206" fill="#fff" font-size="16" font-weight="600" text-anchor="end">8</text>
+<rect x="394" y="1143" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="1156" fill="#fff" font-size="16" font-weight="600" text-anchor="end">9</text>
+<rect x="394" y="1093" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="1106" fill="#fff" font-size="16" font-weight="600" text-anchor="end">10</text>
+<rect x="394" y="1043" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="1056" fill="#fff" font-size="16" font-weight="600" text-anchor="end">11</text>
+<rect x="394" y="993" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="1006" fill="#fff" font-size="16" font-weight="600" text-anchor="end">12</text>
+<rect x="394" y="943" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="956" fill="#fff" font-size="16" font-weight="600" text-anchor="end">13</text>
+<rect x="394" y="893" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="386" y="906" fill="#fff" font-size="16" font-weight="600" text-anchor="end">14</text>
+<text x="330" y="1050" fill="#ffd54a" font-size="22" font-weight="700" text-anchor="middle" transform="rotate(-90 330 1050)">74HC86</text>
+<text x="352" y="1050" fill="#ddd" font-size="14" font-weight="400" text-anchor="middle" transform="rotate(-90 352 1050)">XOR  (CD74HCT86)</text>
+<rect x="714" y="865" width="120" height="370" rx="8" fill="#2b2b2b"/>
+<path d="M759,865 a15,15 0 0 0 30,0" fill="#fff"/>
+<circle cx="728" cy="880" r="4" fill="#bbb"/>
+<rect x="700" y="893" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="906" fill="#fff" font-size="16" font-weight="600" text-anchor="start">1</text>
+<rect x="700" y="943" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="956" fill="#fff" font-size="16" font-weight="600" text-anchor="start">2</text>
+<rect x="700" y="993" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="1006" fill="#fff" font-size="16" font-weight="600" text-anchor="start">3</text>
+<rect x="700" y="1043" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="1056" fill="#fff" font-size="16" font-weight="600" text-anchor="start">4</text>
+<rect x="700" y="1093" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="1106" fill="#fff" font-size="16" font-weight="600" text-anchor="start">5</text>
+<rect x="700" y="1143" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="1156" fill="#fff" font-size="16" font-weight="600" text-anchor="start">6</text>
+<rect x="700" y="1193" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="722" y="1206" fill="#fff" font-size="16" font-weight="600" text-anchor="start">7</text>
+<rect x="834" y="1193" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="1206" fill="#fff" font-size="16" font-weight="600" text-anchor="end">8</text>
+<rect x="834" y="1143" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="1156" fill="#fff" font-size="16" font-weight="600" text-anchor="end">9</text>
+<rect x="834" y="1093" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="1106" fill="#fff" font-size="16" font-weight="600" text-anchor="end">10</text>
+<rect x="834" y="1043" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="1056" fill="#fff" font-size="16" font-weight="600" text-anchor="end">11</text>
+<rect x="834" y="993" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="1006" fill="#fff" font-size="16" font-weight="600" text-anchor="end">12</text>
+<rect x="834" y="943" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="956" fill="#fff" font-size="16" font-weight="600" text-anchor="end">13</text>
+<rect x="834" y="893" width="14" height="14" fill="#b8b8b8" stroke="#666"/>
+<text x="826" y="906" fill="#fff" font-size="16" font-weight="600" text-anchor="end">14</text>
+<text x="770" y="1050" fill="#ffd54a" font-size="22" font-weight="700" text-anchor="middle" transform="rotate(-90 770 1050)">74HC08</text>
+<text x="792" y="1050" fill="#ddd" font-size="14" font-weight="400" text-anchor="middle" transform="rotate(-90 792 1050)">AND  (SN74HC08N)</text>
+<polyline points="408,900 434,900" fill="none" stroke="#e01818" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="438" y="906" fill="#e01818" font-size="15" font-weight="700" text-anchor="start">+5V</text>
+<polyline points="260,1200 234,1200" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="230" y="1206" fill="#222" font-size="15" font-weight="700" text-anchor="end">GND</text>
+<polyline points="848,900 874,900" fill="none" stroke="#e01818" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="906" fill="#e01818" font-size="15" font-weight="700" text-anchor="start">+5V</text>
+<polyline points="700,1200 674,1200" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="670" y="1206" fill="#222" font-size="15" font-weight="700" text-anchor="end">GND</text>
+<polyline points="848,950 874,950" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="956" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<polyline points="848,1000 874,1000" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="1006" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<polyline points="848,1100 874,1100" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="1106" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<polyline points="848,1150 874,1150" fill="none" stroke="#222" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="878" y="1156" fill="#222" font-size="15" font-weight="700" text-anchor="start">GND</text>
+<text x="854" y="1056" fill="#999" font-size="14" font-weight="400" text-anchor="start">NC</text>
+<text x="854" y="1206" fill="#999" font-size="14" font-weight="400" text-anchor="start">NC</text>
+<polyline points="70,900 260,900" fill="none" stroke="#1f6fd0" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="48" y="889" width="22" height="22" rx="4" fill="#1f6fd0"/>
+<text x="44" y="906" fill="#1f6fd0" font-size="17" font-weight="700" text-anchor="end">A</text>
+<polyline points="70,950 260,950" fill="none" stroke="#1a9a3a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="230,950 230,830 680,830 680,900 700,900" fill="none" stroke="#1a9a3a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="230" cy="950" r="7" fill="#1a9a3a"/>
+<rect x="48" y="939" width="22" height="22" rx="4" fill="#1a9a3a"/>
+<text x="44" y="956" fill="#1a9a3a" font-size="17" font-weight="700" text-anchor="end">B</text>
+<polyline points="260,1000 200,1000" fill="none" stroke="#8a3fd1" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="260,1050 200,1050 200,810 660,810 660,950 700,950" fill="none" stroke="#8a3fd1" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="200" cy="1000" r="7" fill="#8a3fd1"/>
+<polyline points="500,810 500,950 408,950" fill="none" stroke="#8a3fd1" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="500" cy="810" r="7" fill="#8a3fd1"/>
+<text x="350" y="804" fill="#8a3fd1" font-size="15" font-weight="600" text-anchor="middle">X = A⊕B</text>
+<polyline points="408,1000 434,1000" fill="none" stroke="#e01818" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="438" y="1006" fill="#e01818" font-size="15" font-weight="700" text-anchor="start">+5V</text>
+<polyline points="408,1050 700,1050" fill="none" stroke="#d6309a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="480" y="1043" fill="#d6309a" font-size="15" font-weight="600" text-anchor="middle">X' (NOT X)</text>
+<polyline points="70,1100 260,1100" fill="none" stroke="#f08000" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="140,1100 140,1300 600,1300 600,1100 700,1100" fill="none" stroke="#f08000" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="140" cy="1100" r="7" fill="#f08000"/>
+<rect x="48" y="1089" width="22" height="22" rx="4" fill="#f08000"/>
+<text x="44" y="1106" fill="#f08000" font-size="17" font-weight="700" text-anchor="end">Bin</text>
+<text x="370" y="1322" fill="#f08000" font-size="15" font-weight="600" text-anchor="middle">Bin</text>
+<polyline points="260,1150 90,1150" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="78" cy="1150" r="13" fill="#ffe14a" stroke="#111" stroke-width="3"/>
+<text x="78" y="1130" fill="#111" font-size="17" font-weight="700" text-anchor="middle">DIFF</text>
+<polyline points="700,1000 560,1000 560,1100 408,1100" fill="none" stroke="#0a9aa8" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="480" y="1093" fill="#0a9aa8" font-size="15" font-weight="600" text-anchor="middle">X·B</text>
+<polyline points="700,1150 408,1150" fill="none" stroke="#8a6a00" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="500" y="1143" fill="#8a6a00" font-size="15" font-weight="600" text-anchor="middle">X'·Bin</text>
+<polyline points="408,1200 450,1200 450,1260" fill="none" stroke="#111" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="450" cy="1272" r="13" fill="#ffe14a" stroke="#111" stroke-width="3"/>
+<text x="470" y="1278" fill="#111" font-size="17" font-weight="700" text-anchor="start">BOUT</text>
+<text x="24" y="1430" fill="#111" font-size="16" font-weight="500" text-anchor="start">●  dot = wires joined.   Wires that cross without a dot are NOT joined.   NC = leave unconnected.</text>
+<text x="24" y="1456" fill="#111" font-size="16" font-weight="500" text-anchor="start">Power on BOTH chips:  pin 14 → +5V,  pin 7 → GND.   Unused inputs → GND.</text>
+<text x="24" y="1482" fill="#111" font-size="16" font-weight="500" text-anchor="start">Inputs A, B, Cin/Bin:  switch to +5V with 10 kΩ pull-down to GND.   Outputs:  pin → 330 Ω → LED → GND.</text>
+<text x="24" y="1508" fill="#111" font-size="16" font-weight="500" text-anchor="start">Build one circuit at a time (both together need a second 74HC86).</text></svg>
